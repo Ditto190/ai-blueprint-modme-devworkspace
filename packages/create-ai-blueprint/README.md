@@ -28,6 +28,12 @@ The installed workflow includes optional Render and Vercel deployment readiness
 through `/release` or `$release`; it prepares local config and checks, but does
 not deploy without explicit approval.
 
+The optional `/ci` or `$ci` skill sets up automatic GitHub checks separately
+from onboarding and adoption. It detects the real project commands, defines one
+Verify command from checks that already exist, and adds a matching pull request
+workflow without replacing existing CI. It does not invent tests or add git
+hooks, coverage, browser tests, security scans, or version matrices by default.
+
 It also includes `/rollback` or `$rollback` for planning a reviewed reversal of
 a completed feature from its archived spec and exact git commit. Rollbacks keep
 the original feature archive and use the normal implement, check, and complete

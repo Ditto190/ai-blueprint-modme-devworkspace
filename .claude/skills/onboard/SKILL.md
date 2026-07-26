@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: Set up the Blueprint after overlaying it onto a freshly scaffolded or early project. Detects the stack, relocates the copied Blueprint README when needed, updates AGENTS.md commands, sets the CLAUDE.md project title when present, tunes coding-standards.md, checks ai-interaction.md and .gitignore, asks whether Blueprint workflow files should be committed or kept local-only, confirms which tool adapters to keep, and tells the user exactly what to fill in before /overview or $overview. Use when the user runs /onboard, invokes $onboard, just copied the Blueprint into a new project, or asks what to do after overlaying the Blueprint. For an existing app with meaningful shipped features, use adopt instead.
+description: Set up the Blueprint after overlaying it onto a freshly scaffolded or early project. Detects the stack, tunes project files and adapters, documents real commands and existing checks, points to the optional standalone CI setup, and tells the user what to fill in before /overview or $overview. Use when the user runs /onboard, invokes $onboard, just copied the Blueprint into a new project, or asks what to do after overlaying the Blueprint. For an existing app with meaningful shipped features, use adopt instead.
 ---
 
 # onboard - finish the Blueprint overlay setup
@@ -53,6 +53,7 @@ Read only enough to identify the setup:
 - existing `.gitignore`
 - whether `.agents/` and `.claude/` are both needed
 - whether Blueprint workflow paths are already tracked by git
+- existing verification commands and `.github/workflows/`
 - project name, from `package.json`, the folder name, existing docs, or the user
 
 Do not infer more than the files support. Mark uncertain items as `> TODO` in the
@@ -84,6 +85,7 @@ Include only commands that exist or are intentionally available:
 - build
 - preview or start
 - lint, format, typecheck, and test, if configured
+- verify, when a real combined verification command already exists
 - useful app-specific commands, if obvious
 
 If no test command exists, say so explicitly. Do not claim tests are a gate until
@@ -126,7 +128,20 @@ instead of guessing, such as:
 
 If no changes are needed, say so.
 
-## Step 5 - check ignore files, visibility, and adapters
+## Step 5 - point to optional CI setup
+
+Do not create or change Verify commands or GitHub workflows during onboarding.
+Report any verification command or CI already present. When equivalent automatic
+pull-request checks are absent, mention the optional standalone setup:
+
+```text
+Run /ci or $ci when you want automatic GitHub checks.
+```
+
+Explain that CI is not required to continue with planning or the Blueprint build
+loop. The `/ci` skill owns project-specific Verify and GitHub workflow setup.
+
+## Step 6 - check ignore files, visibility, and adapters
 
 Update `.gitignore` for common generated files from the detected stack while
 preserving existing entries. Typical examples include dependencies, build output,
@@ -186,7 +201,7 @@ Then report which adapter folders are needed:
 
 Do not delete adapters unless the user explicitly asks.
 
-## Step 6 - hand off to planning
+## Step 7 - hand off to planning
 
 Stop with a concise onboarding report:
 
@@ -198,6 +213,7 @@ Stop with a concise onboarding report:
 - files changed
 - commands now available
 - testing gate status
+- verification command and GitHub checks status
 - adapter recommendation
 - TODOs or uncertainties
 - exact next files for the user to fill in:

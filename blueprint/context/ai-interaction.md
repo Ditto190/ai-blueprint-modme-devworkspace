@@ -51,14 +51,16 @@ something done.
 4. **Review** - Show the diff (not full files), with a short summary: what the
    step delivered, one line per file on the why, and the done-when shown true. I
    read and approve each step before moving to the next.
-5. **Test** - Verify the done-when with evidence: the browser/a screenshot and
-   the project's build command (see Commands in `AGENTS.md`). If the project
-   declares a `test` command in `AGENTS.md` (the opt-in switch), a step that adds
-   logic must ship a passing test and the test command must be green before the
-   step is approved; UI and integration steps ride on screenshot plus build
-   evidence. Run `/tests` first if the project needs a stack-native unit test
-   runner added or normalized. See the Testing section of `coding-standards.md`
-   for the gate.
+5. **Test** - Verify the done-when with evidence. If `AGENTS.md` declares a
+   `Verify` command, run that exact command as the final automated gate. It wraps
+   only the checks the project actually has. If no Verify command exists, run the
+   documented build command and the test command when configured. A step that
+   adds logic must ship a passing test when the test gate is on; UI and
+   integration steps ride on browser, screenshot, API, and build evidence. Run
+   `/tests` first if the project needs a stack-native unit test runner added or
+   normalized. See the Testing section of `coding-standards.md` for the gate.
+   Run `/ci` separately when you want one Verify command and matching automatic
+   GitHub checks; CI setup is not part of this feature loop.
 6. **Try manually (optional)** - Run `/try` when you want a human walkthrough:
    what to start, where to go, what to click or run, what to expect, and what
    would count as wrong. `/check` proves behavior from the agent side; `/try`
@@ -74,11 +76,11 @@ something done.
    selectable popup, or in plain text when there's a lot to read first so it doesn't
    cover what you're reading. Checkpoints are optional cheap rollback points; "walk
    me through it" gives a deeper code explanation and loops back; `/complete` makes
-   the real feature-level commit. Build and tests must pass before any commit.
+   the real feature-level commit. Verify, or the fallback checks, must pass first.
    When implementation is done, end with a compact review packet: changed files,
    checks run, manual try path, risks, and next action.
 10. **Safety + log** - `/complete` first checks the active spec, branch, changed
-   files, build/test/check evidence, manual try path, and adapter sync when
+   files, Verify or fallback check evidence, manual try path, and adapter sync when
    workflow files changed. Then it archives the spec to `blueprint/history/features/NN-name.md` (or
    `blueprint/history/fixes/`), checks the feature off in `blueprint/build-plan.md`, and
    resets `blueprint/context/current-feature.md` to its stub.
@@ -100,8 +102,8 @@ holds the code (branch, commits, working tree). A fresh session auto-loads
 `CLAUDE.md` for Claude Code), so `/implement` or `$implement` just continues from
 the first unchecked step - no separate save/load needed.
 
-Do NOT commit without permission or until the build passes (and tests, if the
-project has them). If the build or tests fail, fix the issues first.
+Do NOT commit without permission or until Verify, or the fallback build and tests,
+passes. If a required check fails, fix the issue first.
 
 Autopilot exists only as an explicit opt-in command: `/autopilot` or
 `$autopilot`. Do not suggest it as the default next action. When invoked, it runs

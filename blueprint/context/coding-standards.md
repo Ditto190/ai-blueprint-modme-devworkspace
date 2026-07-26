@@ -91,6 +91,14 @@ or with `/tests`. The setup should choose the stack-native runner, wire the
 scripts or commands, add a small example test, and update the Commands section
 of `AGENTS.md`.
 
+When `AGENTS.md` declares a `Verify` command, treat it as the umbrella automated
+gate. It combines only the checks this project actually has, in this order when
+available: typecheck, tests, then build. The command does not enable an absent
+test runner or replace focused evidence. It gives local work and optional CI one
+exact command to run. `/ci` owns Verify and CI setup. `/tests` adds the real test
+command to Verify when it already exists, but never creates CI only because
+testing was configured.
+
 **The opt-in switch is one signal: a `test` command in the Commands section of
 `AGENTS.md`.** Declare one and **tests become a gate for logic-bearing steps**,
 not an optional extra; leave it out and the loop verifies logic with the evidence

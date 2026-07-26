@@ -100,21 +100,24 @@ Work through the spec's build steps in order, one at a time. For each step:
    assertion). This summary is the comprehension gate, so keep it concrete, not
    ceremonial. Include a short **How to try it** note when the step has a manual
    path: the command, URL, click, endpoint, or output the user can check.
-4. **Build, and test if the project tests.** Run the project's build command (see
-   Commands in `AGENTS.md`). If the project declares a `test` command in
-   `AGENTS.md` (the opt-in switch), run it: a step that adds logic must ship a
-   passing test in the same diff, and the suite
-   must be green before the step is approved (see the Testing gate in
-   `coding-standards.md`); UI and integration-only steps ride on screenshot plus
-   build evidence. For UI or integration done-whens, prefer Playwright when it is
+4. **Verify the step.** If `AGENTS.md` declares a `Verify` command, run that exact
+   command as the automated gate. It is only an umbrella for checks the project
+   actually has, so do not invent tests or other checks to satisfy it. If no
+   `Verify` command exists, run the documented build command and the test command
+   when the project declares one. A step that adds logic must ship a passing test
+   in the same diff when the test gate is on, and the suite must be green before
+   the step is approved (see the Testing gate in `coding-standards.md`). UI and
+   integration-only steps ride on screenshot plus build evidence. Run a focused
+   test separately when it gives faster feedback, then use `Verify` as the final
+   automated gate. For UI or integration done-whens, prefer Playwright when it is
    already installed or declared in `AGENTS.md`; do not add it silently for an
-   unrelated feature. Create focused test files next to the source they cover, per
-   `coding-standards.md`. Never install a runner mid-step unless the current spec
-   is explicitly the unit-testing setup itself (for example `/fix "add unit
-   testing"`). If a step surfaces non-trivial logic the spec didn't foresee, add a
-   focused test then, or note why not. When a step's done-when is behavioral (a
-   click, a download, a flow across screens), run `/check` to prove it against the
-   running app rather than eyeballing it.
+   unrelated feature. Create focused test files next to the source they cover,
+   per `coding-standards.md`. Never install a runner mid-step unless the current
+   spec is explicitly the unit-testing setup itself (for example `/fix "add unit
+   testing"`). If a step surfaces non-trivial logic the spec did not foresee, add
+   a focused test then, or note why not. When a step's done-when is behavioral (a
+   click, a download, or a flow across screens), run `/check` to prove it against
+   the running app rather than eyeballing it.
 5. **Iterate until it works.** If it fails or the user wants changes, revise the
    step (re-prompt or hand-edit the code), show the updated diff, and re-test.
    Repeat until it works and the user approves. Nothing is committed until the
@@ -146,7 +149,8 @@ Work through the spec's build steps in order, one at a time. For each step:
    `/complete` to wrap up what's built so far.
 
 Never batch the whole thing into one diff. If a step's diff is too big to read,
-split it. Build and tests must pass before any commit.
+split it. The documented `Verify` command, or the fallback build and tests, must
+pass before any commit.
 
 ## Step 3 - hand off to /complete
 
@@ -166,8 +170,8 @@ the loop now:
   `/audit` to invalidate with recorded evidence; this skill never sets
   `accepted` or `invalid`.
 
-When every step is built and the build and tests pass (committed as checkpoints or
-not), stop with a compact review packet:
+When every step is built and `Verify`, or the fallback build and tests, passes
+(committed as checkpoints or not), stop with a compact review packet:
 
 - branch name
 - what changed, grouped by file or area

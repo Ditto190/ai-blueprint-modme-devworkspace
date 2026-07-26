@@ -1,6 +1,6 @@
 ---
 name: adopt
-description: Bring the blueprint into an existing (brownfield) codebase. Surveys the real repo, interviews you for the intent code can't reveal, then generates the two plans you own (project-plan.md with shipped features, build-plan.md as a checklist with existing features already checked) plus coding-standards.md reflecting the project's actual conventions - and points you at /overview to finish. Use when the user runs /adopt, is overlaying the blueprint onto an app that already has meaningful code, or asks to adopt or bootstrap the workflow into an existing project. For freshly scaffolded or early projects, use onboard instead.
+description: Bring the blueprint into an existing (brownfield) codebase. Surveys the real repo, interviews for intent, generates the owned plans and coding standards, documents existing verification and CI, and points to the optional standalone CI setup. Use when the user runs /adopt, is overlaying the blueprint onto an app that already has meaningful code, or asks to adopt or bootstrap the workflow into an existing project. For freshly scaffolded or early projects, use onboard instead.
 ---
 
 # adopt - bootstrap the blueprint from an existing codebase
@@ -64,6 +64,8 @@ Read the repo to establish the facts. Change nothing in this step. Establish:
   code *does*, not what a default template prescribes.
 - **Testing reality** - is a runner configured and are there tests, or none? Be
   honest; don't describe a gate the project doesn't have.
+- **Verification and CI** - note any combined verification command, GitHub
+  remote, `.github/workflows/`, or external CI. Preserve what already exists.
 - **What the app already does** - the shipped features, inferred from routes,
   pages, entry points, and modules. This becomes the *checked* part of the build plan.
 
@@ -105,18 +107,32 @@ it rather than inherit a wrong guess.
   state (the opt-in switch is a `test` command in `AGENTS.md`).
 - **`AGENTS.md` Commands section** - fill in the real dev / build / test / lint
   commands you found, so the rest of the workflow (and the testing gate) uses the
-  project's actual scripts.
+  project's actual scripts. Include `Verify` when a real combined command exists.
 
 Do not write `project-overview.md`; that's `/overview`'s job, downstream of these.
 
-## Step 4 - review gate, then hand off
+## Step 4 - point to optional CI setup
+
+Do not create or change Verify commands or GitHub workflows during adoption.
+Report any verification command or CI already present. When equivalent automatic
+pull-request checks are absent, mention the optional standalone setup:
+
+```text
+Run /ci or $ci when you want automatic GitHub checks.
+```
+
+Explain that CI is not required to finish adoption. The `/ci` skill owns
+project-specific Verify and GitHub workflow setup.
+
+## Step 5 - review gate, then hand off
 
 Stop and show the user what you generated, calling out:
 
 - the **build-plan split** - what you marked shipped vs not, since that's the
   judgment most worth their eyes,
 - every `> TODO (confirm)` you left,
-- anything the survey and the interview disagreed on.
+- anything the survey and the interview disagreed on,
+- verification command and GitHub checks status.
 
 These files are the ones the user *owns*. Have them review and adjust, then tell
 them to run `/overview` to distill the plans into `project-overview.md` and start

@@ -1,6 +1,6 @@
 ---
 name: doctor
-description: "Run a read-only Blueprint health check for setup, onboarding, required files, tool adapters, commands, Blueprint visibility, ignore rules, planning readiness, overview freshness, and workflow drift. Use when the user runs /doctor, asks whether the Blueprint is installed correctly, wants a health check, setup check, doctor pass, or says something feels off before starting or resuming work."
+description: "Run a read-only Blueprint health check for setup, onboarding, required files, tool adapters, commands, optional verification and CI, Blueprint visibility, ignore rules, planning readiness, overview freshness, and workflow drift. Use when the user runs /doctor, asks whether the Blueprint is installed correctly, wants a health check, setup check, doctor pass, or says something feels off before starting or resuming work."
 ---
 
 # doctor - Blueprint health check
@@ -75,6 +75,16 @@ Gather these, then summarize. Do not dump file contents.
      real lint or test scripts elsewhere that are not reflected in `AGENTS.md`.
    - If `package.json` exists, compare its scripts against `AGENTS.md` at a high
      level. Do not require every script to be documented.
+   - If `AGENTS.md` declares a `Verify` command, confirm it resolves to real
+     project commands in the expected order: typecheck, tests when configured,
+     then build. Do not require checks the project does not have.
+   - If `.github/workflows/verify.yml` exists, confirm it runs the exact documented
+     `Verify` command for pull requests and pushes to the default branch, uses the
+     detected runtime and package manager, and starts with read-only contents
+     permission. Preserve other workflows and report overlap for review.
+   - A missing `Verify` command or GitHub workflow is informational. It means the
+     optional automatic-check setup was not selected, not that the Blueprint is
+     unhealthy.
 4. **Ignore rules**
    - Check obvious ignore patterns for the detected stack. For Node or Astro,
      look for `node_modules`, `.env`, `dist`, and framework cache folders such as
@@ -126,6 +136,7 @@ Print a compact health report with these labels:
 
     Health: Pass | Needs attention | Blocked
     Setup: ...
+    Verification: ...
     Adapters: ...
     Visibility: ...
     Plans: ...
@@ -153,6 +164,9 @@ Choose the repair order in this priority:
   to untrack them with `git rm --cached` while keeping local files.
 - Local-only visibility selected but `AGENTS.md` still exposes the workflow ->
   run `/onboard` to make `AGENTS.md` a lightweight public project guide.
+- A documented `Verify` command, project script, and GitHub workflow disagree ->
+  run `/ci` to review and align them. Missing optional CI alone does not need
+  repair.
 - Commands or ignore rules need review -> update the files or run `/onboard` if
   this is an early project.
 - Plans are placeholders -> fill `blueprint/project-plan.md` and

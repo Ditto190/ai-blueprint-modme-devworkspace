@@ -31,6 +31,7 @@ Read enough files to identify the real setup:
   `phpunit.xml`, language-native config, and similar)
 - existing test files
 - package manager lockfile
+- an existing `Verify` command and `.github/workflows/verify.yml`, when present
 - `blueprint/context/coding-standards.md`
 
 Do not assume Next.js. Detect the stack from files.
@@ -64,7 +65,10 @@ Apply the smallest practical diff:
    exists; otherwise add a tiny helper and test that proves the runner works.
 4. Update the Commands section of `AGENTS.md` with the real test command and,
    when available, the test watch command.
-5. Update `blueprint/context/coding-standards.md` only if the project needs a
+5. If a `Verify` command already exists, add the real test command to it between
+   typecheck and build while preserving any established project checks. Do not
+   create verification or CI only because `/tests` was invoked.
+6. Update `blueprint/context/coding-standards.md` only if the project needs a
    stack-specific testing note different from the default.
 
 Do not write a broad test suite for existing app code. This skill proves the
@@ -75,7 +79,11 @@ through the current tool's approval flow. Use the project's package manager.
 
 ## Step 4 - verify
 
-Run the relevant commands from `AGENTS.md`:
+If `AGENTS.md` documents a `Verify` command, run the focused test command and
+then run `Verify` as the final gate. The combined command should now exercise the
+new tests along with its existing typecheck and build checks.
+
+If no `Verify` command exists, run the relevant commands from `AGENTS.md`:
 
 - the test command
 - the build command, when one exists
@@ -91,6 +99,7 @@ Stop with a concise report:
 
 - runner chosen or reused
 - commands added or updated
+- existing verification command updated, or confirmation that none exists
 - example test added
 - verification commands run and whether they passed
 - any follow-up the user should consider
@@ -102,6 +111,8 @@ Show the diff summary. Do not commit, merge, push, or start product feature work
 - Unit testing only. Do not set up Playwright, Cypress, browser E2E, CI, or
   coverage unless the user explicitly asks.
 - Reuse existing project conventions before adding new tools.
+- Preserve existing CI. This skill may update an existing verification command,
+  but it never creates a GitHub workflow on its own.
 - Keep the first test boring and small. It exists to prove the workflow.
 - Once `AGENTS.md` has a test command, later `/feature` and `/implement` runs
   treat tests as the gate for logic-bearing changes.

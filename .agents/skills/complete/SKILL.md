@@ -12,13 +12,15 @@ Where this sits in the workflow:
 
 `/implement` built the feature, fix, or rollback on its branch, with optional per-step commit
 checkpoints. This skill closes it out: it logs the work, makes the single
-work-level commit, and squash-merges. Run it only when the build is done,
-reviewed, and the build and tests pass.
+work-level commit, and squash-merges. Run it only when the work is done,
+reviewed, and the documented `Verify` command, or the fallback build and tests,
+passes.
 
 ## Before you start
 
-Confirm the work is actually finished: `blueprint/context/current-feature.md` holds a real
-spec, its steps are built on a branch, and the build and tests pass. If any of the
+Confirm the work is actually finished: `blueprint/context/current-feature.md`
+holds a real spec, its steps are built on a branch, and `Verify`, or the fallback
+build and tests, passes. If any of the
 spec's done-whens are behavioral, `/check` should have proven them against the
 running app first - don't merge on an unverified claim. Uncommitted step work is
 expected (per-step checkpoints are optional); this skill commits it. Don't require
@@ -31,8 +33,9 @@ Before logging or committing, run a short safety pass and report blockers only:
 - active spec exists and the work is not being completed from `main` or `master`
 - changed files are tied to the active spec, with no unrelated dirty work mixed
   in (a dirty `blueprint/context/findings.md` is expected, since `/audit` writes it)
-- build passed in this session, and tests passed when the project has a declared
-  test command and the change touched logic
+- the exact `Verify` command from `AGENTS.md` passed in this session, when one is
+  declared; otherwise the build passed, and tests passed when the project has a
+  declared test command and the change touched logic
 - behavioral done-whens have `/check` evidence or equivalent proof, and there is
   a clear manual try path
 - if workflow files changed, `.agents` and `.claude` stayed in sync where both
@@ -108,7 +111,8 @@ feature's commit. Skip this if the feature didn't consume prototypes.
 
 Stage everything on the branch (any uncommitted step work plus the Step 1 logging
 changes) and make one conventional work commit (for example `feat: <feature>`,
-`fix: <name>`, or `revert: roll back <feature>`). Build and tests must pass first.
+`fix: <name>`, or `revert: roll back <feature>`). `Verify`, or the fallback build
+and tests, must pass first.
 
 ## Step 3 - merge
 
@@ -135,7 +139,8 @@ that command can read the archived feature after `current-feature.md` is reset.
   commit on main, even if the branch carried several checkpoint commits.
 - A rollback preserves the original feature archive and adds a separate rollback
   archive. Never rewrite history to make the feature look as if it never existed.
-- Don't merge unfinished or failing work; the build and tests must pass first.
+- Don't merge unfinished or failing work. The documented `Verify` command, or
+  the fallback build and tests, must pass first.
 - Never merge while a P0 or P1 finding is `open` or `fixed` in the ledger. The
   recorded ways past the gate without code are `accepted` (only by the user's
   explicit decision, with their reason) or `invalid` (only from re-examination

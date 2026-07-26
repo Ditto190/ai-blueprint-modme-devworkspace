@@ -51,6 +51,7 @@ Core skills:
 - `feature` - turn a build-plan item into a spec, or propose a reviewed plan addition for a genuinely new feature
 - `fix` - document an ad-hoc bug or change into `blueprint/context/current-feature.md`
 - `tests` - add or normalize unit testing and turn on the test gate
+- `ci` - explicitly set up one project-specific Verify command and matching automatic GitHub checks
 - `implement` - build the current spec one small, reviewed step at a time
 - `check` - prove the current spec against the running app
 - `try` - read-only manual review guide: where to go, what to click, what to expect
@@ -76,6 +77,28 @@ deploy, or destructive actions.
 Deployment is also explicit. `/release` can prepare local Render or Vercel config
 and run readiness checks, but it must stop before deploy, remote service changes,
 push, or publish unless the user gives a separate yes in the current chat.
+
+## Automatic verification
+
+Automatic GitHub checks are a separate explicit setup. `/onboard` and `/adopt`
+only report existing checks and point to `/ci` or `$ci` when none exist. Running
+`/ci` inspects the real project and defines one `Verify` command from checks that
+already exist. Use this order when available: typecheck, tests, then build. Never
+invent a test runner or another check just to fill the command.
+
+For JavaScript and TypeScript projects, prefer a package script such as `verify`
+and use the detected package manager. For other stacks, use the native task
+runner or exact combined command. Record the exact command under Commands below.
+
+The optional `.github/workflows/verify.yml` must run that same command for pull
+requests and pushes to the default branch. Preserve existing workflows, use the
+project's real runtime and install command, and grant only `contents: read` by
+default. This setup does not add local git hooks, coverage, browser tests,
+security scans, or version matrices. Those remain later project choices.
+
+GitHub branch protection or a ruleset can require the check after the repository
+is pushed, but that is a separate remote setting. Missing automatic GitHub
+checks do not make the Blueprint unusable.
 
 ## Commands
 

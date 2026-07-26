@@ -122,10 +122,9 @@ For every step:
 
 1. Implement only that step.
 2. Run the relevant verification:
-   - build command from `AGENTS.md`, when present
-   - test command from `AGENTS.md`, when present and relevant
-   - lint or typecheck when it is already a standard command and the change calls
-     for it
+   - the exact `Verify` command from `AGENTS.md`, when declared
+   - otherwise the build, relevant test, lint, and typecheck commands already
+     documented by the project
    - browser, CLI, API, or app-level evidence for behavioral done-whens
 3. If UI is involved, inspect the running app when possible. Prefer Playwright if
    it is already installed or declared. Capture screenshots when they add useful
@@ -179,7 +178,8 @@ For every finding:
 
 After any audit repair:
 
-1. Rerun the affected build, lint, typecheck, and test commands.
+1. Rerun the documented `Verify` command when present; otherwise rerun the
+   affected build, lint, typecheck, and test commands.
 2. Rerun the acceptance evidence affected by the repair.
 3. Recheck the repaired area using the same targeted audit criteria. When that
    recheck confirms the original defect is gone and the repair introduced no

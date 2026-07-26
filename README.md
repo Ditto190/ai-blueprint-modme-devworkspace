@@ -356,15 +356,16 @@ features.
 
 | Skill | Run it | Does |
 | ----- | ------ | ---- |
-| **/onboard** | once, after installing into a fresh or early project | Detects the stack, updates commands and conventions, asks whether Blueprint workflow files should be committed or kept local-only, checks `.gitignore`, and tells you what to fill in before `/overview`. |
-| **/doctor** | any time, especially after `/onboard` or when setup feels off | Runs a read-only health check for Blueprint files, adapters, commands, root README placement, ignore rules, planning readiness, overview freshness, workflow drift, and git state. |
-| **/adopt** | once, for an existing codebase | Surveys the repo, protects the project README, and generates the planning docs and coding standards from what already exists. |
+| **/onboard** | once, after installing into a fresh or early project | Detects the stack, updates commands and conventions, reports existing checks, points to optional `/ci` setup, asks whether Blueprint workflow files should be committed or kept local-only, checks `.gitignore`, and tells you what to fill in before `/overview`. |
+| **/doctor** | any time, especially after `/onboard` or when setup feels off | Runs a read-only health check for Blueprint files, adapters, commands, optional verification and CI alignment, root README placement, ignore rules, planning readiness, overview freshness, workflow drift, and git state. |
+| **/adopt** | once, for an existing codebase | Surveys the repo, protects the project README, reports existing checks, points to optional `/ci` setup, and generates the planning docs and coding standards from what already exists. |
 | **/overview** | after writing or editing the plans | Checks plan quality, normalizes rough build-plan bullets when approved, and generates `blueprint/context/project-overview.md`. |
 | **/brief** | before spec'ing, or when deciding what's next | Read-only briefing on an upcoming build-plan feature - scope, dependencies, what it touches, size, likely split - without writing anything. |
 | **/feature** | for each planned or newly requested feature | Specs the next unchecked feature or a selected feature into `current-feature.md`. If a new feature is not in the plan, proposes the plan update and refreshes the overview after approval before spec'ing it. |
 | **/fix** | for an unplanned bug or small change | Specs an ad-hoc fix into `current-feature.md`. |
-| **/tests** | when you want unit tests added | Adds or normalizes the stack-native unit test setup, adds one example test, updates `AGENTS.md`, and runs build plus tests. |
-| **/implement** | after reviewing a spec | Builds the current spec one small, reviewed step at a time, then ends with a compact review packet. |
+| **/tests** | when you want unit tests added | Adds or normalizes the stack-native unit test setup, adds one example test, updates an existing Verify command, and runs the resulting checks. It does not create CI by itself. |
+| **/ci** | when you want automatic GitHub checks | Detects the real stack and existing CI, defines one Verify command from configured checks, creates or carefully aligns the GitHub workflow, runs Verify locally, and stops before push or remote ruleset changes. |
+| **/implement** | after reviewing a spec | Builds the current spec one small, reviewed step at a time and uses the documented Verify command when present, then ends with a compact review packet. |
 | **/check** | before wrapping up, or any time you want proof | Runs the real app and reports pass/fail against the spec's done-whens. |
 | **/try** | when you want to review manually | Gives a human walkthrough: what to start, where to go, what to click or run, what to expect, and what would count as wrong. |
 | **/audit** | before closing a feature, or any time quality feels suspect | Runs a branch-aware or full-project audit for code quality, security, performance, tests, and standards drift, recording findings with durable IDs and statuses in `blueprint/context/findings.md`. |
@@ -395,6 +396,54 @@ Autopilot does not replace the normal workflow. `/feature`, `/implement`,
 Autopilot always stops before `/complete`, merge, push, deploy, publish, send,
 destructive actions, or any action that needs a product decision not covered by
 the docs.
+
+## Automatic GitHub checks
+
+Automatic GitHub checks are a separate optional setup. `/onboard` and `/adopt`
+only report existing checks and point here. After either setup, run:
+
+```text
+/ci
+```
+
+In Codex, invoke the same skill as `$ci`.
+
+This is the simple mental model:
+
+- **Verify is the recipe.** It is one local command that runs the checks this
+  project already has, in order: typecheck, tests, then build.
+- **GitHub Actions is the worker.** It runs that same recipe when a pull request
+  is opened or code reaches the default branch.
+- **A GitHub ruleset is the lock.** If you later require the check in GitHub, a
+  pull request cannot merge until the worker reports green.
+
+The recipe does not turn checks on by magic. If the project has typechecking and
+a build but no test runner, a JavaScript project might start with:
+
+```json
+"verify": "npm run typecheck && npm run build"
+```
+
+After you deliberately run `/tests`, the same recipe might become:
+
+```json
+"verify": "npm run typecheck && npm test && npm run build"
+```
+
+`npm run build` still works normally either way. The Verify command simply gives
+the agent and GitHub one shared command so they do not disagree about what
+"checked" means.
+
+When `/ci` runs, the agent detects the real stack, package manager, install
+command, default branch, and any existing workflows. It creates or reuses one
+project-specific Verify command, documents it in `AGENTS.md`, and
+adds `.github/workflows/verify.yml` only when that does not overwrite existing
+CI. Existing workflows are preserved and overlap is reported for review.
+
+The `/ci` setup stops there. It does not add git hooks, coverage thresholds,
+browser tests, security scanners, dependency matrices, or a required GitHub
+ruleset. Experienced teams can add those later. Skipping `/ci` does not disable
+builds, tests, or the Blueprint workflow.
 
 ## Testing
 
@@ -563,6 +612,7 @@ step in `current-feature.md`.
 │       ├── feature/           ($feature: build-plan item to current-feature.md)
 │       ├── fix/               ($fix: document an ad-hoc fix)
 │       ├── tests/             ($tests: add unit testing)
+│       ├── ci/                ($ci: automatic GitHub checks)
 │       ├── implement/         ($implement: build the current spec)
 │       ├── check/             ($check: prove the done-whens)
 │       ├── try/               ($try: manual review guide)
@@ -583,6 +633,7 @@ step in `current-feature.md`.
 │       ├── feature/           (/feature: build-plan item to current-feature.md)
 │       ├── fix/               (/fix: document an ad-hoc fix)
 │       ├── tests/             (/tests: add unit testing)
+│       ├── ci/                (/ci: automatic GitHub checks)
 │       ├── implement/         (/implement: build the current spec)
 │       ├── check/             (/check: prove the done-whens)
 │       ├── try/               (/try: manual review guide)
@@ -676,11 +727,11 @@ between tools.
 Use the native invocation style for your tool:
 
 - Codex: `$onboard`, `$doctor`, `$adopt`, `$overview`, `$brief`, `$feature`,
-  `$fix`, `$tests`, `$implement`, `$check`, `$try`, `$audit`, `$rollback`, `$complete`,
+  `$fix`, `$tests`, `$ci`, `$implement`, `$check`, `$try`, `$audit`, `$rollback`, `$complete`,
   `$release`, `$prototype`, `$status`, or plain language like "run the overview."
   Autopilot: `$autopilot`.
 - Claude Code: `/onboard`, `/doctor`, `/adopt`, `/overview`, `/brief`,
-  `/feature`, `/fix`, `/tests`, `/implement`, `/check`, `/try`, `/audit`, `/rollback`,
+  `/feature`, `/fix`, `/tests`, `/ci`, `/implement`, `/check`, `/try`, `/audit`, `/rollback`,
   `/complete`, `/release`, `/prototype`, `/status`. Autopilot: `/autopilot`.
 - Other tools: ask the agent to follow the matching `SKILL.md`.
 

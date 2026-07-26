@@ -46,6 +46,7 @@ async function main() {
   const skills = await getSkillNames(codexSkillsRoot);
   await validateSkillMetadata(skills);
   await validateCommandInventories(skills);
+  await validateVerificationContract();
   const importCount = await validateClaudeImports();
   const referenceCount = await validateSkillReferences(codexFiles);
   await validatePackageMetadata();
@@ -152,6 +153,74 @@ async function validateCommandInventories(skills) {
 
   assertEqualLists(skills, [...agentSkills, ...optionalSkills].sort(), "AGENTS.md commands");
   assertEqualLists(skills, readmeSkills.sort(), "README command table");
+}
+
+async function validateVerificationContract() {
+  const requirements = new Map([
+    [
+      ".agents/skills/onboard/SKILL.md",
+      ["Run /ci or $ci when you want automatic GitHub checks."]
+    ],
+    [
+      ".agents/skills/adopt/SKILL.md",
+      ["Run /ci or $ci when you want automatic GitHub checks."]
+    ],
+    [
+      ".agents/skills/ci/SKILL.md",
+      [
+        ".github/workflows/verify.yml",
+        "permissions: contents: read",
+        "Never push or change a remote ruleset"
+      ]
+    ],
+    [
+      ".agents/skills/tests/SKILL.md",
+      ["add the real test command", "never creates a GitHub workflow on its own"]
+    ],
+    [
+      ".agents/skills/implement/SKILL.md",
+      ["declares a `Verify` command, run that exact", "fallback build and tests"]
+    ],
+    [
+      ".agents/skills/complete/SKILL.md",
+      ["exact `Verify` command from `AGENTS.md`", "fallback build and tests"]
+    ],
+    [
+      ".agents/skills/doctor/SKILL.md",
+      ["missing `Verify` command or GitHub workflow is informational"]
+    ],
+    [
+      ".agents/skills/autopilot/SKILL.md",
+      ["exact `Verify` command from `AGENTS.md`"]
+    ],
+    ["AGENTS.md", ["## Automatic verification", "`contents: read`"]],
+    ["README.md", ["## Automatic GitHub checks", "**Verify is the recipe.**"]],
+    [
+      "blueprint/context/coding-standards.md",
+      ["treat it as the umbrella automated"]
+    ],
+    [
+      "blueprint/context/ai-interaction.md",
+      ["run that exact command as the final automated gate"]
+    ],
+    [
+      "packages/create-ai-blueprint/README.md",
+      ["optional `/ci` or `$ci` skill"]
+    ]
+  ]);
+
+  for (const [relativePath, phrases] of requirements) {
+    const content = await fs.readFile(path.join(repoRoot, relativePath), "utf8");
+    const normalizedContent = content.replace(/\s+/g, " ");
+
+    for (const phrase of phrases) {
+      const normalizedPhrase = phrase.replace(/\s+/g, " ");
+
+      if (!normalizedContent.includes(normalizedPhrase)) {
+        throw new Error(`Verification contract missing from ${relativePath}: ${phrase}`);
+      }
+    }
+  }
 }
 
 async function validateClaudeImports() {
