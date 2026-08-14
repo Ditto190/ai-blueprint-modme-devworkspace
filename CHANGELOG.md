@@ -10,12 +10,16 @@ published `create-ai-blueprint` package.
 - Added repository licenses, security and support policies, issue forms, a pull
   request template, branded assets, and a custom social preview.
 - Added generated GitHub Releases after successful tagged npm publications.
+- Added deterministic routing evaluations for all Blueprint skills and
+  opt-in live-agent scenarios for high-risk workflow boundaries.
 
 ### Changed
 
 - Reworked the repository and npm README presentation around faster setup,
   clearer tool support, package badges, and contribution links.
 - Expanded npm metadata and repository validation for the public trust surface.
+- Added routing evaluations to the automatic repository gate while keeping all
+  maintainer evaluation files out of the published package.
 
 ## [0.6.0] - 2026-07-26
 

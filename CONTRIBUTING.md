@@ -30,10 +30,12 @@ framework abstractions do not belong in this repository.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run check` | Run the complete repository gate used by CI. |
+| `npm run check` | Run the complete repository gate used by CI, including skill routing evaluations. |
 | `npm run check:static` | Check adapter parity, command inventories, imports, references, and package metadata. |
 | `npm test` | Run the installer unit tests. |
+| `npm run test:routing` | Run deterministic skill selection cases without invoking an AI agent. |
 | `npm run test:package` | Pack the npm artifact and smoke-test Codex, Claude, and combined installs. |
+| `E2E_ACCEPT_RISK=1 npm run test:e2e` | Run all live-agent behavior scenarios in scratch repositories. |
 
 Run `npm run check` before opening or merging a pull request. The package smoke
 test builds the installer template, packs it into a temporary directory, installs
@@ -49,6 +51,27 @@ drift between those surfaces.
 
 The root `package.json`, `scripts/`, `.github/`, and this guide are maintainer
 files. They are not copied into applications by `create-ai-blueprint`.
+
+## Skill evaluations
+
+Routing cases live under `evals/routing/`, with one JSON file per skill. Each
+case includes realistic prompts that should select the skill and prompts owned by
+another skill that must not select it. These deterministic checks run during
+`npm run check` and in GitHub CI.
+
+Live-agent scenarios under `scripts/e2e/scenarios/` test observable workflow
+boundaries such as stopping after a feature spec, keeping `/check` read-only,
+blocking completion on open findings, and stopping Autopilot before a merge.
+They spend tokens and allow an agent to edit an isolated scratch repository, so
+they never run in CI and require the explicit `E2E_ACCEPT_RISK=1` opt-in. Run one
+scenario by name when changing a specific skill:
+
+```bash
+E2E_ACCEPT_RISK=1 npm run test:e2e -- feature-gate
+```
+
+The routing cases, evaluator, and live-agent scenarios are maintainer-only. The
+package smoke test confirms they are absent from the published npm artifact.
 
 ## Pull requests
 

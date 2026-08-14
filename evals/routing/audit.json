@@ -1,0 +1,12 @@
+{
+  "skill": "audit",
+  "positive": [
+    { "prompt": "Run /audit current", "top_k": 1 },
+    { "prompt": "Review this code for duplication, dead code, and standards drift", "top_k": 3 },
+    { "prompt": "Do a code quality and security audit and record the findings", "top_k": 3 }
+  ],
+  "negative": [
+    { "prompt": "Run /check and prove every done-when against the running app", "owner": "check" },
+    { "prompt": "Run /implement to build the approved current spec", "owner": "implement" }
+  ]
+}

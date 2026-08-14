@@ -1,0 +1,12 @@
+{
+  "skill": "try",
+  "positive": [
+    { "prompt": "Run /try", "top_k": 1 },
+    { "prompt": "Tell me exactly how to manually test this feature myself", "top_k": 3 },
+    { "prompt": "Give me a click-by-click review guide with expected and incorrect results", "top_k": 3 }
+  ],
+  "negative": [
+    { "prompt": "Run /check and have the agent capture behavioral evidence", "owner": "check" },
+    { "prompt": "Run /status and tell me what is in progress", "owner": "status" }
+  ]
+}

@@ -58,6 +58,9 @@ async function main() {
     );
     await requirePath(path.join(installedPackageRoot, "lib", "update.js"));
     await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));
+    await requireMissing(path.join(installedPackageRoot, "evals"));
+    await requireMissing(path.join(installedPackageRoot, "scripts", "evals"));
+    await requireMissing(path.join(installedPackageRoot, "scripts", "e2e"));
 
     for (const [mode, adapters] of Object.entries(modes)) {
       const targetDir = path.join(workspace, `target-${mode}`);

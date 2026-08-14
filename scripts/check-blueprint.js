@@ -10,6 +10,11 @@ const checks = [
     args: ["scripts/validate-blueprint.js"]
   },
   {
+    name: "Skill routing evaluations",
+    command: npmCommand,
+    args: ["run", "test:routing"]
+  },
+  {
     name: "Installer unit tests",
     command: npmCommand,
     args: ["--prefix", "packages/create-ai-blueprint", "test"]
