@@ -14,6 +14,8 @@ published `create-ai-blueprint` package.
   opt-in live-agent scenarios for high-risk workflow boundaries.
 - Added the read-only `/debug` and `$debug` workflow for reproducing failures,
   isolating root causes, and handing confirmed repairs to `/fix` or `/implement`.
+- Added focused `quality`, `security`, `performance`, and `tests` lenses to
+  `/audit` and `$audit`, independently selectable from the audit scope.
 
 ### Changed
 

@@ -471,7 +471,7 @@ features.
 | **/implement** | after reviewing a spec | Builds the current spec one small, reviewed step at a time and uses the documented Verify command when present, then ends with a compact review packet. |
 | **/check** | before wrapping up, or any time you want proof | Runs the real app and reports pass/fail against the spec's done-whens. |
 | **/try** | when you want to review manually | Gives a human walkthrough: what to start, where to go, what to click or run, what to expect, and what would count as wrong. |
-| **/audit** | before closing a feature, or any time quality feels suspect | Runs a branch-aware or full-project audit for code quality, security, performance, tests, and standards drift, recording findings with durable IDs and statuses in `blueprint/context/findings.md`. |
+| **/audit** | before closing a feature, or when quality, security, performance, or tests feel suspect | Runs a branch-aware or full-project audit across all concerns or one focused lens, recording findings with durable IDs and statuses in `blueprint/context/findings.md`. |
 | **/rollback** | when a completed feature must be removed | Finds the archived feature's exact commit, reviews later dependency risk, writes a guarded rollback spec, and stops before product changes. |
 | **/complete** | when work is built and reviewed | Runs a final safety pass, archives the spec, commits the finished work, and merges with your approval. Pushes main only after a separate yes. |
 | **/release** | after a completed feature or milestone | Prepares Render or Vercel deployment readiness, local config, env var review, and smoke-test steps. Never deploys or changes remote services without a separate yes. |
@@ -592,19 +592,21 @@ review packet. It validates findings, repairs confirmed P0/P1 issues within the
 approved feature scope, and reruns the affected checks. It does not turn a
 feature pass into a repository-wide cleanup.
 
-Run `/audit` directly when you want a separate read-only maintainability pass,
-a broader project review, or whenever the code feels like it may be drifting. It
-looks for issues such as duplicated logic, dead code, unused exports, overgrown
+Run `/audit` directly when you want a separate read-only review, a broader
+project audit, or a focused quality, security, performance, or tests pass. A
+broad audit looks for duplicated logic, dead code, unused exports, overgrown
 modules, inconsistent patterns, missing tests for logic-bearing code, security
 risks, performance risks, and drift from `coding-standards.md`.
 
-Choose the scope explicitly when needed:
+Scope and lens are separate controls, and they can appear in either order:
 
 ```text
-/audit current       # Active spec, full feature-branch delta, and local changes
-/audit changed       # Staged, unstaged, and untracked source files
-/audit full          # All project-owned source, tests, and configuration
-/audit src/auth      # One path plus the callers and tests needed to understand it
+/audit current                  # All lenses across the active work
+/audit quality changed          # Maintainability and standards in local changes
+/audit security current         # Trust boundaries across the active work
+/audit performance src/api      # Runtime risks in one subsystem
+/audit tests src/auth           # Test gaps and test quality in one subsystem
+/audit full                     # All lenses across the full project
 ```
 
 With no argument, Audit uses `current` when a feature is active, `changed` when
@@ -613,6 +615,10 @@ checkpoint work from the feature branch's merge base through `HEAD`, so a clean
 working tree does not hide completed Autopilot steps. The `full` scope excludes
 dependencies, generated files, build and coverage output, caches, vendored code,
 and minified assets unless you explicitly include them.
+
+With no lens, Audit reviews quality, security, performance, and tests together.
+A focused lens runs only relevant signals and states which concerns were not
+reviewed, so a security-only pass is never presented as a broad audit.
 
 Confirmed P0 and P1 findings require a concrete code path, violated contract or
 security boundary, failing check, or reproducible behavior. Unconfirmed concerns
