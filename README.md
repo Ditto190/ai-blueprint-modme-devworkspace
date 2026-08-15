@@ -272,6 +272,12 @@ For unplanned bugs or small changes, use the fix loop:
 /fix "what is wrong" -> review spec -> /implement -> /check -> /complete
 ```
 
+If the cause is unclear, diagnose first without changing files:
+
+```text
+/debug "what is failing" -> review evidence -> /fix "confirmed bug" -> /implement
+```
+
 To remove a completed feature without erasing its history, use the rollback loop:
 
 ```text
@@ -281,6 +287,7 @@ To remove a completed feature without erasing its history, use the rollback loop
 In this repo, **the build loop** means:
 
 - **`/feature`** selects the next planned feature and writes a buildable spec.
+- **`/debug`** reproduces and isolates a failure, then stops with evidence.
 - **`/fix`** writes a smaller spec for an unplanned bug or change.
 - **`/rollback`** identifies a completed feature's exact commit, checks later
   dependency risk, and writes a guarded reversal spec.
@@ -457,6 +464,7 @@ features.
 | **/overview** | after writing or editing the plans | Checks plan quality, normalizes rough build-plan bullets when approved, and generates `blueprint/context/project-overview.md`. |
 | **/brief** | before spec'ing, or when deciding what's next | Read-only briefing on an upcoming build-plan feature - scope, dependencies, what it touches, size, likely split - without writing anything. |
 | **/feature** | for each planned or newly requested feature | Specs the next unchecked feature or a selected feature into `current-feature.md`. If a new feature is not in the plan, proposes the plan update and refreshes the overview after approval before spec'ing it. |
+| **/debug** | when a test, build, request, or behavior is failing | Reproduces and isolates the failure without editing code or Blueprint state, then reports the evidence and hands confirmed repair work to `/fix` or `/implement`. |
 | **/fix** | for an unplanned bug or small change | Specs an ad-hoc fix into `current-feature.md`. |
 | **/tests** | when you want unit tests added | Adds or normalizes the stack-native unit test setup, adds one example test, updates an existing Verify command, and runs the resulting checks. It does not create CI by itself. |
 | **/ci** | when you want automatic GitHub checks | Detects the real stack and existing CI, defines one Verify command from configured checks, creates or carefully aligns the GitHub workflow, runs Verify locally, and stops before push or remote ruleset changes. |
@@ -837,11 +845,11 @@ between tools.
 Use the native invocation style for your tool:
 
 - Codex: `$onboard`, `$doctor`, `$adopt`, `$overview`, `$brief`, `$feature`,
-  `$fix`, `$tests`, `$ci`, `$implement`, `$check`, `$try`, `$audit`, `$rollback`, `$complete`,
+  `$debug`, `$fix`, `$tests`, `$ci`, `$implement`, `$check`, `$try`, `$audit`, `$rollback`, `$complete`,
   `$release`, `$prototype`, `$status`, or plain language like "run the overview."
   Autopilot: `$autopilot`.
 - Claude Code: `/onboard`, `/doctor`, `/adopt`, `/overview`, `/brief`,
-  `/feature`, `/fix`, `/tests`, `/ci`, `/implement`, `/check`, `/try`, `/audit`, `/rollback`,
+  `/feature`, `/debug`, `/fix`, `/tests`, `/ci`, `/implement`, `/check`, `/try`, `/audit`, `/rollback`,
   `/complete`, `/release`, `/prototype`, `/status`. Autopilot: `/autopilot`.
 - Other tools: ask the agent to follow the matching `SKILL.md`.
 

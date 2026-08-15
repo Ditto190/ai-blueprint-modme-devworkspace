@@ -61,7 +61,8 @@ another skill that must not select it. These deterministic checks run during
 
 Live-agent scenarios under `scripts/e2e/scenarios/` test observable workflow
 boundaries such as stopping after a feature spec, keeping `/check` read-only,
-blocking completion on open findings, and stopping Autopilot before a merge.
+diagnosing through `/debug` without edits, blocking completion on open findings,
+and stopping Autopilot before a merge.
 They spend tokens and allow an agent to edit an isolated scratch repository, so
 they never run in CI and require the explicit `E2E_ACCEPT_RISK=1` opt-in. Run one
 scenario by name when changing a specific skill:

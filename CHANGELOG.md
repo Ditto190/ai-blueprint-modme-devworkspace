@@ -12,6 +12,8 @@ published `create-ai-blueprint` package.
 - Added generated GitHub Releases after successful tagged npm publications.
 - Added deterministic routing evaluations for all Blueprint skills and
   opt-in live-agent scenarios for high-risk workflow boundaries.
+- Added the read-only `/debug` and `$debug` workflow for reproducing failures,
+  isolating root causes, and handing confirmed repairs to `/fix` or `/implement`.
 
 ### Changed
 

@@ -49,6 +49,7 @@ Core skills:
 - `overview` - distill the two planning docs into `blueprint/context/project-overview.md`
 - `brief` - read-only briefing on an upcoming build-plan feature (scope, dependencies, size) before you spec it
 - `feature` - turn a build-plan item into a spec, or propose a reviewed plan addition for a genuinely new feature
+- `debug` - reproduce and isolate a failure without editing code, then hand the evidence to `fix` or `implement`
 - `fix` - document an ad-hoc bug or change into `blueprint/context/current-feature.md`
 - `tests` - add or normalize unit testing and turn on the test gate
 - `ci` - explicitly set up one project-specific Verify command and matching automatic GitHub checks
