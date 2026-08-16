@@ -114,6 +114,7 @@ async function validateInstall(targetDir, version, adapters) {
 
   if (expectsCodex) {
     expectedPaths.push(
+      ".agents/skills/discovery/SKILL.md",
       ".agents/skills/onboard/SKILL.md",
       ".agents/skills/rollback/SKILL.md"
     );
@@ -122,6 +123,7 @@ async function validateInstall(targetDir, version, adapters) {
   if (expectsClaude) {
     expectedPaths.push(
       "CLAUDE.md",
+      ".claude/skills/discovery/SKILL.md",
       ".claude/skills/onboard/SKILL.md",
       ".claude/skills/rollback/SKILL.md"
     );

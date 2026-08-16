@@ -71,6 +71,7 @@ scenario by name when changing a specific skill:
 ```bash
 E2E_ACCEPT_RISK=1 npm run test:e2e -- feature-gate
 E2E_ACCEPT_RISK=1 npm run test:e2e -- audit-lenses
+E2E_ACCEPT_RISK=1 npm run test:e2e -- discovery-optional
 ```
 
 The routing cases, evaluator, and live-agent scenarios are maintainer-only. The
