@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.7.0] - 2026-08-17
+
 ### Added
 
 - Added repository licenses, security and support policies, issue forms, a pull
@@ -103,8 +105,9 @@ published `create-ai-blueprint` package.
 - Added Codex and Claude Code adapters for the file-backed planning, feature,
   implementation, checking, audit, and completion workflow.
 
-[0.6.0]: https://github.com/bradtraversy/ai-blueprint/compare/v0.5.2...v0.6.0
-[0.5.2]: https://github.com/bradtraversy/ai-blueprint/commits/v0.5.2
+[0.7.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.5.2...v0.6.0
+[0.5.2]: https://github.com/aiblueprinthq/ai-blueprint/commits/v0.5.2
 [0.5.1]: https://www.npmjs.com/package/create-ai-blueprint/v/0.5.1
 [0.5.0]: https://www.npmjs.com/package/create-ai-blueprint/v/0.5.0
 [0.4.0]: https://www.npmjs.com/package/create-ai-blueprint/v/0.4.0

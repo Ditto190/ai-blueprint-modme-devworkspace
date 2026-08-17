@@ -12,15 +12,15 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/create-ai-blueprint"><img src="https://img.shields.io/npm/v/create-ai-blueprint?style=flat-square&color=155eef" alt="npm version"></a>
-  <a href="https://github.com/bradtraversy/ai-blueprint/actions/workflows/validate.yml"><img src="https://github.com/bradtraversy/ai-blueprint/actions/workflows/validate.yml/badge.svg" alt="Validate Blueprint"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/bradtraversy/ai-blueprint?style=flat-square&color=155eef" alt="MIT license"></a>
+  <a href="https://github.com/aiblueprinthq/ai-blueprint/actions/workflows/validate.yml"><img src="https://github.com/aiblueprinthq/ai-blueprint/actions/workflows/validate.yml/badge.svg" alt="Validate Blueprint"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/aiblueprinthq/ai-blueprint?style=flat-square&color=155eef" alt="MIT license"></a>
 </p>
 
 <p align="center">
   <a href="https://ai-blueprint.dev">Official site</a> |
   <a href="https://ai-blueprint.dev/docs/">Documentation</a> |
   <a href="https://www.npmjs.com/package/create-ai-blueprint">npm</a> |
-  <a href="https://github.com/bradtraversy/ai-blueprint/releases">Releases</a> |
+  <a href="https://github.com/aiblueprinthq/ai-blueprint/releases">Releases</a> |
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
