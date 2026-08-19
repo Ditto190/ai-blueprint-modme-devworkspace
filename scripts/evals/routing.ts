@@ -1,11 +1,50 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const skillsRoot = path.join(repoRoot, ".agents", "skills");
 const casesRoot = path.join(repoRoot, "evals", "routing");
 const minimumPositiveCases = 3;
 const minimumNegativeCases = 2;
+type TermCounts = Map<string, number>;
+
+interface Skill {
+  name: string;
+  description: string;
+}
+
+interface Corpus {
+  documents: Map<string, TermCounts>;
+  inverseDocumentFrequency: (term: string) => number;
+}
+
+interface RankedSkill {
+  name: string;
+  score: number;
+}
+
+interface CaseFile {
+  file: string;
+  data?: unknown;
+  parseError?: string;
+}
+
+interface PromptCase {
+  prompt?: unknown;
+  top_k?: unknown;
+  owner?: unknown;
+}
+
+interface EvaluationResult {
+  assertionCount: number;
+  failures: string[];
+  positiveCount: number;
+  rankOneCount: number;
+  rankOneRate: number;
+  warnings: string[];
+}
 
 const stopWords = new Set([
   "about",
@@ -44,7 +83,7 @@ const stopWords = new Set([
   "your"
 ]);
 
-function stem(token) {
+function stem(token: string): string {
   for (const suffix of ["ingly", "ation", "ments", "ment", "ally", "ing", "ied", "ed", "es"]) {
     if (token.length > suffix.length + 3 && token.endsWith(suffix)) {
       token = token.slice(0, -suffix.length);
@@ -60,10 +99,13 @@ function stem(token) {
     token = token.slice(0, -1);
   }
 
+  const lastCharacter = token.at(-1);
+
   if (
     token.length > 4 &&
     token.at(-1) === token.at(-2) &&
-    !"aeiou".includes(token.at(-1))
+    lastCharacter !== undefined &&
+    !"aeiou".includes(lastCharacter)
   ) {
     token = token.slice(0, -1);
   }
@@ -71,7 +113,7 @@ function stem(token) {
   return token;
 }
 
-function tokenize(text) {
+function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
@@ -80,8 +122,8 @@ function tokenize(text) {
     .map(stem);
 }
 
-function countTerms(tokens) {
-  const counts = new Map();
+function countTerms(tokens: readonly string[]): TermCounts {
+  const counts = new Map<string, number>();
 
   for (const token of tokens) {
     counts.set(token, (counts.get(token) || 0) + 1);
@@ -90,8 +132,8 @@ function countTerms(tokens) {
   return counts;
 }
 
-function buildCorpus(skills) {
-  const documents = new Map();
+function buildCorpus(skills: readonly Skill[]): Corpus {
+  const documents = new Map<string, TermCounts>();
 
   for (const skill of skills) {
     const nameTokens = tokenize(skill.name.replaceAll("-", " "));
@@ -101,7 +143,7 @@ function buildCorpus(skills) {
     );
   }
 
-  const documentFrequency = new Map();
+  const documentFrequency = new Map<string, number>();
 
   for (const terms of documents.values()) {
     for (const term of terms.keys()) {
@@ -117,8 +159,11 @@ function buildCorpus(skills) {
   };
 }
 
-function vectorize(terms, inverseDocumentFrequency) {
-  const vector = new Map();
+function vectorize(
+  terms: ReadonlyMap<string, number>,
+  inverseDocumentFrequency: (term: string) => number
+): TermCounts {
+  const vector = new Map<string, number>();
 
   for (const [term, frequency] of terms) {
     vector.set(term, frequency * inverseDocumentFrequency(term));
@@ -127,7 +172,10 @@ function vectorize(terms, inverseDocumentFrequency) {
   return vector;
 }
 
-function cosineSimilarity(left, right) {
+function cosineSimilarity(
+  left: ReadonlyMap<string, number>,
+  right: ReadonlyMap<string, number>
+): number {
   let dotProduct = 0;
   let leftMagnitude = 0;
   let rightMagnitude = 0;
@@ -148,7 +196,7 @@ function cosineSimilarity(left, right) {
   return dotProduct / (Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude));
 }
 
-function rankSkills(prompt, corpus) {
+function rankSkills(prompt: string, corpus: Corpus): RankedSkill[] {
   const invokedSkill = prompt.match(/(?:^|\s)[/$]([a-z0-9-]+)/i)?.[1]?.toLowerCase();
   const promptVector = vectorize(
     countTerms(tokenize(prompt)),
@@ -167,7 +215,7 @@ function rankSkills(prompt, corpus) {
     .sort((left, right) => right.score - left.score || left.name.localeCompare(right.name));
 }
 
-function parseFrontmatterScalar(value) {
+function parseFrontmatterScalar(value: string): string {
   const trimmed = value.trim();
 
   if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
@@ -181,7 +229,7 @@ function parseFrontmatterScalar(value) {
   return trimmed;
 }
 
-function loadSkills(root = skillsRoot) {
+function loadSkills(root = skillsRoot): Skill[] {
   return fs
     .readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -209,7 +257,7 @@ function loadSkills(root = skillsRoot) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function loadCases(root = casesRoot) {
+function loadCases(root = casesRoot): CaseFile[] {
   if (!fs.existsSync(root)) {
     return [];
   }
@@ -223,19 +271,23 @@ function loadCases(root = casesRoot) {
 
       try {
         return { file, data: JSON.parse(fs.readFileSync(filePath, "utf8")) };
-      } catch (error) {
-        return { file, parseError: error.message };
+      } catch (error: unknown) {
+        return { file, parseError: error instanceof Error ? error.message : String(error) };
       }
     });
 }
 
-function validatePrompt(prompt) {
+function validatePrompt(prompt: unknown): prompt is string {
   return typeof prompt === "string" && prompt.trim().length > 0;
 }
 
-function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
-  const failures = [];
-  const warnings = [];
+function evaluateCatalog(
+  skills: readonly Skill[],
+  caseFiles: readonly CaseFile[],
+  { minimumRankOne = 75 }: { minimumRankOne?: number } = {}
+): EvaluationResult {
+  const failures: string[] = [];
+  const warnings: string[] = [];
   const skillNames = new Set(skills.map((skill) => skill.name));
   const corpus = buildCorpus(skills);
   let positiveCount = 0;
@@ -255,7 +307,7 @@ function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
     }
 
     const expectedSkill = entry.file.replace(/\.json$/, "");
-    const data = entry.data;
+    const data = isRecord(entry.data) ? entry.data : {};
 
     if (!skillNames.has(expectedSkill)) {
       failures.push(`${entry.file}: no matching skill directory`);
@@ -266,19 +318,22 @@ function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
       failures.push(`${entry.file}: skill must equal ${expectedSkill}`);
     }
 
-    if (!Array.isArray(data.positive) || data.positive.length < minimumPositiveCases) {
+    const positiveCases = promptCases(data.positive);
+    const negativeCases = promptCases(data.negative);
+
+    if (!Array.isArray(data.positive) || positiveCases.length < minimumPositiveCases) {
       failures.push(
         `${entry.file}: needs at least ${minimumPositiveCases} positive prompts`
       );
     }
 
-    if (!Array.isArray(data.negative) || data.negative.length < minimumNegativeCases) {
+    if (!Array.isArray(data.negative) || negativeCases.length < minimumNegativeCases) {
       failures.push(
         `${entry.file}: needs at least ${minimumNegativeCases} negative prompts`
       );
     }
 
-    for (const testCase of data.positive || []) {
+    for (const testCase of positiveCases) {
       assertionCount += 1;
       positiveCount += 1;
 
@@ -287,7 +342,7 @@ function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
         continue;
       }
 
-      const topK = testCase.top_k ?? 3;
+      const topK = typeof testCase.top_k === "number" ? testCase.top_k : 3;
 
       if (!Number.isInteger(topK) || topK < 1 || topK > skills.length) {
         failures.push(`${entry.file}: top_k must be an integer from 1 to ${skills.length}`);
@@ -315,7 +370,7 @@ function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
       }
     }
 
-    for (const testCase of data.negative || []) {
+    for (const testCase of negativeCases) {
       assertionCount += 1;
 
       if (!validatePrompt(testCase.prompt)) {
@@ -400,7 +455,7 @@ function evaluateCatalog(skills, caseFiles, { minimumRankOne = 75 } = {}) {
   };
 }
 
-function parseArguments(args) {
+function parseArguments(args: readonly string[]): { minimumRankOne: number } {
   let minimumRankOne = 75;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -452,16 +507,31 @@ function main() {
   console.log("Skill routing evaluations passed.");
 }
 
-if (require.main === module) {
+if (
+  process.argv[1] &&
+  fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))
+) {
   try {
     main();
-  } catch (error) {
-    console.error(`Skill routing evaluations failed: ${error.message}`);
+  } catch (error: unknown) {
+    console.error(
+      `Skill routing evaluations failed: ${error instanceof Error ? error.message : String(error)}`
+    );
     process.exit(1);
   }
 }
 
-module.exports = {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function promptCases(value: unknown): PromptCase[] {
+  return Array.isArray(value)
+    ? value.filter((caseValue): caseValue is PromptCase => isRecord(caseValue))
+    : [];
+}
+
+export {
   buildCorpus,
   evaluateCatalog,
   parseArguments,

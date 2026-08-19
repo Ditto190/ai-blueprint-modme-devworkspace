@@ -38,9 +38,11 @@ Feature 1 adds an optional name while preserving the default greeting.
 - Do not add dependencies.
 `;
 
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
   t.write("blueprint/project-plan.md", PROJECT_PLAN);
   t.write("blueprint/build-plan.md", BUILD_PLAN);
   t.write("blueprint/context/project-overview.md", PROJECT_OVERVIEW);
@@ -52,7 +54,7 @@ async function run(t) {
   const sourceBefore = t.read("src/greeting.js");
 
   t.phase("feature writes a spec and stops before implementation");
-  const result = t.claude(
+  const result = t.agent(
     "Run /feature 1. Write and red-team the spec, then stop at its review gate. Do not implement it."
   );
   const currentFeature = t.read("blueprint/context/current-feature.md") || "";
@@ -75,7 +77,7 @@ async function run(t) {
   );
 }
 
-module.exports = {
+export default {
   name: "feature-gate",
   description: "Feature planning writes a reviewed spec without starting implementation",
   run

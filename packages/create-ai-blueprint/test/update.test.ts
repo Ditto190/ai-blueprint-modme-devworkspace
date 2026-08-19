@@ -1,18 +1,11 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs/promises");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test, { type TestContext } from "node:test";
 
-const { parseArgs } = require("../bin/create-ai-blueprint");
-const {
-  CONTROL_DIR,
-  MANIFEST_PATH,
-  applyPreparedUpdate,
-  prepareUpdate,
-  readManifest,
-  writeInstallManifest
-} = require("../lib/update");
+import { parseArgs } from "../bin/create-ai-blueprint.js";
+import { CONTROL_DIR, MANIFEST_PATH, applyPreparedUpdate, prepareUpdate, readManifest, writeInstallManifest } from "../lib/update.js";
 
 test("parseArgs supports install and update modes", () => {
   assert.equal(parseArgs([]).command, "install");
@@ -64,7 +57,7 @@ test("new installs record only Blueprint-owned managed files", async (t) => {
     await fs.readFile(path.join(targetDir, CONTROL_DIR, ".gitignore"), "utf8"),
     "backups/\nstaging/\n"
   );
-  assert.equal((await readManifest(targetDir)).version, "1.0.0");
+  assert.equal((await readManifest(targetDir))?.version, "1.0.0");
   await assert.rejects(fs.access(path.join(targetDir, ".ai-blueprint")), {
     code: "ENOENT"
   });
@@ -125,18 +118,22 @@ test("update replaces unchanged managed files and preserves project files", asyn
 
   assert.equal(result.updated, 2);
   assert.equal(result.added, 1);
+  assert.ok(result.backupDir);
   assert.match(
-    path.relative(targetDir, result.backupDir),
+    path.relative(targetDir, result.backupDir).replaceAll(path.sep, "/"),
     /^blueprint\/\.state\/backups\/2026-07-15T12-00-00Z-1\.0\.0-to-1\.1\.0-[a-f0-9]{8}$/
   );
+  assert.ok(result.backupDir);
   assert.equal(
     await fs.readFile(path.join(targetDir, ".agents/skills/check/SKILL.md"), "utf8"),
     "New check skill\n"
   );
+  assert.ok(result.backupDir);
   assert.equal(
     await fs.readFile(path.join(targetDir, "AGENTS.md"), "utf8"),
     "Custom project instructions\n"
   );
+  assert.ok(result.backupDir);
   assert.equal(
     await fs.readFile(path.join(targetDir, "blueprint/build-plan.md"), "utf8"),
     "Custom roadmap\n"
@@ -152,7 +149,7 @@ test("update replaces unchanged managed files and preserves project files", asyn
     ),
     "Old check skill\n"
   );
-  assert.equal((await readManifest(targetDir)).version, "1.1.0");
+  assert.equal((await readManifest(targetDir))?.version, "1.1.0");
 });
 
 test("local changes to managed files require explicit replacement and are backed up", async (t) => {
@@ -201,6 +198,7 @@ test("local changes to managed files require explicit replacement and are backed
   const result = await applyPreparedUpdate(prepared, {
     replaceConflicts: true
   });
+  assert.ok(result.backupDir);
 
   assert.equal(
     await fs.readFile(path.join(targetDir, ".agents/skills/check/SKILL.md"), "utf8"),
@@ -250,6 +248,7 @@ test("update removes only obsolete managed files that remain unchanged", async (
     [".agents/skills/retired/SKILL.md"]
   );
   const result = await applyPreparedUpdate(prepared);
+  assert.ok(result.backupDir);
   await assert.rejects(
     fs.access(path.join(targetDir, ".agents/skills/retired/SKILL.md")),
     { code: "ENOENT" }
@@ -332,7 +331,7 @@ test("update aborts when a managed file changes after the plan is created", asyn
     await fs.readFile(path.join(targetDir, ".agents/skills/check/SKILL.md"), "utf8"),
     "Old check skill\n"
   );
-  assert.equal((await readManifest(targetDir)).version, "1.0.0");
+  assert.equal((await readManifest(targetDir))?.version, "1.0.0");
 });
 
 test("failed apply removes additions and restores the previous manifest", async (t) => {
@@ -367,8 +366,7 @@ test("failed apply removes additions and restores the previous manifest", async 
   fs.rename = async (source, target) => {
     if (!injectedFailure && target === path.join(targetDir, MANIFEST_PATH)) {
       injectedFailure = true;
-      const error = new Error("injected manifest failure");
-      error.code = "EIO";
+      const error = Object.assign(new Error("injected manifest failure"), { code: "EIO" });
       throw error;
     }
 
@@ -388,7 +386,7 @@ test("failed apply removes additions and restores the previous manifest", async 
     fs.access(path.join(targetDir, ".agents/skills/feature/SKILL.md")),
     { code: "ENOENT" }
   );
-  assert.equal((await readManifest(targetDir)).version, "1.0.0");
+  assert.equal((await readManifest(targetDir))?.version, "1.0.0");
 });
 
 test("update refuses to write through a symbolic-link directory", async (t) => {
@@ -413,13 +411,13 @@ test("update refuses to write through a symbolic-link directory", async (t) => {
   );
 });
 
-async function createWorkspace(t) {
+async function createWorkspace(t: TestContext): Promise<string> {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "ai-blueprint-update-"));
   t.after(() => fs.rm(workspace, { recursive: true, force: true }));
   return workspace;
 }
 
-async function writeFiles(root, files) {
+async function writeFiles(root: string, files: Record<string, string>): Promise<void> {
   for (const [relativePath, content] of Object.entries(files)) {
     const filePath = path.join(root, ...relativePath.split("/"));
     await fs.mkdir(path.dirname(filePath), { recursive: true });

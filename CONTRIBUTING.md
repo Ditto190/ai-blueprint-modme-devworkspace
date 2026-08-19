@@ -1,8 +1,8 @@
 # Contributing
 
 AI Blueprint ships workflow files and a dependency-free Node.js installer. The
-repository validation gate requires Node.js 18 or newer and does not require an
-install step.
+repository validation gate requires Node.js 22 or newer and an `npm ci` install
+for the TypeScript maintainer toolchain.
 
 ## Before you start
 
@@ -20,11 +20,12 @@ framework abstractions do not belong in this repository.
 ## Development workflow
 
 1. Fork the repository or create a dedicated branch.
-2. Make the smallest change that solves the documented problem.
-3. Keep matching Codex and Claude Code skill files synchronized.
-4. Update user-facing documentation when behavior changes.
-5. Run `npm run check`.
-6. Open a pull request using the repository template.
+2. Run `npm ci`.
+3. Make the smallest change that solves the documented problem.
+4. Keep matching Codex and Claude Code skill files synchronized.
+5. Update user-facing documentation when behavior changes.
+6. Run `npm run check`.
+7. Open a pull request using the repository template.
 
 ## Validation commands
 

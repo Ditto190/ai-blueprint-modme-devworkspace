@@ -5,6 +5,13 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Changed
+
+- Migrated the installer, validation scripts, evaluations, and tests from
+  JavaScript to strictly checked TypeScript with compiled ESM package output.
+- Raised the supported Node.js version from 18 to 22 and added Node.js 22 and
+  24 validation coverage.
+
 ## [0.7.0] - 2026-08-17
 
 ### Added

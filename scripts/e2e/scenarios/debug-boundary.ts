@@ -7,10 +7,12 @@ test("totals prices from request data", () => {
 });
 `;
 
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
-  const agents = t.read("AGENTS.md");
+  t.installBlueprint();
+  const agents = t.read("AGENTS.md") ?? "";
   t.write(
     "AGENTS.md",
     agents.slice(0, agents.indexOf("## Commands")) +
@@ -44,7 +46,7 @@ async function run(t) {
   const currentFeatureBefore = t.read("blueprint/context/current-feature.md");
 
   t.phase("debug reproduces and diagnoses without editing");
-  const result = t.claude(
+  const result = t.agent(
     "Run /debug. npm test fails in cart-total.test.js. Diagnose the root cause and stop without fixing it."
   );
 
@@ -63,7 +65,7 @@ async function run(t) {
   t.check("the report hands confirmed repair to fix", result.resultText.includes("/fix"));
 }
 
-module.exports = {
+export default {
   name: "debug-boundary",
   description: "Debug reproduces and explains a failure without changing project state",
   run

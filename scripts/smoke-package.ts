@@ -1,20 +1,71 @@
-const crypto = require("node:crypto");
-const { spawnSync } = require("node:child_process");
-const fs = require("node:fs/promises");
-const os = require("node:os");
-const path = require("node:path");
+import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const packageRoot = path.join(repoRoot, "packages", "create-ai-blueprint");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const modes = {
+
+type Adapter = "codex" | "claude";
+
+interface PackageManifest {
+  schemaVersion: number;
+  version: string;
+  adapters: Adapter[];
+  managedFiles: Record<string, string>;
+}
+
+const modes: Record<string, Adapter[]> = {
   codex: ["codex"],
   claude: ["claude"],
   both: ["claude", "codex"]
 };
 
-async function main() {
-  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "ai-blueprint-package-"));
+function getErrorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code
+    : undefined;
+}
+
+function parseRecord(content: string, source: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(content);
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${source} must contain a JSON object`);
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function parseManifest(content: string): PackageManifest {
+  const manifest = parseRecord(content, "Installed manifest");
+
+  if (
+    typeof manifest.schemaVersion !== "number" ||
+    typeof manifest.version !== "string" ||
+    !Array.isArray(manifest.adapters) ||
+    !manifest.adapters.every((adapter): adapter is Adapter => adapter === "codex" || adapter === "claude") ||
+    typeof manifest.managedFiles !== "object" ||
+    manifest.managedFiles === null ||
+    Array.isArray(manifest.managedFiles)
+  ) {
+    throw new Error("Installed manifest has an invalid shape");
+  }
+
+  return {
+    schemaVersion: manifest.schemaVersion,
+    version: manifest.version,
+    adapters: manifest.adapters,
+    managedFiles: manifest.managedFiles as Record<string, string>
+  };
+}
+
+async function main(): Promise<void> {
+  const workspace = await fs.mkdtemp(
+    path.join(repoRoot, "node_modules", ".ai-blueprint-package-")
+  );
 
   try {
     const artifactsDir = path.join(workspace, "artifacts");
@@ -22,7 +73,10 @@ async function main() {
     await fs.mkdir(artifactsDir, { recursive: true });
     await fs.mkdir(runnerDir, { recursive: true });
 
-    run(npmCommand, ["pack", "--pack-destination", artifactsDir], packageRoot);
+    runNpm(
+      ["pack", "--pack-destination", path.relative(packageRoot, artifactsDir)],
+      packageRoot
+    );
     const artifacts = (await fs.readdir(artifactsDir)).filter((file) =>
       file.endsWith(".tgz")
     );
@@ -32,17 +86,16 @@ async function main() {
     }
 
     const tarball = path.join(artifactsDir, artifacts[0]);
-    run(
-      npmCommand,
+    runNpm(
       [
         "install",
         "--prefix",
-        runnerDir,
+        "runner",
         "--ignore-scripts",
         "--no-audit",
         "--no-fund",
         "--no-package-lock",
-        tarball
+        `./artifacts/${artifacts[0]}`
       ],
       workspace
     );
@@ -52,11 +105,36 @@ async function main() {
       "node_modules",
       "create-ai-blueprint"
     );
-    const binary = path.join(installedPackageRoot, "bin", "create-ai-blueprint.js");
-    const metadata = JSON.parse(
-      await fs.readFile(path.join(installedPackageRoot, "package.json"), "utf8")
+    const binary = path.join(installedPackageRoot, "dist", "bin", "create-ai-blueprint.js");
+    const metadata = parseRecord(
+      await fs.readFile(path.join(installedPackageRoot, "package.json"), "utf8"),
+      "Installed package metadata"
     );
-    await requirePath(path.join(installedPackageRoot, "lib", "update.js"));
+
+    if (typeof metadata.version !== "string") {
+      throw new Error("Installed package metadata has no valid version");
+    }
+
+    const installedCommand = path.join(
+      runnerDir,
+      "node_modules",
+      ".bin",
+      process.platform === "win32"
+        ? "create-ai-blueprint.cmd"
+        : "create-ai-blueprint"
+    );
+    const versionResult = runInstalledCommand(
+      installedCommand,
+      ["--version"],
+      workspace,
+      true
+    );
+
+    if (versionResult.stdout.trim() !== metadata.version) {
+      throw new Error("Installed command did not report the packaged version");
+    }
+
+    await requirePath(path.join(installedPackageRoot, "dist", "lib", "update.js"));
     await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));
     await requireMissing(path.join(installedPackageRoot, "evals"));
     await requireMissing(path.join(installedPackageRoot, "scripts", "evals"));
@@ -99,7 +177,11 @@ async function main() {
   }
 }
 
-async function validateInstall(targetDir, version, adapters) {
+async function validateInstall(
+  targetDir: string,
+  version: string,
+  adapters: readonly Adapter[]
+): Promise<void> {
   const expectsCodex = adapters.includes("codex");
   const expectsClaude = adapters.includes("claude");
   const expectedPaths = [
@@ -145,7 +227,7 @@ async function validateInstall(targetDir, version, adapters) {
     await requireMissing(path.join(targetDir, "CLAUDE.md"));
   }
 
-  const manifest = JSON.parse(
+  const manifest = parseManifest(
     await fs.readFile(
       path.join(targetDir, "blueprint", ".state", "manifest.json"),
       "utf8"
@@ -206,10 +288,10 @@ async function validateInstall(targetDir, version, adapters) {
   }
 }
 
-async function listFiles(root) {
-  const files = [];
+async function listFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
 
-  async function visit(current, relative) {
+  async function visit(current: string, relative: string): Promise<void> {
     const entries = await fs.readdir(current, { withFileTypes: true });
 
     for (const entry of entries) {
@@ -230,7 +312,12 @@ async function listFiles(root) {
   return files.sort();
 }
 
-function run(command, args, cwd, capture = false) {
+function run(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  capture = false
+) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
@@ -257,11 +344,42 @@ function run(command, args, cwd, capture = false) {
   return result;
 }
 
-async function requirePath(filePath) {
+function runNpm(args: string[], cwd: string) {
+  if (process.platform !== "win32") {
+    return run("npm", args, cwd);
+  }
+
+  return run(process.env.ComSpec || "cmd.exe", [
+    "/d",
+    "/s",
+    "/c",
+    `npm ${args.join(" ")}`
+  ], cwd);
+}
+
+function runInstalledCommand(
+  command: string,
+  args: readonly string[],
+  cwd: string,
+  capture = false
+) {
+  if (process.platform !== "win32") {
+    return run(command, args, cwd, capture);
+  }
+
+  return run(
+    process.env.ComSpec || "cmd.exe",
+    ["/d", "/s", "/c", `"${command}" ${args.join(" ")}`],
+    cwd,
+    capture
+  );
+}
+
+async function requirePath(filePath: string): Promise<void> {
   try {
     await fs.access(filePath);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
       throw new Error(`Expected packaged path is missing: ${filePath}`);
     }
 
@@ -269,11 +387,11 @@ async function requirePath(filePath) {
   }
 }
 
-async function requireMissing(filePath) {
+async function requireMissing(filePath: string): Promise<void> {
   try {
     await fs.access(filePath);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
       return;
     }
 
@@ -283,7 +401,9 @@ async function requireMissing(filePath) {
   throw new Error(`Unexpected installed path: ${filePath}`);
 }
 
-main().catch((error) => {
-  console.error(`Packed installer smoke test failed: ${error.message}`);
+main().catch((error: unknown) => {
+  console.error(
+    `Packed installer smoke test failed: ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 });

@@ -21,10 +21,12 @@ Print \`Hello, world!\` and make no other product change.
 Run \`npm run build\`, then run \`node src/greeting.js\`.
 `;
 
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
-  const agents = t.read("AGENTS.md");
+  t.installBlueprint();
+  const agents = t.read("AGENTS.md") ?? "";
   t.write(
     "AGENTS.md",
     agents.slice(0, agents.indexOf("## Commands")) +
@@ -52,7 +54,7 @@ async function run(t) {
   const mainBefore = t.git("rev-parse", "main");
 
   t.phase("autopilot builds and checks but stops before completion");
-  const result = t.claude(
+  const result = t.agent(
     "Run /autopilot resume for the current fix. Stop with the review packet. Do not run /complete, merge, or push."
   );
   const currentBranch = t.git("branch", "--show-current");
@@ -61,7 +63,7 @@ async function run(t) {
   t.check("agent invocation succeeded", result.status === 0);
   t.check("main was not advanced", t.git("rev-parse", "main") === mainBefore);
   t.check("work remains on a fix branch", currentBranch.startsWith("fix/"));
-  t.check("the greeting was corrected", t.read("src/greeting.js").includes("Hello, world!"));
+  t.check("the greeting was corrected",   (t.read("src/greeting.js") ?? "").includes("Hello, world!"));
   t.check("the implementation step was checked", currentFeature.includes("- [x] 1."));
   t.check(
     "main still contains the original greeting",
@@ -77,7 +79,7 @@ async function run(t) {
   );
 }
 
-module.exports = {
+export default {
   name: "autopilot-boundary",
   description: "Autopilot may checkpoint passing work but cannot complete or merge it",
   run

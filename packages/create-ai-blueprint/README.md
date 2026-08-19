@@ -11,7 +11,7 @@ Install AI Blueprint into an already scaffolded app.
 [Repository](https://github.com/aiblueprinthq/ai-blueprint) |
 [Changelog](https://github.com/aiblueprinthq/ai-blueprint/blob/main/CHANGELOG.md)
 
-Requires Node.js 18 or newer. Run the installer from an application that has
+Requires Node.js 22 or newer. Run the installer from an application that has
 already been scaffolded and initialized as a Git repository.
 
 ```bash

@@ -1,17 +1,98 @@
-const crypto = require("node:crypto");
-const fs = require("node:fs/promises");
-const path = require("node:path");
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const CONTROL_DIR = "blueprint/.state";
 const MANIFEST_PATH = `${CONTROL_DIR}/manifest.json`;
 const MANIFEST_SCHEMA_VERSION = 1;
-const MANAGED_ROOTS = {
+type Adapter = "codex" | "claude";
+type AdapterMode = Adapter | "both";
+
+interface TemplateFile {
+  source: string;
+  hash: string;
+}
+
+interface Manifest {
+  schemaVersion: number;
+  version: string;
+  adapters: Adapter[];
+  managedFiles: Record<string, string>;
+}
+
+type FileState =
+  | { type: "missing" | "symbolic link" | "directory" | "non-regular file" }
+  | { type: "file"; hash: string };
+
+interface DesiredOperation {
+  path: string;
+  desired: TemplateFile;
+}
+
+interface ExistingOperation extends DesiredOperation {
+  current: FileState;
+}
+
+interface RemoveOperation {
+  path: string;
+  current: FileState;
+}
+
+interface ConflictOperation {
+  path: string;
+  desired: TemplateFile | null;
+  current: FileState;
+  operation: "replace" | "remove";
+  reason: string;
+}
+
+interface UpdatePlan {
+  add: DesiredOperation[];
+  update: ExistingOperation[];
+  remove: RemoveOperation[];
+  conflicts: ConflictOperation[];
+  unchanged: ExistingOperation[];
+}
+
+interface PreparedUpdate {
+  targetDir: string;
+  templateRoot: string;
+  version: string;
+  previousVersion: string;
+  manifest: Manifest | null;
+  desiredManifest: Manifest;
+  adapters: Adapter[];
+  templateFiles: Map<string, TemplateFile>;
+  plan: UpdatePlan;
+}
+
+interface ApplyUpdateOptions {
+  replaceConflicts?: boolean;
+  now?: () => Date;
+}
+
+interface UpdateResult {
+  added: number;
+  updated: number;
+  removed: number;
+  unchanged: number;
+  backupDir: string | null;
+}
+
+interface InstallManifestOptions {
+  targetDir: string;
+  templateRoot: string;
+  version: string;
+  adapter: AdapterMode;
+}
+
+const MANAGED_ROOTS: Record<Adapter | "common", readonly string[]> = {
   common: ["blueprint/README.md"],
   codex: [".agents/skills"],
   claude: [".claude/skills"]
 };
 
-function adapterListFromMode(adapter) {
+function adapterListFromMode(adapter: AdapterMode): Adapter[] {
   if (adapter === "both") {
     return ["codex", "claude"];
   }
@@ -19,8 +100,12 @@ function adapterListFromMode(adapter) {
   return [adapter];
 }
 
-function createManifest(version, adapters, templateFiles) {
-  const managedFiles = {};
+function createManifest(
+  version: string,
+  adapters: readonly Adapter[],
+  templateFiles: ReadonlyMap<string, TemplateFile>
+): Manifest {
+  const managedFiles: Record<string, string> = {};
 
   for (const [relativePath, file] of [...templateFiles.entries()].sort(([a], [b]) =>
     a.localeCompare(b)
@@ -36,8 +121,11 @@ function createManifest(version, adapters, templateFiles) {
   };
 }
 
-async function collectManagedTemplateFiles(templateRoot, adapters) {
-  const files = new Map();
+async function collectManagedTemplateFiles(
+  templateRoot: string,
+  adapters: readonly Adapter[]
+): Promise<Map<string, TemplateFile>> {
+  const files = new Map<string, TemplateFile>();
   const roots = [
     ...MANAGED_ROOTS.common,
     ...adapters.flatMap((adapter) => MANAGED_ROOTS[adapter] || [])
@@ -51,7 +139,11 @@ async function collectManagedTemplateFiles(templateRoot, adapters) {
   return files;
 }
 
-async function collectSourceFiles(sourcePath, relativePath, files) {
+async function collectSourceFiles(
+  sourcePath: string,
+  relativePath: string,
+  files: Map<string, TemplateFile>
+): Promise<void> {
   const stats = await fs.lstat(sourcePath);
 
   if (stats.isSymbolicLink()) {
@@ -82,7 +174,7 @@ async function collectSourceFiles(sourcePath, relativePath, files) {
   });
 }
 
-async function readManifest(targetDir) {
+async function readManifest(targetDir: string): Promise<Manifest | null> {
   const manifestFile = targetPath(targetDir, MANIFEST_PATH);
   await assertNoSymlinkParents(targetDir, MANIFEST_PATH);
 
@@ -90,8 +182,8 @@ async function readManifest(targetDir) {
     const manifest = JSON.parse(await fs.readFile(manifestFile, "utf8"));
     validateManifest(manifest);
     return manifest;
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
       return null;
     }
 
@@ -103,31 +195,32 @@ async function readManifest(targetDir) {
   }
 }
 
-function validateManifest(manifest) {
-  const validAdapters = ["codex", "claude"];
+function validateManifest(manifest: unknown): asserts manifest is Manifest {
+  const validAdapters: readonly Adapter[] = ["codex", "claude"];
   const validManagedFiles =
-    manifest &&
-    manifest.managedFiles &&
-    typeof manifest.managedFiles === "object" &&
-    !Array.isArray(manifest.managedFiles) &&
+    isRecord(manifest) &&
+    isRecord(manifest.managedFiles) &&
     Object.entries(manifest.managedFiles).every(
       ([relativePath, hash]) =>
         isSafeRelativePath(relativePath) &&
         typeof hash === "string" &&
         /^[a-f0-9]{64}$/.test(hash)
     );
-  const manifestAdapters = Array.isArray(manifest?.adapters)
+  const manifestAdapters: unknown[] = isRecord(manifest) && Array.isArray(manifest.adapters)
     ? manifest.adapters
     : [];
+  const adaptersAreValid = manifestAdapters.every(
+    (adapter): adapter is Adapter => validAdapters.includes(adapter as Adapter)
+  );
   const uniqueAdapters = new Set(manifestAdapters);
 
   if (
-    !manifest ||
+    !isRecord(manifest) ||
     manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION ||
     typeof manifest.version !== "string" ||
     !Array.isArray(manifest.adapters) ||
     manifest.adapters.length === 0 ||
-    !manifestAdapters.every((adapter) => validAdapters.includes(adapter)) ||
+    !adaptersAreValid ||
     uniqueAdapters.size !== manifestAdapters.length ||
     !validManagedFiles
   ) {
@@ -135,7 +228,15 @@ function validateManifest(manifest) {
   }
 }
 
-async function prepareUpdate({ targetDir, templateRoot, version }) {
+async function prepareUpdate({
+  targetDir,
+  templateRoot,
+  version
+}: {
+  targetDir: string;
+  templateRoot: string;
+  version: string;
+}): Promise<PreparedUpdate> {
   const realTargetDir = await fs.realpath(targetDir);
   const manifest = await readManifest(realTargetDir);
   const adapters = await detectInstalledAdapters(realTargetDir, manifest);
@@ -148,7 +249,7 @@ async function prepareUpdate({ targetDir, templateRoot, version }) {
 
   const templateFiles = await collectManagedTemplateFiles(templateRoot, adapters);
   const desiredManifest = createManifest(version, adapters, templateFiles);
-  const plan = {
+  const plan: UpdatePlan = {
     add: [],
     update: [],
     remove: [],
@@ -242,9 +343,9 @@ async function prepareUpdate({ targetDir, templateRoot, version }) {
 }
 
 async function applyPreparedUpdate(
-  prepared,
-  { replaceConflicts = false, now = () => new Date() } = {}
-) {
+  prepared: PreparedUpdate,
+  { replaceConflicts = false, now = () => new Date() }: ApplyUpdateOptions = {}
+): Promise<UpdateResult> {
   const { plan } = prepared;
   const unsafeConflict = plan.conflicts.find((conflict) => conflict.current.type !== "file");
 
@@ -260,9 +361,9 @@ async function applyPreparedUpdate(
     );
   }
 
-  const replacements = [
+  const replacements: ExistingOperation[] = [
     ...plan.update,
-    ...plan.conflicts.filter((conflict) => conflict.operation === "replace")
+    ...plan.conflicts.filter(isReplaceConflict)
   ];
   const removals = [
     ...plan.remove,
@@ -309,8 +410,8 @@ async function applyPreparedUpdate(
 
     try {
       await fs.copyFile(previousManifestFile, path.join(backupDir, "manifest.json"));
-    } catch (error) {
-      if (error.code !== "ENOENT") {
+    } catch (error: unknown) {
+      if (getErrorCode(error) !== "ENOENT") {
         throw error;
       }
     }
@@ -342,7 +443,7 @@ async function applyPreparedUpdate(
 
     await writeManifest(prepared.targetDir, prepared.desiredManifest);
     await writeControlIgnore(prepared.targetDir);
-  } catch (error) {
+  } catch (error: unknown) {
     try {
       for (const operation of plan.add) {
         await fs.rm(targetPath(prepared.targetDir, operation.path), { force: true });
@@ -360,13 +461,13 @@ async function applyPreparedUpdate(
       } else {
         await fs.rm(previousManifestFile, { force: true });
       }
-    } catch (rollbackError) {
+    } catch (rollbackError: unknown) {
       throw new Error(
-        `Blueprint update failed: ${error.message}. Rollback also failed: ${rollbackError.message}`
+        `Blueprint update failed: ${getErrorMessage(error)}. Rollback also failed: ${getErrorMessage(rollbackError)}`
       );
     }
 
-    throw new Error(`Blueprint update failed and was rolled back: ${error.message}`);
+    throw new Error(`Blueprint update failed and was rolled back: ${getErrorMessage(error)}`);
   } finally {
     await fs.rm(stagingDir, { recursive: true, force: true });
   }
@@ -380,7 +481,12 @@ async function applyPreparedUpdate(
   };
 }
 
-async function writeInstallManifest({ targetDir, templateRoot, version, adapter }) {
+async function writeInstallManifest({
+  targetDir,
+  templateRoot,
+  version,
+  adapter
+}: InstallManifestOptions): Promise<Manifest> {
   const adapters = adapterListFromMode(adapter);
   const templateFiles = await collectManagedTemplateFiles(templateRoot, adapters);
   const manifest = createManifest(version, adapters, templateFiles);
@@ -389,8 +495,11 @@ async function writeInstallManifest({ targetDir, templateRoot, version, adapter 
   return manifest;
 }
 
-async function detectInstalledAdapters(targetDir, manifest) {
-  const adapters = new Set(manifest?.adapters || []);
+async function detectInstalledAdapters(
+  targetDir: string,
+  manifest: Manifest | null
+): Promise<Adapter[]> {
+  const adapters = new Set<Adapter>(manifest?.adapters || []);
 
   if (await pathExists(targetPath(targetDir, ".agents/skills"))) {
     adapters.add("codex");
@@ -400,10 +509,10 @@ async function detectInstalledAdapters(targetDir, manifest) {
     adapters.add("claude");
   }
 
-  return ["codex", "claude"].filter((adapter) => adapters.has(adapter));
+  return (["codex", "claude"] as const).filter((adapter) => adapters.has(adapter));
 }
 
-async function writeManifest(targetDir, manifest) {
+async function writeManifest(targetDir: string, manifest: Manifest): Promise<void> {
   await assertNoSymlinkParents(targetDir, MANIFEST_PATH);
   await atomicWrite(
     targetPath(targetDir, MANIFEST_PATH),
@@ -411,7 +520,7 @@ async function writeManifest(targetDir, manifest) {
   );
 }
 
-async function writeControlIgnore(targetDir) {
+async function writeControlIgnore(targetDir: string): Promise<void> {
   await assertNoSymlinkParents(targetDir, `${CONTROL_DIR}/.gitignore`);
   await atomicWrite(
     targetPath(targetDir, `${CONTROL_DIR}/.gitignore`),
@@ -419,7 +528,7 @@ async function writeControlIgnore(targetDir) {
   );
 }
 
-async function getTargetFileState(targetDir, relativePath) {
+async function getTargetFileState(targetDir: string, relativePath: string): Promise<FileState> {
   await assertNoSymlinkParents(targetDir, relativePath);
   const absolutePath = targetPath(targetDir, relativePath);
 
@@ -439,8 +548,8 @@ async function getTargetFileState(targetDir, relativePath) {
     }
 
     return { type: "file", hash: await hashFile(absolutePath) };
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
       return { type: "missing" };
     }
 
@@ -448,7 +557,7 @@ async function getTargetFileState(targetDir, relativePath) {
   }
 }
 
-async function assertNoSymlinkParents(targetDir, relativePath) {
+async function assertNoSymlinkParents(targetDir: string, relativePath: string): Promise<void> {
   const parts = normalizeRelativePath(relativePath).split("/");
   let current = targetDir;
 
@@ -465,8 +574,8 @@ async function assertNoSymlinkParents(targetDir, relativePath) {
       if (!stats.isDirectory()) {
         throw new Error(`Managed path parent is not a directory: ${current}`);
       }
-    } catch (error) {
-      if (error.code === "ENOENT") {
+    } catch (error: unknown) {
+      if (getErrorCode(error) === "ENOENT") {
         return;
       }
 
@@ -475,7 +584,7 @@ async function assertNoSymlinkParents(targetDir, relativePath) {
   }
 }
 
-function isManagedPath(relativePath, adapters) {
+function isManagedPath(relativePath: string, adapters: readonly Adapter[]): boolean {
   const roots = [
     ...MANAGED_ROOTS.common,
     ...adapters.flatMap((adapter) => MANAGED_ROOTS[adapter] || [])
@@ -486,13 +595,13 @@ function isManagedPath(relativePath, adapters) {
   );
 }
 
-function sortPlan(plan) {
-  for (const operations of Object.values(plan)) {
+function sortPlan(plan: UpdatePlan): void {
+  for (const operations of [plan.add, plan.update, plan.remove, plan.conflicts, plan.unchanged]) {
     operations.sort((a, b) => a.path.localeCompare(b.path));
   }
 }
 
-async function assertPreparedTargetState(prepared) {
+async function assertPreparedTargetState(prepared: PreparedUpdate): Promise<void> {
   for (const operation of prepared.plan.add) {
     const current = await getTargetFileState(prepared.targetDir, operation.path);
 
@@ -514,7 +623,9 @@ async function assertPreparedTargetState(prepared) {
     const current = await getTargetFileState(prepared.targetDir, operation.path);
     const changed =
       current.type !== operation.current.type ||
-      (current.type === "file" && current.hash !== operation.current.hash);
+      (current.type === "file" &&
+        operation.current.type === "file" &&
+        current.hash !== operation.current.hash);
 
     if (changed) {
       throw new Error(
@@ -524,11 +635,11 @@ async function assertPreparedTargetState(prepared) {
   }
 }
 
-async function atomicCopy(source, target) {
+async function atomicCopy(source: string, target: string): Promise<void> {
   await atomicWrite(target, await fs.readFile(source));
 }
 
-async function atomicWrite(target, content) {
+async function atomicWrite(target: string, content: string | Uint8Array): Promise<void> {
   await fs.mkdir(path.dirname(target), { recursive: true });
   const temporary = path.join(
     path.dirname(target),
@@ -538,8 +649,8 @@ async function atomicWrite(target, content) {
 
   try {
     await fs.rename(temporary, target);
-  } catch (error) {
-    if (!["EEXIST", "EPERM"].includes(error.code)) {
+  } catch (error: unknown) {
+    if (!["EEXIST", "EPERM"].includes(getErrorCode(error) ?? "")) {
       await fs.rm(temporary, { force: true });
       throw error;
     }
@@ -549,17 +660,17 @@ async function atomicWrite(target, content) {
   }
 }
 
-async function hashFile(filePath) {
+async function hashFile(filePath: string): Promise<string> {
   const content = await fs.readFile(filePath);
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
-async function pathExists(filePath) {
+async function pathExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
       return false;
     }
 
@@ -567,12 +678,12 @@ async function pathExists(filePath) {
   }
 }
 
-function targetPath(targetDir, relativePath) {
+function targetPath(targetDir: string, relativePath: string): string {
   const normalized = normalizeRelativePath(relativePath);
   return path.join(targetDir, ...normalized.split("/"));
 }
 
-function normalizeRelativePath(relativePath) {
+function normalizeRelativePath(relativePath: string): string {
   const normalized = path.posix.normalize(String(relativePath).replaceAll("\\", "/"));
 
   if (!isSafeRelativePath(normalized)) {
@@ -582,7 +693,7 @@ function normalizeRelativePath(relativePath) {
   return normalized;
 }
 
-function isSafeRelativePath(relativePath) {
+function isSafeRelativePath(relativePath: unknown): relativePath is string {
   return (
     typeof relativePath === "string" &&
     relativePath.length > 0 &&
@@ -596,15 +707,34 @@ function isSafeRelativePath(relativePath) {
   );
 }
 
-function formatTimestamp(date) {
+function formatTimestamp(date: Date): string {
   return date.toISOString().replace(/\.\d{3}Z$/, "Z").replaceAll(":", "-");
 }
 
-function sanitizeSegment(value) {
+function sanitizeSegment(value: string): string {
   return String(value).replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
-module.exports = {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  return isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isReplaceConflict(operation: ConflictOperation): operation is ConflictOperation & {
+  desired: TemplateFile;
+  operation: "replace";
+} {
+  return operation.operation === "replace" && operation.desired !== null;
+}
+
+export {
   CONTROL_DIR,
   MANAGED_ROOTS,
   MANIFEST_PATH,
@@ -615,4 +745,13 @@ module.exports = {
   prepareUpdate,
   readManifest,
   writeInstallManifest
+};
+
+export type {
+  Adapter,
+  AdapterMode,
+  ApplyUpdateOptions,
+  Manifest,
+  PreparedUpdate,
+  UpdateResult
 };

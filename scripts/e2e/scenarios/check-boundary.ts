@@ -17,9 +17,11 @@ Print the punctuated greeting from the command line.
 Run \`node src/greeting.js\` and compare its output with \`Hello, world!\`.
 `;
 
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
   t.write("blueprint/context/current-feature.md", FEATURE_SPEC);
   t.write("src/greeting.js", 'console.log("Hello, world!");\n');
   t.gitInit();
@@ -31,7 +33,7 @@ async function run(t) {
   const specBefore = t.read("blueprint/context/current-feature.md");
 
   t.phase("check observes behavior without editing the project");
-  const result = t.claude("Run /check for the current fix and report evidence for every done-when criterion.");
+  const result = t.agent("Run /check for the current fix and report evidence for every done-when criterion.");
 
   t.check("agent invocation succeeded", result.status === 0);
   t.check("the greeting source stayed unchanged", t.read("src/greeting.js") === sourceBefore);
@@ -45,7 +47,7 @@ async function run(t) {
   t.check("the report gives a pass or fail result", /\b(pass|fail)\b/i.test(result.resultText));
 }
 
-module.exports = {
+export default {
   name: "check-boundary",
   description: "Check proves a CLI done-when without editing source or workflow state",
   run

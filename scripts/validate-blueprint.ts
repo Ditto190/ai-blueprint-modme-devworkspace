@@ -1,6 +1,8 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const codexSkillsRoot = path.join(repoRoot, ".agents", "skills");
 const claudeSkillsRoot = path.join(repoRoot, ".claude", "skills");
@@ -36,13 +38,33 @@ const requiredPaths = [
   "blueprint/history/features/README.md",
   "blueprint/history/fixes/README.md",
   "blueprint/history/rollbacks/README.md",
-  "packages/create-ai-blueprint/bin/create-ai-blueprint.js",
+  "packages/create-ai-blueprint/bin/create-ai-blueprint.ts",
   "packages/create-ai-blueprint/LICENSE",
-  "packages/create-ai-blueprint/lib/update.js",
+  "packages/create-ai-blueprint/lib/update.ts",
   "packages/create-ai-blueprint/package.json"
 ];
 
-async function main() {
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code
+    : undefined;
+}
+
+function parseRecord(content: string, source: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(content);
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${source} must contain a JSON object`);
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : [];
+}
+
+async function main(): Promise<void> {
   await validateRequiredPaths();
 
   const codexFiles = await listFiles(codexSkillsRoot);
@@ -76,16 +98,16 @@ async function main() {
   );
 }
 
-async function validateRequiredPaths() {
+async function validateRequiredPaths(): Promise<void> {
   for (const relativePath of requiredPaths) {
     await requirePath(path.join(repoRoot, ...relativePath.split("/")), relativePath);
   }
 }
 
-async function listFiles(root) {
-  const files = [];
+async function listFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
 
-  async function visit(current, relative) {
+  async function visit(current: string, relative: string): Promise<void> {
     const entries = await fs.readdir(current, { withFileTypes: true });
 
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
@@ -111,9 +133,9 @@ async function listFiles(root) {
   return files.sort();
 }
 
-async function getSkillNames(root) {
+async function getSkillNames(root: string): Promise<string[]> {
   const entries = await fs.readdir(root, { withFileTypes: true });
-  const skills = [];
+  const skills: string[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
@@ -127,7 +149,7 @@ async function getSkillNames(root) {
   return skills.sort();
 }
 
-async function validateSkillMetadata(skills) {
+async function validateSkillMetadata(skills: readonly string[]): Promise<void> {
   for (const skill of skills) {
     const skillFile = path.join(codexSkillsRoot, skill, "SKILL.md");
     const content = await fs.readFile(skillFile, "utf8");
@@ -150,7 +172,7 @@ async function validateSkillMetadata(skills) {
   }
 }
 
-async function validateCommandInventories(skills) {
+async function validateCommandInventories(skills: readonly string[]): Promise<void> {
   const [agents, readme] = await Promise.all([
     fs.readFile(path.join(repoRoot, "AGENTS.md"), "utf8"),
     fs.readFile(path.join(repoRoot, "README.md"), "utf8")
@@ -175,7 +197,7 @@ async function validateCommandInventories(skills) {
   assertEqualLists(skills, readmeSkills.sort(), "README command table");
 }
 
-async function validateVerificationContract() {
+async function validateVerificationContract(): Promise<void> {
   const requirements = new Map([
     [
       ".agents/skills/onboard/SKILL.md",
@@ -259,7 +281,7 @@ async function validateVerificationContract() {
   }
 }
 
-async function validateClaudeImports() {
+async function validateClaudeImports(): Promise<number> {
   const content = await fs.readFile(path.join(repoRoot, "CLAUDE.md"), "utf8");
   const imports = [...content.matchAll(/^@(.+)$/gm)].map((match) => match[1].trim());
 
@@ -278,7 +300,7 @@ async function validateClaudeImports() {
   return imports.length;
 }
 
-async function validateSkillReferences(adapterFiles) {
+async function validateSkillReferences(adapterFiles: readonly string[]): Promise<number> {
   let count = 0;
 
   for (const relativePath of adapterFiles.filter((file) => file.endsWith("SKILL.md"))) {
@@ -301,14 +323,14 @@ async function validateSkillReferences(adapterFiles) {
   return count;
 }
 
-async function validatePackageMetadata() {
+async function validatePackageMetadata(): Promise<void> {
   const packageRoot = path.join(repoRoot, "packages", "create-ai-blueprint");
-  const metadata = JSON.parse(
-    await fs.readFile(path.join(packageRoot, "package.json"), "utf8")
+  const metadata = parseRecord(
+    await fs.readFile(path.join(packageRoot, "package.json"), "utf8"),
+    "Package metadata"
   );
   const requiredFiles = [
-    "bin/",
-    "lib/",
+    "dist/",
     "template/",
     "README.md",
     "LICENSE",
@@ -316,18 +338,26 @@ async function validatePackageMetadata() {
   ];
   const requiredScripts = ["test", "prepare-template", "prepack", "postpack"];
 
-  if (metadata.bin?.["create-ai-blueprint"] !== "bin/create-ai-blueprint.js") {
+  const bin = typeof metadata.bin === "object" && metadata.bin !== null
+    ? metadata.bin as Record<string, unknown>
+    : {};
+  const packageFiles = stringArray(metadata.files);
+  const scripts = typeof metadata.scripts === "object" && metadata.scripts !== null
+    ? metadata.scripts as Record<string, unknown>
+    : {};
+
+  if (bin["create-ai-blueprint"] !== "dist/bin/create-ai-blueprint.js") {
     throw new Error("Package bin entry does not point to the installer CLI");
   }
 
   for (const requiredFile of requiredFiles) {
-    if (!metadata.files?.includes(requiredFile)) {
+    if (!packageFiles.includes(requiredFile)) {
       throw new Error(`Required package entry is missing: ${requiredFile}`);
     }
   }
 
   for (const script of requiredScripts) {
-    if (!metadata.scripts?.[script]) {
+    if (typeof scripts[script] !== "string" || scripts[script].length === 0) {
       throw new Error(`Package script is missing: ${script}`);
     }
   }
@@ -350,19 +380,14 @@ async function validatePackageMetadata() {
     "context-engineering",
     "spec-driven-development"
   ]) {
-    if (!metadata.keywords?.includes(keyword)) {
+    if (!stringArray(metadata.keywords).includes(keyword)) {
       throw new Error(`Package keyword is missing: ${keyword}`);
     }
   }
 
-  const binStats = await fs.stat(path.join(packageRoot, "bin", "create-ai-blueprint.js"));
-
-  if (process.platform !== "win32" && (binStats.mode & 0o111) === 0) {
-    throw new Error("Installer CLI is not executable");
-  }
 }
 
-async function validateRepositoryPolish() {
+async function validateRepositoryPolish(): Promise<void> {
   const [rootLicense, packageLicense, packageMetadata, changelog, publishWorkflow] =
     await Promise.all([
       fs.readFile(path.join(repoRoot, "LICENSE")),
@@ -379,7 +404,11 @@ async function validateRepositoryPolish() {
     throw new Error("Root and npm package license files differ");
   }
 
-  const version = JSON.parse(packageMetadata).version;
+  const version = parseRecord(packageMetadata, "Package metadata").version;
+
+  if (typeof version !== "string") {
+    throw new Error("Package metadata has no valid version");
+  }
 
   if (!changelog.includes(`## [${version}]`)) {
     throw new Error(`CHANGELOG.md does not include package version ${version}`);
@@ -404,11 +433,11 @@ async function validateRepositoryPolish() {
   }
 }
 
-async function requirePath(absolutePath, label) {
+async function requirePath(absolutePath: string, label: string): Promise<void> {
   try {
     await fs.access(absolutePath);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (errorCode(error) === "ENOENT") {
       throw new Error(`Required path is missing: ${label}`);
     }
 
@@ -416,7 +445,7 @@ async function requirePath(absolutePath, label) {
   }
 }
 
-function assertEqualLists(expected, actual, label) {
+function assertEqualLists(expected: readonly string[], actual: readonly string[], label: string): void {
   if (JSON.stringify(expected) !== JSON.stringify(actual)) {
     throw new Error(
       `${label} mismatch. Expected [${expected.join(", ")}], received [${actual.join(", ")}].`
@@ -424,7 +453,7 @@ function assertEqualLists(expected, actual, label) {
   }
 }
 
-function assertSafeRelativePath(relativePath) {
+function assertSafeRelativePath(relativePath: string): void {
   const normalized = path.posix.normalize(relativePath.replaceAll("\\", "/"));
 
   if (
@@ -438,7 +467,9 @@ function assertSafeRelativePath(relativePath) {
   }
 }
 
-main().catch((error) => {
-  console.error(`Static contract failed: ${error.message}`);
+main().catch((error: unknown) => {
+  console.error(
+    `Static contract failed: ${error instanceof Error ? error.message : String(error)}`
+  );
   process.exit(1);
 });

@@ -1,4 +1,30 @@
+import fs from "node:fs";
+import path from "node:path";
+import type { Runner } from "../harness.js";
+
 const HEADER_PATTERN = /^### F-\d{2} \[P[0-3]\] (unverified|open|fixed|closed|accepted|invalid) - .+$/;
+const CURRENT_FEATURE_STUB = `# Current Feature
+
+> **Generated file.** Holds the one feature, fix, or rollback being built right now. Run
+> \`/feature <number-or-name>\` to spec a build-plan feature, or \`/fix "<bug>"\` for
+> an ad-hoc fix. Use \`/rollback <completed-feature>\` to plan a safe reversal.
+> Build one thing at a time; \`/complete\` archives it under
+> \`blueprint/history/\` and resets this file.
+
+_Nothing in progress. Run \`/feature\`, \`/fix\`, or \`/rollback\` to start._
+`;
+const FINDINGS_STUB = `# Findings
+
+> **Generated file.** The findings ledger: review findings raised by \`/audit\`
+> against the work in progress, each with a durable ID, severity (P0-P3), and
+> status. \`/implement\` marks repaired findings \`fixed\`, a later \`/audit\` pass
+> moves them to \`closed\`, and \`/complete\` refuses to merge while any P0 or P1
+> finding is \`open\` or \`fixed\`, then archives resolved findings with the work
+> and resets this file.
+
+_No findings recorded. \`/audit\` appends findings here when it finds them._
+`;
+const normalizeLineEndings = (content: string | null) => content?.replace(/\r\n/g, "\n") ?? "";
 
 const FIX_SPEC = `# Current Feature
 
@@ -46,11 +72,11 @@ const CLOSED_FINDING = OPEN_FINDING.replace(
   "**Resolution:** Verified 2026-07-22 by /audit re-review: command output shows \"Hello, world!\" and the repair introduced no new defect."
 );
 
-async function run(t) {
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
 
-  const agents = t.read("AGENTS.md");
+  const agents = t.read("AGENTS.md") ?? "";
   t.write(
     "AGENTS.md",
     agents.slice(0, agents.indexOf("## Commands")) +
@@ -86,7 +112,7 @@ async function run(t) {
   t.write("blueprint/context/findings.md", OPEN_FINDING);
 
   t.phase("blocked merge: /complete must refuse while F-01 [P1] is open");
-  const blocked = t.claude(
+  const blocked = t.agent(
     "Run /complete for the current fix. If anything blocks completion, stop and explain the blocker; do not work around it."
   );
   t.check("agent invocation succeeded", blocked.status === 0);
@@ -100,7 +126,7 @@ async function run(t) {
   t.phase("approved merge: /complete proceeds once F-01 is closed");
   t.write("blueprint/context/findings.md", CLOSED_FINDING);
   t.git("checkout", "fix/greeting-punctuation");
-  const merged = t.claude(
+  const merged = t.agent(
     "Run /complete for the current fix. You have my explicit approval to squash-merge to main and delete the branch. Do not push anywhere."
   );
   t.check("agent invocation succeeded", merged.status === 0);
@@ -114,34 +140,40 @@ async function run(t) {
   const archive = archiveFile ? t.git("show", `main:${archiveFile}`) : "";
   t.check("fix archive exists", Boolean(archiveFile));
   t.check("archive carries F-01 at closed", archive.includes("F-01") && archive.includes("closed"));
-  t.check("spec reset to stub", (t.read("blueprint/context/current-feature.md") || "").includes("Nothing in progress"));
-  t.check("ledger reset to stub", (t.read("blueprint/context/findings.md") || "").includes("No findings recorded"));
+  t.check(
+    "spec reset to the canonical stub",
+    normalizeLineEndings(t.read("blueprint/context/current-feature.md")) === CURRENT_FEATURE_STUB
+  );
+  t.check(
+    "ledger reset to the canonical stub",
+    normalizeLineEndings(t.read("blueprint/context/findings.md")) === FINDINGS_STUB
+  );
 
   t.phase("lazy-create: /audit rebuilds a deleted ledger in valid format");
   t.git("checkout", "main");
-  const fs = require("node:fs");
-  const path = require("node:path");
   fs.rmSync(path.join(t.workspace, "blueprint", "context", "findings.md"));
   t.write(
     "src/util.js",
     'exports.formatGreeting = () => "Hello, world!";\nexports.unusedLegacyGreeting = () => "Hello world";\n'
   );
-  const audited = t.claude("Run /audit changed.");
+  const audited = t.agent("Run /audit changed.");
   t.check("agent invocation succeeded", audited.status === 0);
   const ledger = t.read("blueprint/context/findings.md");
   t.check("ledger was lazy-created", ledger !== null && ledger.includes("# Findings"));
-  const headers = (ledger || "").split("\n").filter((line) => line.startsWith("### "));
+  const headers = (ledger || "")
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("### "));
   t.check(
     `all ${headers.length} entry headers match the contract`,
     headers.every((line) => HEADER_PATTERN.test(line))
   );
   t.check(
     "audit did not edit source files",
-    t.read("src/util.js").includes("unusedLegacyGreeting") && t.git("status", "--porcelain", "src/greeting.js") === ""
+    (t.read("src/util.js") ?? "").includes("unusedLegacyGreeting") && t.git("status", "--porcelain", "src/greeting.js") === ""
   );
 }
 
-module.exports = {
+export default {
   name: "ledger-gate",
   description: "The findings ledger blocks, releases, and lazy-creates correctly",
   run

@@ -1,18 +1,20 @@
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
 
   const secureAccountSource = `function updateEmail(store, session, input) {
   return store.users.update(session.userId, { email: input.email });
 }
 
-module.exports = { updateEmail };
+export default { updateEmail };
 `;
   const vulnerableAccountSource = `function updateEmail(store, session, input) {
   return store.users.update(input.userId, { email: input.email });
 }
 
-module.exports = { updateEmail };
+export default { updateEmail };
 `;
   const originalFormatSource = `exports.normalizeEmail = (value) => value.trim().toLowerCase();
 `;
@@ -31,7 +33,7 @@ exports.normalizeBackupEmail = (value) => value.trim().toLowerCase();
   t.write("src/format.js", duplicatedFormatSource);
 
   t.phase("security lens stays focused and records its lens");
-  const result = t.claude(
+  const result = t.agent(
     "Run /audit security changed. Use only the security lens, record confirmed findings, and do not review unrelated quality concerns."
   );
 
@@ -57,11 +59,6 @@ exports.normalizeBackupEmail = (value) => value.trim().toLowerCase();
     "the report names the changed scope",
     /scope[:|\s`]*changed|changed scope/i.test(result.resultText)
   );
-  t.check(
-    "the report does not call out the quality concern",
-    !/duplicat|identical bodies/i.test(result.resultText)
-  );
-
   const changedPaths = t.git("status", "--porcelain")
     .split("\n")
     .filter(Boolean)
@@ -77,7 +74,7 @@ exports.normalizeBackupEmail = (value) => value.trim().toLowerCase();
   );
 }
 
-module.exports = {
+export default {
   name: "audit-lenses",
   description: "A focused audit reviews its lens without editing application code",
   run

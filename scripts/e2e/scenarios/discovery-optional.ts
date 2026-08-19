@@ -1,3 +1,5 @@
+import type { Runner } from "../harness.js";
+
 const PROJECT_PLAN = `# Project Plan
 
 ## 1. Problem - What problem are we solving?
@@ -40,9 +42,9 @@ const BUILD_PLAN = `# Build Plan
 - [ ] 2. **Reading queue** - list saved articles and mark them as read
 `;
 
-async function run(t) {
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
   t.gitInit();
   t.git("add", "-A");
   t.git("commit", "-m", "chore: create discovery fixture");
@@ -51,7 +53,7 @@ async function run(t) {
   const overviewBefore = t.read("blueprint/context/project-overview.md");
 
   t.phase("discovery starts a conversation without drafting plans");
-  const discovery = t.claude(
+  const discovery = t.agent(
     "Run /discovery for a new personal reading queue. Start the deep planning conversation, ask only the first focused question, and do not draft or write either planning file yet."
   );
 
@@ -70,7 +72,7 @@ async function run(t) {
   t.write("blueprint/build-plan.md", BUILD_PLAN);
   t.git("add", "-A");
   t.git("commit", "-m", "docs: write plans directly");
-  const overview = t.claude(
+  const overview = t.agent(
     "I wrote both planning files directly without using discovery. Run /overview now and generate project-overview.md from them."
   );
   const changedPaths = t
@@ -92,7 +94,7 @@ async function run(t) {
   );
 }
 
-module.exports = {
+export default {
   name: "discovery-optional",
   description: "Discovery starts without writing plans and the direct planning path still reaches overview",
   run

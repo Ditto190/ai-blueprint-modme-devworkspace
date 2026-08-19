@@ -16,9 +16,11 @@ Change the default output from \`Hello world\` to \`Hello, world!\`.
 \`node src/greeting.js\` printed \`Hello, world!\`.
 `;
 
-async function run(t) {
+import type { Runner } from "../harness.js";
+
+async function run(t: Runner) {
   t.phase("setup");
-  t.installBlueprint("--claude");
+  t.installBlueprint();
   t.write("blueprint/build-plan.md", "# Build Plan\n\n- [ ] 1. Greeting punctuation\n");
   t.write("src/greeting.js", 'console.log("Hello world");\n');
   t.gitInit();
@@ -31,6 +33,7 @@ async function run(t) {
   t.git("add", "-A");
   t.git("commit", "-m", "feat: add greeting punctuation");
   const featureCommit = t.git("rev-parse", "HEAD");
+  const featureParent = t.git("rev-parse", `${featureCommit}^`);
 
   t.write("src/unrelated.js", 'module.exports = "later work";\n');
   t.git("add", "-A");
@@ -39,7 +42,7 @@ async function run(t) {
   const archiveBefore = t.read("blueprint/history/features/01-greeting-punctuation.md");
 
   t.phase("rollback plans the reversal without applying it");
-  const result = t.claude(
+  const result = t.agent(
     "Run /rollback 1 because the punctuation breaks a strict downstream consumer. Plan it and stop for review."
   );
   const rollbackSpec = t.read("blueprint/context/current-feature.md") || "";
@@ -52,13 +55,14 @@ async function run(t) {
   t.check("agent invocation succeeded", result.status === 0);
   t.check("the repository stayed on main", t.git("branch", "--show-current") === "main");
   t.check("no commit was created", t.git("rev-parse", "HEAD") === headBefore);
-  t.check("product code was not reversed", t.read("src/greeting.js").includes("Hello, world!"));
+  t.check("product code was not reversed", (t.read("src/greeting.js") ?? "").includes("Hello, world!"));
   t.check(
     "the completed feature archive was preserved",
     t.read("blueprint/history/features/01-greeting-punctuation.md") === archiveBefore
   );
-  t.check("a rollback spec was written", /type:\s*rollback/i.test(rollbackSpec));
+  t.check("a rollback spec was written", /^\*\*Type:\*\*\s*Rollback\s*$/im.test(rollbackSpec));
   t.check("the spec records the exact feature commit", rollbackSpec.includes(featureCommit));
+  t.check("the spec records the exact feature parent", rollbackSpec.includes(featureParent));
   t.check("the spec records the user's reason", /downstream consumer/i.test(rollbackSpec));
   t.check(
     "only the current feature spec changed",
@@ -66,7 +70,7 @@ async function run(t) {
   );
 }
 
-module.exports = {
+export default {
   name: "rollback-plan",
   description: "Rollback preserves history and product code while preparing a guarded spec",
   run

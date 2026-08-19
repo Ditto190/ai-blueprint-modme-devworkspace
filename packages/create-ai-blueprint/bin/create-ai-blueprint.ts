@@ -1,20 +1,34 @@
 #!/usr/bin/env node
 
-const fs = require("node:fs/promises");
-const fsSync = require("node:fs");
-const path = require("node:path");
-const readline = require("node:readline/promises");
-const {
-  MANIFEST_PATH,
-  applyPreparedUpdate,
-  prepareUpdate,
-  writeInstallManifest
-} = require("../lib/update");
+import fs from "node:fs/promises";
+import fsSync from "node:fs";
+import path from "node:path";
+import readline from "node:readline/promises";
+import { fileURLToPath } from "node:url";
+import { MANIFEST_PATH, applyPreparedUpdate, prepareUpdate, writeInstallManifest } from "../lib/update.js";
+import type { AdapterMode, PreparedUpdate, UpdateResult } from "../lib/update.js";
 
-const packageRoot = path.resolve(__dirname, "..");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageRoot = path.resolve(__dirname, "..", "..");
 const templateRoot = path.join(packageRoot, "template");
 
-const adapterChoices = new Set(["codex", "claude", "both"]);
+interface CliOptions {
+  adapter: AdapterMode | null;
+  command: "install" | "update";
+  dryRun: boolean;
+  force: boolean;
+  help: boolean;
+  target: string | null;
+  version: boolean;
+  yes: boolean;
+}
+
+interface TemplateEntry {
+  source: string;
+  target: string;
+}
+
+const adapterChoices = new Set<AdapterMode>(["codex", "claude", "both"]);
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -84,8 +98,8 @@ async function main() {
   printSuccess(targetDir, adapter, entries, existingEntries);
 }
 
-function parseArgs(args) {
-  const options = {
+function parseArgs(args: readonly string[]): CliOptions {
+  const options: CliOptions = {
     adapter: null,
     command: "install",
     dryRun: false,
@@ -96,7 +110,7 @@ function parseArgs(args) {
     yes: false
   };
 
-  const modeFlags = [];
+  const modeFlags: AdapterMode[] = [];
   let commandSeen = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -146,7 +160,7 @@ function parseArgs(args) {
     }
 
     if (arg === "--codex" || arg === "--claude" || arg === "--both") {
-      modeFlags.push(arg.slice(2));
+      modeFlags.push(arg.slice(2) as AdapterMode);
       continue;
     }
 
@@ -183,7 +197,7 @@ function parseArgs(args) {
   return options;
 }
 
-async function resolveAdapter(options) {
+async function resolveAdapter(options: CliOptions): Promise<AdapterMode> {
   if (options.adapter) {
     return options.adapter;
   }
@@ -226,7 +240,7 @@ async function resolveAdapter(options) {
   }
 }
 
-function getTemplateEntries(adapter) {
+function getTemplateEntries(adapter: AdapterMode): TemplateEntry[] {
   if (!adapterChoices.has(adapter)) {
     throw new Error(`Unknown adapter mode: ${adapter}`);
   }
@@ -248,7 +262,10 @@ function getTemplateEntries(adapter) {
   return entries;
 }
 
-async function confirmOverwrite(existingEntries, options) {
+async function confirmOverwrite(
+  existingEntries: readonly TemplateEntry[],
+  options: CliOptions
+): Promise<void> {
   if (existingEntries.length === 0 || options.force) {
     return;
   }
@@ -282,7 +299,10 @@ async function confirmOverwrite(existingEntries, options) {
   }
 }
 
-async function confirmUpdateConflicts(prepared, options) {
+async function confirmUpdateConflicts(
+  prepared: PreparedUpdate,
+  options: CliOptions
+): Promise<boolean> {
   const count = prepared.plan.conflicts.length;
 
   if (count === 0) {
@@ -310,13 +330,13 @@ async function confirmUpdateConflicts(prepared, options) {
   }
 }
 
-async function copyTemplateEntry(entry, targetDir) {
+async function copyTemplateEntry(entry: TemplateEntry, targetDir: string): Promise<void> {
   const source = path.join(templateRoot, entry.source);
   const target = path.join(targetDir, entry.target);
   await copyPath(source, target);
 }
 
-async function copyPath(source, target) {
+async function copyPath(source: string, target: string): Promise<void> {
   const stats = await fs.stat(source);
 
   if (stats.isDirectory()) {
@@ -336,7 +356,12 @@ async function copyPath(source, target) {
   }
 }
 
-function printPlan(targetDir, adapter, entries, existingEntries) {
+function printPlan(
+  targetDir: string,
+  adapter: AdapterMode,
+  entries: readonly TemplateEntry[],
+  existingEntries: readonly TemplateEntry[]
+): void {
   console.log(`Target: ${targetDir}`);
   console.log(`Adapters: ${adapter}`);
   console.log("Would copy:");
@@ -353,7 +378,7 @@ function printPlan(targetDir, adapter, entries, existingEntries) {
   }
 }
 
-function printUpdatePlan(prepared) {
+function printUpdatePlan(prepared: PreparedUpdate): void {
   const { plan } = prepared;
   console.log("AI Blueprint update plan.");
   console.log(`Target: ${prepared.targetDir}`);
@@ -377,7 +402,12 @@ function printUpdatePlan(prepared) {
   );
 }
 
-function printSuccess(targetDir, adapter, entries, existingEntries) {
+function printSuccess(
+  targetDir: string,
+  adapter: AdapterMode,
+  entries: readonly TemplateEntry[],
+  existingEntries: readonly TemplateEntry[]
+): void {
   console.log("AI Blueprint installed.");
   console.log(`Target: ${targetDir}`);
   console.log(`Adapters: ${adapter}`);
@@ -404,7 +434,7 @@ function printSuccess(targetDir, adapter, entries, existingEntries) {
   );
 }
 
-function printUpdateSuccess(prepared, result) {
+function printUpdateSuccess(prepared: PreparedUpdate, result: UpdateResult): void {
   console.log("AI Blueprint updated.");
   console.log(`Version: ${prepared.previousVersion} -> ${prepared.version}`);
   console.log(`Added: ${result.added}`);
@@ -421,7 +451,7 @@ function printUpdateSuccess(prepared, result) {
   );
 }
 
-function getNextCommand(adapter) {
+function getNextCommand(adapter: AdapterMode): string {
   if (adapter === "codex") {
     return "$onboard";
   }
@@ -433,7 +463,7 @@ function getNextCommand(adapter) {
   return "$onboard or /onboard";
 }
 
-function printClaudeRestartNote(adapter) {
+function printClaudeRestartNote(adapter: AdapterMode): void {
   if (adapter === "codex") {
     return;
   }
@@ -443,7 +473,7 @@ function printClaudeRestartNote(adapter) {
   );
 }
 
-function printHelp() {
+function printHelp(): void {
   console.log(`create-ai-blueprint
 
 Install AI Blueprint into an already scaffolded app.
@@ -467,22 +497,32 @@ Options:
   --version, -v    Show package version`);
 }
 
-function readPackageVersion() {
+function readPackageVersion(): string {
   const packageJson = fsSync.readFileSync(
     path.join(packageRoot, "package.json"),
     "utf8"
   );
-  return JSON.parse(packageJson).version;
+  const packageMetadata: unknown = JSON.parse(packageJson);
+
+  if (
+    typeof packageMetadata !== "object" ||
+    packageMetadata === null ||
+    typeof (packageMetadata as { version?: unknown }).version !== "string"
+  ) {
+    throw new Error("Package metadata has no valid version.");
+  }
+
+  return (packageMetadata as { version: string }).version;
 }
 
-if (require.main === module) {
-  main().catch((error) => {
-    console.error(`Error: ${error.message}`);
+if (
+  process.argv[1] &&
+  fsSync.realpathSync(process.argv[1]) === fsSync.realpathSync(fileURLToPath(import.meta.url))
+) {
+  main().catch((error: unknown) => {
+    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });
 }
 
-module.exports = {
-  getTemplateEntries,
-  parseArgs
-};
+export { getTemplateEntries, parseArgs };

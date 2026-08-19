@@ -1,12 +1,6 @@
-const assert = require("node:assert/strict");
-const test = require("node:test");
-const {
-  buildCorpus,
-  evaluateCatalog,
-  parseArguments,
-  rankSkills,
-  tokenize
-} = require("./routing");
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildCorpus, evaluateCatalog, parseArguments, rankSkills, tokenize } from "./routing.js";
 
 const skills = [
   {
@@ -19,7 +13,12 @@ const skills = [
   }
 ];
 
-function casesFor(skill, positivePrompt, negativePrompt, owner) {
+function casesFor(
+  skill: string,
+  positivePrompt: string,
+  negativePrompt: string,
+  owner: string
+) {
   return {
     file: `${skill}.json`,
     data: {
