@@ -1,9 +1,9 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const MANIFEST_PATH = path.join("blueprint", ".state", "manifest.json");
 
-async function findProjectRoot(startPath = process.cwd()) {
+async function findProjectRoot(startPath: string = process.cwd()): Promise<string | null> {
   const resolvedStart = await fs.realpath(startPath);
   const stats = await fs.stat(resolvedStart);
   let currentDir = stats.isDirectory()
@@ -24,7 +24,7 @@ async function findProjectRoot(startPath = process.cwd()) {
   }
 }
 
-async function isBlueprintProjectRoot(directory) {
+async function isBlueprintProjectRoot(directory: string): Promise<boolean> {
   const blueprintDir = path.join(directory, "blueprint");
 
   if (!(await isDirectory(blueprintDir))) {
@@ -37,7 +37,7 @@ async function isBlueprintProjectRoot(directory) {
   );
 }
 
-async function hasInstallManifest(directory) {
+async function hasInstallManifest(directory: string): Promise<boolean> {
   const stateDir = path.join(directory, "blueprint", ".state");
   return (
     (await isDirectory(stateDir)) &&
@@ -45,11 +45,13 @@ async function hasInstallManifest(directory) {
   );
 }
 
-async function isDirectory(targetPath) {
+async function isDirectory(targetPath: string): Promise<boolean> {
   try {
     return (await fs.lstat(targetPath)).isDirectory();
-  } catch (error) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+  } catch (error: unknown) {
+    const code = getErrorCode(error);
+
+    if (code === "ENOENT" || code === "ENOTDIR") {
       return false;
     }
 
@@ -57,11 +59,13 @@ async function isDirectory(targetPath) {
   }
 }
 
-async function isFile(targetPath) {
+async function isFile(targetPath: string): Promise<boolean> {
   try {
     return (await fs.lstat(targetPath)).isFile();
-  } catch (error) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+  } catch (error: unknown) {
+    const code = getErrorCode(error);
+
+    if (code === "ENOENT" || code === "ENOTDIR") {
       return false;
     }
 
@@ -69,7 +73,16 @@ async function isFile(targetPath) {
   }
 }
 
-module.exports = {
+function getErrorCode(error: unknown): string | undefined {
+  return typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+    ? error.code
+    : undefined;
+}
+
+export {
   findProjectRoot,
   isBlueprintProjectRoot
 };

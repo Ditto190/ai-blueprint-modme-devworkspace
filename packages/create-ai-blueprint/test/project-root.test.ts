@@ -1,13 +1,13 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs/promises");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test, { type TestContext } from "node:test";
 
-const {
+import {
   findProjectRoot,
   isBlueprintProjectRoot
-} = require("../lib/project-root");
+} from "../lib/project-root.js";
 
 test("findProjectRoot resolves a legacy Blueprint project", async (t) => {
   const workspace = await createWorkspace(t);
@@ -75,7 +75,7 @@ test(
   }
 );
 
-async function createWorkspace(t) {
+async function createWorkspace(t: TestContext): Promise<string> {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "blueprint-root-"));
   t.after(() => fs.rm(workspace, { recursive: true, force: true }));
   return workspace;

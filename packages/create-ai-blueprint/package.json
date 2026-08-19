@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test test/update.test.ts",
+    "test": "tsx --test test/project-metadata.test.ts test/project-root.test.ts test/update.test.ts",
     "check:pack": "npm pack --dry-run",
     "prepare-template": "tsx scripts/prepare-template.ts",
     "prepack": "npm run build && npm run prepare-template",
