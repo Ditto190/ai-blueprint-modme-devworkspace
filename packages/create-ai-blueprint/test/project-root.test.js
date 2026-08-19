@@ -1,0 +1,82 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
+const test = require("node:test");
+
+const {
+  findProjectRoot,
+  isBlueprintProjectRoot
+} = require("../lib/project-root");
+
+test("findProjectRoot resolves a legacy Blueprint project", async (t) => {
+  const workspace = await createWorkspace(t);
+  const projectRoot = path.join(workspace, "app");
+  const nestedDir = path.join(projectRoot, "src", "features");
+
+  await fs.mkdir(path.join(projectRoot, "blueprint"), { recursive: true });
+  await fs.mkdir(nestedDir, { recursive: true });
+  await fs.writeFile(path.join(projectRoot, "AGENTS.md"), "# Project\n");
+
+  assert.equal(await findProjectRoot(nestedDir), projectRoot);
+  assert.equal(await isBlueprintProjectRoot(projectRoot), true);
+});
+
+test("findProjectRoot resolves a manifest-backed project with missing AGENTS.md", async (t) => {
+  const workspace = await createWorkspace(t);
+  const projectRoot = path.join(workspace, "app");
+  const manifestPath = path.join(
+    projectRoot,
+    "blueprint",
+    ".state",
+    "manifest.json"
+  );
+
+  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+  await fs.writeFile(manifestPath, "{}\n");
+
+  assert.equal(await findProjectRoot(projectRoot), projectRoot);
+});
+
+test("findProjectRoot accepts a file inside a Blueprint project", async (t) => {
+  const workspace = await createWorkspace(t);
+  const projectRoot = path.join(workspace, "app");
+  const sourceFile = path.join(projectRoot, "src", "index.js");
+
+  await fs.mkdir(path.join(projectRoot, "blueprint"), { recursive: true });
+  await fs.mkdir(path.dirname(sourceFile), { recursive: true });
+  await fs.writeFile(path.join(projectRoot, "AGENTS.md"), "# Project\n");
+  await fs.writeFile(sourceFile, "export {};\n");
+
+  assert.equal(await findProjectRoot(sourceFile), projectRoot);
+});
+
+test("findProjectRoot returns null outside a Blueprint project", async (t) => {
+  const workspace = await createWorkspace(t);
+
+  assert.equal(await findProjectRoot(workspace), null);
+  assert.equal(await isBlueprintProjectRoot(workspace), false);
+});
+
+test(
+  "findProjectRoot rejects a symlinked Blueprint directory",
+  { skip: process.platform === "win32" },
+  async (t) => {
+    const workspace = await createWorkspace(t);
+    const projectRoot = path.join(workspace, "app");
+    const externalBlueprint = path.join(workspace, "external-blueprint");
+
+    await fs.mkdir(projectRoot);
+    await fs.mkdir(externalBlueprint);
+    await fs.writeFile(path.join(projectRoot, "AGENTS.md"), "# Project\n");
+    await fs.symlink(externalBlueprint, path.join(projectRoot, "blueprint"));
+
+    assert.equal(await findProjectRoot(projectRoot), null);
+  }
+);
+
+async function createWorkspace(t) {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "blueprint-root-"));
+  t.after(() => fs.rm(workspace, { recursive: true, force: true }));
+  return workspace;
+}
