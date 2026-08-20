@@ -247,6 +247,33 @@ Backups are stored under `blueprint/.state/backups/` and ignored by git.
 Older installs without a manifest can use the same command. Matching files are
 adopted into the manifest, while differing managed files are treated as conflicts.
 
+### Check project status
+
+Run the read-only status command from a Blueprint project or a nested directory:
+
+```bash
+npx create-ai-blueprint@latest status
+```
+
+It reports plan progress, active work, findings, Git state, drift warnings,
+completion blockers, and one exact next action. Use JSON when another local tool
+needs the same versioned state:
+
+```bash
+npx create-ai-blueprint@latest status --json
+```
+
+After an interactive Blueprint install, the installer offers to run this
+optional global installation command:
+
+```bash
+npm install --global create-ai-blueprint@latest
+```
+
+The prompt defaults to no and never runs during non-interactive or `--yes`
+installs. Global installation exposes `blueprint status`. Status reads Markdown
+and Git state without editing either one.
+
 ## Tool support
 
 | Tool | Support | Invocation |

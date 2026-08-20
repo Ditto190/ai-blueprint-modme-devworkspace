@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -123,6 +124,12 @@ async function main(): Promise<void> {
         ? "create-ai-blueprint.cmd"
         : "create-ai-blueprint"
     );
+    const installedBlueprintCommand = path.join(
+      runnerDir,
+      "node_modules",
+      ".bin",
+      process.platform === "win32" ? "blueprint.cmd" : "blueprint"
+    );
     const versionResult = runInstalledCommand(
       installedCommand,
       ["--version"],
@@ -134,6 +141,17 @@ async function main(): Promise<void> {
       throw new Error("Installed command did not report the packaged version");
     }
 
+    const blueprintVersionResult = runInstalledCommand(
+      installedBlueprintCommand,
+      ["--version"],
+      workspace,
+      true
+    );
+
+    if (blueprintVersionResult.stdout.trim() !== metadata.version) {
+      throw new Error("Installed blueprint command did not report the packaged version");
+    }
+
     await requirePath(path.join(installedPackageRoot, "dist", "lib", "update.js"));
     await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));
     await requireMissing(path.join(installedPackageRoot, "evals"));
@@ -143,12 +161,65 @@ async function main(): Promise<void> {
     for (const [mode, adapters] of Object.entries(modes)) {
       const targetDir = path.join(workspace, `target-${mode}`);
       await fs.mkdir(targetDir, { recursive: true });
-      run(
+      const installResult = run(
         process.execPath,
         [binary, "--target", targetDir, `--${mode}`, "--yes"],
-        workspace
+        workspace,
+        true
       );
+
+      if (!installResult.stdout.includes("Optional global CLI:")) {
+        throw new Error(`${mode} install did not print the optional CLI command`);
+      }
+
       await validateInstall(targetDir, metadata.version, adapters);
+
+      const statusResult = runInstalledCommand(
+        installedCommand,
+        ["status", "--target", targetDir],
+        workspace,
+        true
+      );
+
+      if (!statusResult.stdout.includes(`Blueprint Status  target-${mode}`)) {
+        throw new Error(`${mode} status smoke test did not identify the project`);
+      }
+
+      if (statusResult.stdout.includes("\u001b[")) {
+        throw new Error(`${mode} piped status output contained terminal color codes`);
+      }
+
+      const blueprintStatusResult = runInstalledCommand(
+        installedBlueprintCommand,
+        ["status", "--target", targetDir],
+        workspace,
+        true
+      );
+
+      if (!blueprintStatusResult.stdout.includes(`Blueprint Status  target-${mode}`)) {
+        throw new Error(`${mode} blueprint alias did not report project status`);
+      }
+
+      const jsonStatusResult = runInstalledCommand(
+        installedCommand,
+        ["status", "--json", "--target", targetDir],
+        workspace,
+        true
+      );
+      const status = parseRecord(jsonStatusResult.stdout, `${mode} JSON status`);
+
+      if (
+        status.schemaVersion !== 1 ||
+        !Array.isArray(status.warnings) ||
+        !status.warnings.some(
+          (warning) =>
+            typeof warning === "object" &&
+            warning !== null &&
+            (warning as { code?: unknown }).code === "placeholder_build_plan"
+        )
+      ) {
+        throw new Error(`${mode} JSON status did not report the starter build plan`);
+      }
 
       const updateResult = run(
         process.execPath,
@@ -169,6 +240,41 @@ async function main(): Promise<void> {
           );
         }
       }
+    }
+
+    const emptyTarget = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ai-blueprint-empty-status-")
+    );
+
+    try {
+      const missingProjectResult = spawnSync(
+        process.execPath,
+        [binary, "status", "--json"],
+        {
+          cwd: emptyTarget,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            npm_config_audit: "false",
+            npm_config_fund: "false",
+            npm_config_update_notifier: "false"
+          }
+        }
+      );
+
+      if (missingProjectResult.error) {
+        throw missingProjectResult.error;
+      }
+
+      if (
+        missingProjectResult.status !== 1 ||
+        missingProjectResult.stdout.trim() !== "" ||
+        !missingProjectResult.stderr.includes("No AI Blueprint project found from:")
+      ) {
+        throw new Error("Status did not fail cleanly outside a Blueprint project");
+      }
+    } finally {
+      await fs.rm(emptyTarget, { recursive: true, force: true });
     }
 
     console.log("Packed installer passed for codex, claude, and both adapter modes.");

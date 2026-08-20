@@ -111,6 +111,35 @@ The first update of a legacy install creates the manifest. Files that already
 match the current package are adopted automatically. Differing files remain
 conflicts so local changes are not lost.
 
+## Checking project status
+
+Run the read-only status command from a Blueprint project or any directory
+inside it:
+
+```bash
+npx create-ai-blueprint@latest status
+```
+
+It reports build-plan progress, active work, findings, Git state, drift
+warnings, completion blockers, and one suggested next action. For scripts and
+integrations, request the versioned JSON object:
+
+```bash
+npx create-ai-blueprint@latest status --json
+```
+
+After an interactive Blueprint install, the installer offers to run the
+following optional global installation command:
+
+```bash
+npm install --global create-ai-blueprint@latest
+```
+
+The prompt defaults to no and is skipped for non-interactive and `--yes` runs.
+Global installation exposes the shorter forms `blueprint status` and
+`blueprint status --json`. Use `--target ./my-app` to inspect an explicit
+project directory. Status never edits project or Git state.
+
 ## Help and contributing
 
 - Read the [full documentation](https://ai-blueprint.dev/docs/).

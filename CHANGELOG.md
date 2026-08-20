@@ -5,6 +5,16 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added read-only `status` and `status --json` commands with project discovery,
+  workflow progress, findings blockers, Git state, drift warnings, completion
+  readiness, and deterministic next-action reporting.
+- Added the `blueprint` installed binary as a shorter alias for the existing
+  `create-ai-blueprint` package command.
+- Added an opt-in post-install prompt for installing the exact package version
+  globally so the shorter `blueprint` command is available.
+
 ## [0.8.0] - 2026-08-19
 
 ### Changed

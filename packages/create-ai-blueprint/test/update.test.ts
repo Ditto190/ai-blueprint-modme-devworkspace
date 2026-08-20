@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 
-import { parseArgs } from "../bin/create-ai-blueprint.js";
+import {
+  getGlobalCliInstallCommand,
+  isGlobalCliInstallConfirmed,
+  parseArgs,
+  shouldOfferGlobalCliInstall
+} from "../bin/create-ai-blueprint.js";
 import { CONTROL_DIR, MANIFEST_PATH, applyPreparedUpdate, prepareUpdate, readManifest, writeInstallManifest } from "../lib/update.js";
 
 test("parseArgs supports install and update modes", () => {
@@ -15,13 +20,54 @@ test("parseArgs supports install and update modes", () => {
     dryRun: true,
     force: false,
     help: false,
+    json: false,
     target: null,
+    version: false,
+    yes: false
+  });
+  assert.deepEqual(parseArgs(["status", "--json", "--target", "./app"]), {
+    adapter: null,
+    command: "status",
+    dryRun: false,
+    force: false,
+    help: false,
+    json: true,
+    target: "./app",
     version: false,
     yes: false
   });
   assert.throws(
     () => parseArgs(["update", "--codex"]),
     /Update detects the installed adapters/
+  );
+  assert.throws(
+    () => parseArgs(["status", "--force"]),
+    /Status accepts only/
+  );
+  assert.throws(
+    () => parseArgs(["--json"]),
+    /--json is available only with the status command/
+  );
+});
+
+test("global CLI installation is offered only after an interactive install", () => {
+  assert.equal(shouldOfferGlobalCliInstall(parseArgs([]), true), true);
+  assert.equal(shouldOfferGlobalCliInstall(parseArgs([]), false), false);
+  assert.equal(
+    shouldOfferGlobalCliInstall(parseArgs(["--yes"]), true),
+    false
+  );
+  assert.equal(
+    shouldOfferGlobalCliInstall(parseArgs(["update"]), true),
+    false
+  );
+  assert.equal(isGlobalCliInstallConfirmed("y"), true);
+  assert.equal(isGlobalCliInstallConfirmed(" YES "), true);
+  assert.equal(isGlobalCliInstallConfirmed(""), false);
+  assert.equal(isGlobalCliInstallConfirmed("no"), false);
+  assert.equal(
+    getGlobalCliInstallCommand("0.9.0"),
+    "npm install --global create-ai-blueprint@0.9.0"
   );
 });
 

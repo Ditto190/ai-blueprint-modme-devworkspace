@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import {
+  formatHumanStatus,
+  readProjectStatus,
+  shouldUseColor
+} from "../lib/status.js";
 import { MANIFEST_PATH, applyPreparedUpdate, prepareUpdate, writeInstallManifest } from "../lib/update.js";
 import type { AdapterMode, PreparedUpdate, UpdateResult } from "../lib/update.js";
 
@@ -14,10 +20,11 @@ const templateRoot = path.join(packageRoot, "template");
 
 interface CliOptions {
   adapter: AdapterMode | null;
-  command: "install" | "update";
+  command: "install" | "status" | "update";
   dryRun: boolean;
   force: boolean;
   help: boolean;
+  json: boolean;
   target: string | null;
   version: boolean;
   yes: boolean;
@@ -43,13 +50,24 @@ async function main() {
     return;
   }
 
+  const targetDir = path.resolve(process.cwd(), options.target || ".");
+
+  if (options.command === "status") {
+    const status = await readProjectStatus(targetDir);
+    console.log(
+      options.json
+        ? JSON.stringify(status, null, 2)
+        : formatHumanStatus(status, { color: shouldUseColor() })
+    );
+    return;
+  }
+
   if (!fsSync.existsSync(templateRoot)) {
     throw new Error(
       "Installer template is missing. Run `npm run prepare-template` before local testing."
     );
   }
 
-  const targetDir = path.resolve(process.cwd(), options.target || ".");
   const version = readPackageVersion();
 
   if (options.command === "update") {
@@ -96,6 +114,7 @@ async function main() {
   });
 
   printSuccess(targetDir, adapter, entries, existingEntries);
+  await offerGlobalCliInstall(options, version);
 }
 
 function parseArgs(args: readonly string[]): CliOptions {
@@ -105,6 +124,7 @@ function parseArgs(args: readonly string[]): CliOptions {
     dryRun: false,
     force: false,
     help: false,
+    json: false,
     target: null,
     version: false,
     yes: false
@@ -120,12 +140,12 @@ function parseArgs(args: readonly string[]): CliOptions {
       continue;
     }
 
-    if (arg === "update") {
+    if (arg === "status" || arg === "update") {
       if (commandSeen) {
         throw new Error("Choose only one command.");
       }
 
-      options.command = "update";
+      options.command = arg;
       commandSeen = true;
       continue;
     }
@@ -146,6 +166,11 @@ function parseArgs(args: readonly string[]): CliOptions {
 
     if (arg === "--dry-run") {
       options.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--json") {
+      options.json = true;
       continue;
     }
 
@@ -191,6 +216,19 @@ function parseArgs(args: readonly string[]): CliOptions {
   if (options.command === "update" && options.adapter) {
     throw new Error(
       "Update detects the installed adapters. Do not pass --codex, --claude, or --both."
+    );
+  }
+
+  if (options.command !== "status" && options.json) {
+    throw new Error("--json is available only with the status command.");
+  }
+
+  if (
+    options.command === "status" &&
+    (options.adapter || options.dryRun || options.force || options.yes)
+  ) {
+    throw new Error(
+      "Status accepts only --json, --target, --help, and --version options."
     );
   }
 
@@ -473,6 +511,103 @@ function printClaudeRestartNote(adapter: AdapterMode): void {
   );
 }
 
+async function offerGlobalCliInstall(
+  options: CliOptions,
+  version: string
+): Promise<void> {
+  const command = getGlobalCliInstallCommand(version);
+
+  if (!shouldOfferGlobalCliInstall(options)) {
+    printOptionalGlobalCli(command);
+    return;
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  let answer = "";
+
+  try {
+    answer = await rl.question(
+      `\nInstall the global blueprint command?\nThis runs: ${command}\nContinue? [y/N]: `
+    );
+  } finally {
+    rl.close();
+  }
+
+  if (!isGlobalCliInstallConfirmed(answer)) {
+    printOptionalGlobalCli(command);
+    return;
+  }
+
+  try {
+    await installGlobalCli(version);
+    console.log("\nGlobal CLI installed. Run `blueprint status` from a Blueprint project.");
+  } catch (error: unknown) {
+    console.error(
+      `\nGlobal CLI was not installed: ${error instanceof Error ? error.message : String(error)}`
+    );
+    printOptionalGlobalCli(command);
+  }
+}
+
+function shouldOfferGlobalCliInstall(
+  options: CliOptions,
+  isTTY: boolean | undefined = process.stdin.isTTY
+): boolean {
+  return options.command === "install" && !options.yes && isTTY === true;
+}
+
+function isGlobalCliInstallConfirmed(answer: string): boolean {
+  const normalized = answer.trim().toLowerCase();
+  return normalized === "y" || normalized === "yes";
+}
+
+function getGlobalCliInstallCommand(version: string): string {
+  return `npm install --global create-ai-blueprint@${version}`;
+}
+
+async function installGlobalCli(version: string): Promise<void> {
+  const npmExecPath = process.env.npm_execpath;
+  const packageSpec = `create-ai-blueprint@${version}`;
+  const command = npmExecPath
+    ? process.execPath
+    : process.platform === "win32"
+      ? "npm.cmd"
+      : "npm";
+  const args = npmExecPath
+    ? [npmExecPath, "install", "--global", packageSpec]
+    : ["install", "--global", packageSpec];
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: process.env,
+      stdio: "inherit"
+    });
+
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          signal
+            ? `npm stopped with signal ${signal}`
+            : `npm exited with code ${code ?? "unknown"}`
+        )
+      );
+    });
+  });
+}
+
+function printOptionalGlobalCli(command: string): void {
+  console.log(`\nOptional global CLI:\n  ${command}\n  blueprint status`);
+}
+
 function printHelp(): void {
   console.log(`create-ai-blueprint
 
@@ -481,6 +616,8 @@ Install AI Blueprint into an already scaffolded app.
 Usage:
   npx create-ai-blueprint@latest
   npx create-ai-blueprint@latest update
+  npx create-ai-blueprint@latest status
+  npx create-ai-blueprint@latest status --json
   npx create-ai-blueprint@latest -- --codex
   npx create-ai-blueprint@latest -- --claude
   npx create-ai-blueprint@latest -- --both
@@ -493,6 +630,7 @@ Options:
   --force, -f      Install: overwrite matching files. Update: back up and replace managed conflicts
   --yes, -y        Use defaults in non-interactive installs
   --dry-run        Print what would be copied without writing files
+  --json            Print status as one JSON object
   --help, -h       Show help
   --version, -v    Show package version`);
 }
@@ -525,4 +663,10 @@ if (
   });
 }
 
-export { getTemplateEntries, parseArgs };
+export {
+  getGlobalCliInstallCommand,
+  getTemplateEntries,
+  isGlobalCliInstallConfirmed,
+  parseArgs,
+  shouldOfferGlobalCliInstall
+};

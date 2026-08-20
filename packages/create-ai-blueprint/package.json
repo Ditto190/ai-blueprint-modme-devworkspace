@@ -28,11 +28,12 @@
     "scaffold"
   ],
   "bin": {
-    "create-ai-blueprint": "dist/bin/create-ai-blueprint.js"
+    "create-ai-blueprint": "dist/bin/create-ai-blueprint.js",
+    "blueprint": "dist/bin/create-ai-blueprint.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsx --test test/project-metadata.test.ts test/project-root.test.ts test/update.test.ts",
+    "test": "tsx --test test/build-plan.test.ts test/current-work.test.ts test/findings.test.ts test/project-metadata.test.ts test/project-root.test.ts test/status.test.ts test/update.test.ts",
     "check:pack": "npm pack --dry-run",
     "prepare-template": "tsx scripts/prepare-template.ts",
     "prepack": "npm run build && npm run prepare-template",
