@@ -37,17 +37,31 @@ interface TemplateEntry {
 
 const adapterChoices = new Set<AdapterMode>(["codex", "claude", "both"]);
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
+async function runCli(
+  args: readonly string[] = process.argv.slice(2),
+  surface: "package" | "global" = "package"
+): Promise<void> {
+  if (surface === "global" && args.length === 0) {
+    printGlobalHelp();
+    return;
+  }
+
+  const options = parseArgs(args);
 
   if (options.help) {
-    printHelp();
+    surface === "global" ? printGlobalHelp() : printHelp();
     return;
   }
 
   if (options.version) {
     console.log(readPackageVersion());
     return;
+  }
+
+  if (surface === "global" && options.command !== "status") {
+    throw new Error(
+      "The global blueprint command supports project status only. Use `npx create-ai-blueprint@latest` to install Blueprint or `npx create-ai-blueprint@latest update` to update it."
+    );
   }
 
   const targetDir = path.resolve(process.cwd(), options.target || ".");
@@ -635,6 +649,29 @@ Options:
   --version, -v    Show package version`);
 }
 
+function printGlobalHelp(): void {
+  console.log(`blueprint
+
+Read AI Blueprint project status.
+
+This optional global command does not install or update Blueprint.
+
+Usage:
+  blueprint status
+  blueprint status --json
+  blueprint status --target ./my-app
+
+Options:
+  --target, -t     Project directory, defaults to the current directory
+  --json            Print status as one JSON object
+  --help, -h       Show help
+  --version, -v    Show package version
+
+Install or update Blueprint with:
+  npx create-ai-blueprint@latest
+  npx create-ai-blueprint@latest update`);
+}
+
 function readPackageVersion(): string {
   const packageJson = fsSync.readFileSync(
     path.join(packageRoot, "package.json"),
@@ -657,7 +694,7 @@ if (
   process.argv[1] &&
   fsSync.realpathSync(process.argv[1]) === fsSync.realpathSync(fileURLToPath(import.meta.url))
 ) {
-  main().catch((error: unknown) => {
+  runCli().catch((error: unknown) => {
     console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });
@@ -668,5 +705,6 @@ export {
   getTemplateEntries,
   isGlobalCliInstallConfirmed,
   parseArgs,
+  runCli,
   shouldOfferGlobalCliInstall
 };

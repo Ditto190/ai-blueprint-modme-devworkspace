@@ -152,7 +152,39 @@ async function main(): Promise<void> {
       throw new Error("Installed blueprint command did not report the packaged version");
     }
 
+    const blueprintHelpResult = runInstalledCommand(
+      installedBlueprintCommand,
+      [],
+      workspace,
+      true
+    );
+
+    if (
+      !blueprintHelpResult.stdout.includes("Read AI Blueprint project status") ||
+      !blueprintHelpResult.stdout.includes("does not install or update Blueprint")
+    ) {
+      throw new Error("Installed blueprint command did not show status-only help");
+    }
+
+    let blueprintUpdateError = "";
+
+    try {
+      runInstalledCommand(
+        installedBlueprintCommand,
+        ["update"],
+        workspace,
+        true
+      );
+    } catch (error: unknown) {
+      blueprintUpdateError = error instanceof Error ? error.message : String(error);
+    }
+
+    if (!blueprintUpdateError.includes("supports project status only")) {
+      throw new Error("Installed blueprint command did not reject update");
+    }
+
     await requirePath(path.join(installedPackageRoot, "dist", "lib", "update.js"));
+    await requirePath(path.join(installedPackageRoot, "dist", "bin", "blueprint.js"));
     await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));
     await requireMissing(path.join(installedPackageRoot, "evals"));
     await requireMissing(path.join(installedPackageRoot, "scripts", "evals"));

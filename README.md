@@ -274,6 +274,10 @@ The prompt defaults to no and never runs during non-interactive or `--yes`
 installs. Global installation exposes `blueprint status`. Status reads Markdown
 and Git state without editing either one.
 
+The optional global `blueprint` command is status-only. Continue to use
+`npx create-ai-blueprint@latest` for installation and
+`npx create-ai-blueprint@latest update` for managed workflow updates.
+
 ## Tool support
 
 | Tool | Support | Invocation |

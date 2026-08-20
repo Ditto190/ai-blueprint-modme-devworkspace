@@ -140,6 +140,10 @@ Global installation exposes the shorter forms `blueprint status` and
 `blueprint status --json`. Use `--target ./my-app` to inspect an explicit
 project directory. Status never edits project or Git state.
 
+The optional global `blueprint` command is status-only. Continue to use
+`npx create-ai-blueprint@latest` for installation and
+`npx create-ai-blueprint@latest update` for managed workflow updates.
+
 ## Help and contributing
 
 - Read the [full documentation](https://ai-blueprint.dev/docs/).

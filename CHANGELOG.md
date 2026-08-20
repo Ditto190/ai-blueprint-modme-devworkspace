@@ -5,6 +5,11 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Changed
+
+- Limited the optional global `blueprint` command to read-only project status.
+  Installation and updates remain under `npx create-ai-blueprint@latest`.
+
 ## [0.9.0] - 2026-08-20
 
 ### Added
