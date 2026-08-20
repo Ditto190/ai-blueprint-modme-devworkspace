@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.9.1] - 2026-08-20
+
 ### Changed
 
 - Limited the optional global `blueprint` command to read-only project status.
@@ -131,6 +133,7 @@ published `create-ai-blueprint` package.
 - Added Codex and Claude Code adapters for the file-backed planning, feature,
   implementation, checking, audit, and completion workflow.
 
+[0.9.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.6.0...v0.7.0
