@@ -10,6 +10,7 @@ import {
   getGlobalCliInstallCommand,
   isGlobalCliInstallConfirmed,
   parseArgs,
+  selectGlobalCliAction,
   shouldOfferGlobalCliInstall
 } from "../bin/create-ai-blueprint.js";
 import {
@@ -36,6 +37,7 @@ test("parseArgs supports install and update modes", () => {
     force: false,
     help: false,
     json: false,
+    open: true,
     target: null,
     version: false,
     yes: false
@@ -48,6 +50,7 @@ test("parseArgs supports install and update modes", () => {
     force: false,
     help: false,
     json: true,
+    open: true,
     target: "./app",
     version: false,
     yes: false
@@ -55,6 +58,27 @@ test("parseArgs supports install and update modes", () => {
   assert.throws(
     () => parseArgs(["update", "--codex"]),
     /Update detects the installed adapters/
+  );
+  assert.deepEqual(parseArgs(["ui", "--no-open", "--target", "./app"]), {
+    adapter: null,
+    command: "ui",
+    deprecatedBoth: false,
+    dryRun: false,
+    force: false,
+    help: false,
+    json: false,
+    open: false,
+    target: "./app",
+    version: false,
+    yes: false
+  });
+  assert.throws(
+    () => parseArgs(["ui", "--json"]),
+    /--json is available only with the status command/
+  );
+  assert.throws(
+    () => parseArgs(["status", "--no-open"]),
+    /Status accepts only/
   );
   assert.throws(
     () => parseArgs(["status", "--force"]),
@@ -74,6 +98,7 @@ test("parseArgs supports install and update modes", () => {
     force: false,
     help: false,
     json: false,
+    open: true,
     target: null,
     version: false,
     yes: false
@@ -92,7 +117,7 @@ test("Copilot shares the .agents adapter files without managing Copilot instruct
   assert.deepEqual(adapterListFromMode("all"), ["codex", "claude", "copilot"]);
 });
 
-test("global CLI installation is offered only after an interactive install", () => {
+test("global CLI installation is offered after interactive installs and updates", () => {
   assert.equal(shouldOfferGlobalCliInstall(parseArgs([]), true), true);
   assert.equal(shouldOfferGlobalCliInstall(parseArgs([]), false), false);
   assert.equal(
@@ -101,6 +126,14 @@ test("global CLI installation is offered only after an interactive install", () 
   );
   assert.equal(
     shouldOfferGlobalCliInstall(parseArgs(["update"]), true),
+    true
+  );
+  assert.equal(
+    shouldOfferGlobalCliInstall(parseArgs(["update"]), false),
+    false
+  );
+  assert.equal(
+    shouldOfferGlobalCliInstall(parseArgs(["update", "--yes"]), true),
     false
   );
   assert.equal(isGlobalCliInstallConfirmed("y"), true);
@@ -111,6 +144,9 @@ test("global CLI installation is offered only after an interactive install", () 
     getGlobalCliInstallCommand("0.9.0"),
     "npm install --global create-ai-blueprint@0.9.0"
   );
+  assert.equal(selectGlobalCliAction(null, "0.11.0"), "install");
+  assert.equal(selectGlobalCliAction("0.10.0", "0.11.0"), "update");
+  assert.equal(selectGlobalCliAction("0.11.0", "0.11.0"), null);
 });
 
 test("new installs record only Blueprint-owned managed files", async (t) => {

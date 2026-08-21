@@ -137,21 +137,42 @@ integrations, request the versioned JSON object:
 npx create-ai-blueprint@latest status --json
 ```
 
-After an interactive Blueprint install, the installer offers to run the
-following optional global installation command:
+After an interactive Blueprint install or update, the installer checks the
+global CLI version. It offers to run the following command only when the CLI is
+missing or does not match the npx package version:
 
 ```bash
 npm install --global create-ai-blueprint@latest
 ```
 
-The prompt defaults to no and is skipped for non-interactive and `--yes` runs.
-Global installation exposes the shorter forms `blueprint status` and
-`blueprint status --json`. Use `--target ./my-app` to inspect an explicit
-project directory. Status never edits project or Git state.
+The prompt defaults to no and is skipped for matching versions, non-interactive
+runs, and `--yes` runs. Accepting it installs or refreshes the CLI at the same
+version used by the npx command. Global installation exposes the shorter forms
+`blueprint status`, `blueprint status --json`, and `blueprint ui`. Use `--target
+./my-app` to inspect an explicit project directory. Status never edits project
+or Git state.
 
-The optional global `blueprint` command is status-only. Continue to use
-`npx create-ai-blueprint@latest` for installation and
-`npx create-ai-blueprint@latest update` for managed workflow updates.
+## Opening the local dashboard
+
+Run the on-demand read-only dashboard from a Blueprint project or any directory
+inside it:
+
+```bash
+blueprint ui
+```
+
+The command binds to `127.0.0.1` on an available port, opens the dashboard in
+your browser, and refreshes the existing status contract every second. It does
+not edit project files, run workflow commands, start the application, or make
+the dashboard available outside the local machine. It shows the full build-plan
+roadmap, active work and build steps, archived completed work, findings, Git
+state, completion blockers, and the suggested next action. Press Ctrl+C to stop
+it. Use `blueprint ui --no-open` when you want the URL without opening a browser.
+
+The optional global `blueprint` command is limited to read-only project status
+and this local dashboard. Continue to use `npx create-ai-blueprint@latest` for
+installation and `npx create-ai-blueprint@latest update` for managed workflow
+updates.
 
 ## Help and contributing
 

@@ -166,10 +166,10 @@ async function main(): Promise<void> {
     );
 
     if (
-      !blueprintHelpResult.stdout.includes("Read AI Blueprint project status") ||
+      !blueprintHelpResult.stdout.includes("Read AI Blueprint project status and run its local dashboard") ||
       !blueprintHelpResult.stdout.includes("does not install or update Blueprint")
     ) {
-      throw new Error("Installed blueprint command did not show status-only help");
+      throw new Error("Installed blueprint command did not show inspection-only help");
     }
 
     let blueprintUpdateError = "";
@@ -185,10 +185,11 @@ async function main(): Promise<void> {
       blueprintUpdateError = error instanceof Error ? error.message : String(error);
     }
 
-    if (!blueprintUpdateError.includes("supports project status only")) {
+    if (!blueprintUpdateError.includes("supports project status and the local dashboard only")) {
       throw new Error("Installed blueprint command did not reject update");
     }
 
+    await requirePath(path.join(installedPackageRoot, "dist", "lib", "dashboard.js"));
     await requirePath(path.join(installedPackageRoot, "dist", "lib", "update.js"));
     await requirePath(path.join(installedPackageRoot, "dist", "bin", "blueprint.js"));
     await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));

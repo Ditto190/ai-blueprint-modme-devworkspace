@@ -44,7 +44,11 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
     remaining: 1,
     total: 2,
     nextItem: { id: "2", title: "Status command" },
-    splitParents: []
+    splitParents: [],
+    items: [
+      { id: "1", title: "Foundation", checked: true },
+      { id: "2", title: "Status command", checked: false }
+    ]
   });
   assert.deepEqual(status.currentWork, {
     state: "active",
@@ -55,8 +59,13 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
     completed: 1,
     remaining: 1,
     total: 2,
-    nextStep: { title: "Print status" }
+    nextStep: { title: "Print status" },
+    steps: [
+      { checked: true, title: "Read plans" },
+      { checked: false, title: "Print status" }
+    ]
   });
+  assert.deepEqual(status.history, { total: 0, items: [] });
   assert.equal(status.findings.byStatus.open, 1);
   assert.deepEqual(status.findings.active.map((finding) => finding.id), ["F-01"]);
   assert.deepEqual(status.findings.blockers, []);

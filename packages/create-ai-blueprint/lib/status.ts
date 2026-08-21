@@ -19,6 +19,8 @@ import type {
 } from "./findings.js";
 import { readGitStatus } from "./git-status.js";
 import type { GitStatusSummary } from "./git-status.js";
+import { readHistory } from "./history.js";
+import type { HistoryItem, HistorySummary } from "./history.js";
 import { readProjectMetadata } from "./project-metadata.js";
 import type { ProjectAdapter } from "./project-metadata.js";
 
@@ -36,6 +38,7 @@ interface StatusBuildPlan {
   total: number;
   nextItem: Pick<BuildPlanItem, "id" | "title"> | null;
   splitParents: Array<Pick<BuildPlanItem, "id" | "title">>;
+  items: Array<Pick<BuildPlanItem, "id" | "title" | "checked">>;
 }
 
 interface StatusCurrentWork {
@@ -48,6 +51,12 @@ interface StatusCurrentWork {
   remaining: number;
   total: number;
   nextStep: { title: string } | null;
+  steps: Array<{ checked: boolean; title: string }>;
+}
+
+interface StatusHistory {
+  total: number;
+  items: Array<Pick<HistoryItem, "type" | "title" | "buildPlanItem" | "status">>;
 }
 
 interface StatusFindings {
@@ -102,6 +111,7 @@ interface ProjectStatus {
     build: StatusBuildPlan;
   };
   currentWork: StatusCurrentWork;
+  history: StatusHistory;
   findings: StatusFindings;
   git: GitStatusSummary;
   completion: StatusCompletion;
@@ -121,10 +131,11 @@ async function readProjectStatus(
   startPath: string = process.cwd()
 ): Promise<ProjectStatus> {
   const metadata = await readProjectMetadata(startPath);
-  const [buildPlan, currentWork, findings, git, overviewResult] = await Promise.all([
+  const [buildPlan, currentWork, findings, history, git, overviewResult] = await Promise.all([
     readBuildPlan(metadata.project.root),
     readCurrentWork(metadata.project.root),
     readFindings(metadata.project.root),
+    readHistory(metadata.project.root),
     readGitStatus(metadata.project.root),
     readOverviewStatus(metadata.project.root)
   ]);
@@ -156,6 +167,7 @@ async function readProjectStatus(
       build: formatBuildPlan(buildPlan)
     },
     currentWork: formatCurrentWork(currentWork),
+    history: formatHistory(history),
     findings: formatFindings(findings),
     git,
     completion,
@@ -201,6 +213,7 @@ function formatHumanStatus(
   }
 
   lines.push(
+    formatRow("History", `${status.history.total} archived`, style),
     formatRow("Findings", formatFindingsValue(status.findings, style), style),
     formatRow("Completion", formatCompletionValue(status.completion, style), style),
     "",
@@ -378,6 +391,11 @@ function formatBuildPlan(buildPlan: BuildPlanSummary): StatusBuildPlan {
     splitParents: buildPlan.splitParents.map((item) => ({
       id: item.id,
       title: item.title
+    })),
+    items: buildPlan.leafItems.map((item) => ({
+      id: item.id,
+      title: item.title,
+      checked: item.checked
     }))
   };
 }
@@ -394,7 +412,23 @@ function formatCurrentWork(currentWork: CurrentWorkSummary): StatusCurrentWork {
     total: currentWork.total,
     nextStep: currentWork.nextStep
       ? { title: currentWork.nextStep.title }
-      : null
+      : null,
+    steps: currentWork.steps.map((step) => ({
+      checked: step.checked,
+      title: step.title
+    }))
+  };
+}
+
+function formatHistory(history: HistorySummary): StatusHistory {
+  return {
+    total: history.total,
+    items: history.items.map((item) => ({
+      type: item.type,
+      title: item.title,
+      buildPlanItem: item.buildPlanItem,
+      status: item.status
+    }))
   };
 }
 
@@ -755,6 +789,7 @@ export type {
   StatusCompletion,
   StatusCurrentWork,
   StatusFindings,
+  StatusHistory,
   StatusNextAction,
   StatusOverview,
   StatusWarning

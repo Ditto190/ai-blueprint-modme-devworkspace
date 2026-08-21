@@ -6,6 +6,7 @@ import fsSync from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import { openDashboard, startDashboardServer } from "../lib/dashboard.js";
 import {
   formatHumanStatus,
   readProjectStatus,
@@ -22,12 +23,13 @@ const ADAPTER_PROMPT =
 
 interface CliOptions {
   adapter: AdapterMode | null;
-  command: "install" | "status" | "update";
+  command: "install" | "status" | "ui" | "update";
   deprecatedBoth: boolean;
   dryRun: boolean;
   force: boolean;
   help: boolean;
   json: boolean;
+  open: boolean;
   target: string | null;
   version: boolean;
   yes: boolean;
@@ -37,6 +39,8 @@ interface TemplateEntry {
   source: string;
   target: string;
 }
+
+type GlobalCliAction = "install" | "update" | null;
 
 const adapterChoices = new Set<AdapterMode>(["all", "claude", "codex", "copilot"]);
 
@@ -61,9 +65,13 @@ async function runCli(
     return;
   }
 
-  if (surface === "global" && options.command !== "status") {
+  if (
+    surface === "global" &&
+    options.command !== "status" &&
+    options.command !== "ui"
+  ) {
     throw new Error(
-      "The global blueprint command supports project status only. Use `npx create-ai-blueprint@latest` to install Blueprint or `npx create-ai-blueprint@latest update` to update it."
+      "The global blueprint command supports project status and the local dashboard only. Use `npx create-ai-blueprint@latest` to install Blueprint or `npx create-ai-blueprint@latest update` to update it."
     );
   }
 
@@ -76,6 +84,26 @@ async function runCli(
         ? JSON.stringify(status, null, 2)
         : formatHumanStatus(status, { color: shouldUseColor() })
     );
+    return;
+  }
+
+  if (options.command === "ui") {
+    const dashboard = await startDashboardServer(targetDir);
+    console.log(`Blueprint dashboard: ${dashboard.url}`);
+    console.log("Press Ctrl+C to stop.");
+
+    if (options.open) {
+      try {
+        await openDashboard(dashboard.url);
+      } catch (error: unknown) {
+        console.warn(
+          `Could not open the browser automatically: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
+    await waitForShutdown();
+    await dashboard.close();
     return;
   }
 
@@ -103,6 +131,7 @@ async function runCli(
       options.force || (await confirmUpdateConflicts(prepared, options));
     const result = await applyPreparedUpdate(prepared, { replaceConflicts });
     printUpdateSuccess(prepared, result);
+    await offerGlobalCliInstall(options, version);
     return;
   }
 
@@ -147,6 +176,7 @@ function parseArgs(args: readonly string[]): CliOptions {
     force: false,
     help: false,
     json: false,
+    open: true,
     target: null,
     version: false,
     yes: false
@@ -162,7 +192,7 @@ function parseArgs(args: readonly string[]): CliOptions {
       continue;
     }
 
-    if (arg === "status" || arg === "update") {
+    if (arg === "status" || arg === "ui" || arg === "update") {
       if (commandSeen) {
         throw new Error("Choose only one command.");
       }
@@ -193,6 +223,11 @@ function parseArgs(args: readonly string[]): CliOptions {
 
     if (arg === "--json") {
       options.json = true;
+      continue;
+    }
+
+    if (arg === "--no-open") {
+      options.open = false;
       continue;
     }
 
@@ -255,11 +290,24 @@ function parseArgs(args: readonly string[]): CliOptions {
 
   if (
     options.command === "status" &&
-    (options.adapter || options.dryRun || options.force || options.yes)
+    (options.adapter || options.dryRun || options.force || options.yes || !options.open)
   ) {
     throw new Error(
       "Status accepts only --json, --target, --help, and --version options."
     );
+  }
+
+  if (
+    options.command === "ui" &&
+    (options.adapter || options.dryRun || options.force || options.yes)
+  ) {
+    throw new Error(
+      "UI accepts only --target, --no-open, --help, and --version options."
+    );
+  }
+
+  if (options.command !== "ui" && !options.open) {
+    throw new Error("--no-open is available only with the ui command.");
   }
 
   return options;
@@ -558,6 +606,18 @@ async function offerGlobalCliInstall(
     return;
   }
 
+  const installedVersion = await readGlobalCliVersion();
+  const action = selectGlobalCliAction(installedVersion, version);
+
+  if (!action) {
+    console.log(`\nGlobal CLI already matches version ${version}.`);
+    return;
+  }
+
+  const question = action === "install"
+    ? "Install the global blueprint command?"
+    : `Update the global blueprint command from ${installedVersion} to ${version}?`;
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -566,7 +626,7 @@ async function offerGlobalCliInstall(
 
   try {
     answer = await rl.question(
-      `\nInstall the global blueprint command?\nThis runs: ${command}\nContinue? [y/N]: `
+      `\n${question}\nThis runs: ${command}\nContinue? [y/N]: `
     );
   } finally {
     rl.close();
@@ -579,20 +639,103 @@ async function offerGlobalCliInstall(
 
   try {
     await installGlobalCli(version);
-    console.log("\nGlobal CLI installed. Run `blueprint status` from a Blueprint project.");
+    console.log(
+      "\nGlobal CLI ready. Run `blueprint status` or `blueprint ui` from a Blueprint project."
+    );
   } catch (error: unknown) {
     console.error(
-      `\nGlobal CLI was not installed: ${error instanceof Error ? error.message : String(error)}`
+      `\nGlobal CLI was not installed or updated: ${error instanceof Error ? error.message : String(error)}`
     );
     printOptionalGlobalCli(command);
   }
+}
+
+function selectGlobalCliAction(
+  installedVersion: string | null,
+  targetVersion: string
+): GlobalCliAction {
+  if (installedVersion === targetVersion) {
+    return null;
+  }
+
+  return installedVersion ? "update" : "install";
+}
+
+async function readGlobalCliVersion(): Promise<string | null> {
+  const npmExecPath = process.env.npm_execpath;
+  const command = npmExecPath
+    ? process.execPath
+    : process.platform === "win32"
+      ? "npm.cmd"
+      : "npm";
+  const args = npmExecPath
+    ? [npmExecPath, "root", "--global"]
+    : ["root", "--global"];
+
+  try {
+    const globalRoot = (await readCommandOutput(command, args)).trim();
+    if (!globalRoot) {
+      return null;
+    }
+
+    const packageJson = await fs.readFile(
+      path.join(globalRoot, "create-ai-blueprint", "package.json"),
+      "utf8"
+    );
+    const metadata: unknown = JSON.parse(packageJson);
+
+    return typeof metadata === "object" &&
+      metadata !== null &&
+      typeof (metadata as { version?: unknown }).version === "string"
+      ? (metadata as { version: string }).version
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readCommandOutput(
+  command: string,
+  args: readonly string[]
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: process.env,
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    let output = "";
+
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk: string) => {
+      output += chunk;
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+
+      reject(
+        new Error(
+          signal
+            ? `npm stopped with signal ${signal}`
+            : `npm exited with code ${code ?? "unknown"}`
+        )
+      );
+    });
+  });
 }
 
 function shouldOfferGlobalCliInstall(
   options: CliOptions,
   isTTY: boolean | undefined = process.stdin.isTTY
 ): boolean {
-  return options.command === "install" && !options.yes && isTTY === true;
+  return (
+    (options.command === "install" || options.command === "update") &&
+    !options.yes &&
+    isTTY === true
+  );
 }
 
 function isGlobalCliInstallConfirmed(answer: string): boolean {
@@ -640,8 +783,23 @@ async function installGlobalCli(version: string): Promise<void> {
   });
 }
 
+async function waitForShutdown(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const stop = (): void => {
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
+      resolve();
+    };
+
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+  });
+}
+
 function printOptionalGlobalCli(command: string): void {
-  console.log(`\nOptional global CLI:\n  ${command}\n  blueprint status`);
+  console.log(
+    `\nOptional global CLI:\n  ${command}\n  blueprint status\n  blueprint ui`
+  );
 }
 
 function printHelp(): void {
@@ -654,6 +812,7 @@ Usage:
   npx create-ai-blueprint@latest update
   npx create-ai-blueprint@latest status
   npx create-ai-blueprint@latest status --json
+  npx create-ai-blueprint@latest ui
   npx create-ai-blueprint@latest -- --codex
   npx create-ai-blueprint@latest -- --claude
   npx create-ai-blueprint@latest -- --copilot
@@ -671,6 +830,7 @@ Options:
   --yes, -y        Use defaults in non-interactive installs
   --dry-run        Print what would be copied without writing files
   --json            Print status as one JSON object
+  --no-open         Start the local dashboard without opening a browser
   --help, -h       Show help
   --version, -v    Show package version`);
 }
@@ -678,7 +838,7 @@ Options:
 function printGlobalHelp(): void {
   console.log(`blueprint
 
-Read AI Blueprint project status.
+Read AI Blueprint project status and run its local dashboard.
 
 This optional global command does not install or update Blueprint.
 
@@ -686,10 +846,13 @@ Usage:
   blueprint status
   blueprint status --json
   blueprint status --target ./my-app
+  blueprint ui
+  blueprint ui --no-open
 
 Options:
   --target, -t     Project directory, defaults to the current directory
   --json            Print status as one JSON object
+  --no-open         Start the local dashboard without opening a browser
   --help, -h       Show help
   --version, -v    Show package version
 
@@ -733,5 +896,6 @@ export {
   isGlobalCliInstallConfirmed,
   parseArgs,
   runCli,
+  selectGlobalCliAction,
   shouldOfferGlobalCliInstall
 };

@@ -5,6 +5,16 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added `blueprint ui`, an on-demand read-only dashboard that binds to
+  `127.0.0.1`, displays the build-plan roadmap, active work, completed history,
+  findings, Git state, and next action, refreshes every second, and stops with
+  the CLI process.
+- Added the optional global CLI prompt to interactive Blueprint updates so
+  existing users can install or refresh `blueprint ui` with the npx package
+  version they just used. Matching installed versions skip the prompt.
+
 ## [0.10.0] - 2026-08-21
 
 ### Added

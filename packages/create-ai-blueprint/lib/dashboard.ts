@@ -1,0 +1,622 @@
+import { spawn } from "node:child_process";
+import http from "node:http";
+
+import { readProjectStatus } from "./status.js";
+
+interface DashboardServer {
+  close: () => Promise<void>;
+  url: string;
+}
+
+interface DashboardServerOptions {
+  port?: number;
+}
+
+const DASHBOARD_HOST = "127.0.0.1";
+
+async function startDashboardServer(
+  startPath: string = process.cwd(),
+  options: DashboardServerOptions = {}
+): Promise<DashboardServer> {
+  const initialStatus = await readProjectStatus(startPath);
+  const projectRoot = initialStatus.project.root;
+  const server = http.createServer((request, response) => {
+    void handleRequest(projectRoot, request, response);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const onError = (error: Error): void => {
+      server.off("listening", onListening);
+      reject(error);
+    };
+    const onListening = (): void => {
+      server.off("error", onError);
+      resolve();
+    };
+
+    server.once("error", onError);
+    server.once("listening", onListening);
+    server.listen(options.port ?? 0, DASHBOARD_HOST);
+  });
+
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    await closeServer(server);
+    throw new Error("Blueprint dashboard could not determine its local address.");
+  }
+
+  return {
+    url: `http://${DASHBOARD_HOST}:${address.port}`,
+    close: () => closeServer(server)
+  };
+}
+
+async function handleRequest(
+  projectRoot: string,
+  request: http.IncomingMessage,
+  response: http.ServerResponse
+): Promise<void> {
+  const method = request.method || "GET";
+  if (method !== "GET" && method !== "HEAD") {
+    response.setHeader("Allow", "GET, HEAD");
+    sendResponse(response, method, 405, "text/plain; charset=utf-8", "Method not allowed.\n");
+    return;
+  }
+
+  const pathname = new URL(request.url || "/", `http://${DASHBOARD_HOST}`).pathname;
+
+  if (pathname === "/") {
+    response.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    );
+    sendResponse(response, method, 200, "text/html; charset=utf-8", DASHBOARD_HTML);
+    return;
+  }
+
+  if (pathname === "/api/status") {
+    try {
+      const status = await readProjectStatus(projectRoot);
+      sendResponse(
+        response,
+        method,
+        200,
+        "application/json; charset=utf-8",
+        `${JSON.stringify(status)}\n`
+      );
+    } catch (error: unknown) {
+      sendResponse(
+        response,
+        method,
+        500,
+        "application/json; charset=utf-8",
+        `${JSON.stringify({
+          error: error instanceof Error ? error.message : "Unable to read Blueprint status."
+        })}\n`
+      );
+    }
+    return;
+  }
+
+  if (pathname === "/favicon.ico") {
+    sendResponse(response, method, 204, "text/plain; charset=utf-8", "");
+    return;
+  }
+
+  sendResponse(response, method, 404, "text/plain; charset=utf-8", "Not found.\n");
+}
+
+function sendResponse(
+  response: http.ServerResponse,
+  method: string,
+  statusCode: number,
+  contentType: string,
+  body: string
+): void {
+  response.statusCode = statusCode;
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("Content-Type", contentType);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.end(method === "HEAD" ? undefined : body);
+}
+
+async function closeServer(server: http.Server): Promise<void> {
+  if (!server.listening) {
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+async function openDashboard(url: string): Promise<void> {
+  const command = process.platform === "darwin"
+    ? "open"
+    : process.platform === "win32"
+      ? "cmd"
+      : "xdg-open";
+  const args = process.platform === "win32"
+    ? ["/c", "start", "", url]
+    : [url];
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore"
+    });
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
+}
+
+const DASHBOARD_HTML: string = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blueprint Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --paper: #f5f6f3;
+      --paper-bright: #fbfcfa;
+      --surface: rgba(255, 255, 255, .78);
+      --surface-solid: #ffffff;
+      --surface-muted: #eef1ed;
+      --ink: #121817;
+      --ink-soft: #45504d;
+      --ink-muted: #717b78;
+      --line: #d9ded9;
+      --line-strong: #bdc7c1;
+      --blue: #155eef;
+      --blue-dark: #0b43ba;
+      --blue-soft: #e9f0ff;
+      --green: #0b7a53;
+      --green-soft: #e7f5ee;
+      --amber: #9a5700;
+      --amber-soft: #fff2d9;
+      --red: #a5333f;
+      --red-soft: #fdebed;
+      --code: #111715;
+      --code-raised: #171e1c;
+      --code-line: #2c3532;
+      --code-text: #d9dfdc;
+      --code-muted: #9ba7a2;
+      --code-blue: #76a8ff;
+      --code-green: #70d5a9;
+      font-family: var(--font-sans);
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        linear-gradient(rgba(21, 94, 239, .09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(21, 94, 239, .09) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, rgba(21, 94, 239, .08), transparent 34rem),
+        var(--paper);
+      background-size: 40px 40px, 40px 40px, auto, auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection { color: #fff; background: var(--blue); }
+
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 64px; }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin-bottom: 28px;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
+    .brand-context { color: var(--ink-muted); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    .brand-separator { width: 1px; height: 17px; background: var(--line-strong); }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--blue-dark);
+      font: 600 11px/1 var(--font-mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before { width: 22px; height: 1px; content: ""; background: var(--blue); }
+
+    h1 { margin: 13px 0 8px; color: var(--ink); font-size: clamp(32px, 4vw, 50px); letter-spacing: -.045em; }
+    .path { max-width: 760px; overflow-wrap: anywhere; color: var(--ink-muted); font: 12px/1.6 var(--font-mono); }
+
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .82);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(18, 24, 23, .05);
+    }
+
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(11, 122, 83, .1); }
+    .live.offline .live-dot { background: var(--red); box-shadow: 0 0 0 4px rgba(165, 51, 63, .1); }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .card { grid-column: span 4; min-width: 0; padding: 22px; border: 1px solid rgba(189, 199, 193, .78); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(18, 24, 23, .05), 0 10px 30px rgba(18, 24, 23, .04); backdrop-filter: blur(14px); }
+    .card.wide { grid-column: span 8; }
+    .card.full { grid-column: 1 / -1; }
+
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .label { color: var(--blue-dark); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+    .value { color: var(--ink); font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+    .muted { color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
+
+    .pill { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-muted); background: var(--surface-muted); font: 600 10px/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; }
+    .pill.ok, .pill.ready, .pill.active { border-color: #b9dfce; background: var(--green-soft); color: var(--green); }
+    .pill.warning, .pill.blocked, .pill.needs_verification { border-color: #efd5a5; background: var(--amber-soft); color: var(--amber); }
+    .pill.malformed, .pill.unavailable { border-color: #efc2c7; background: var(--red-soft); color: var(--red); }
+
+    .facts { display: grid; gap: 12px; }
+    .fact { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+    .fact:last-child { padding-bottom: 0; border-bottom: 0; }
+    .fact span:first-child { color: var(--ink-muted); font-size: 12px; }
+    .fact span:last-child { max-width: 70%; overflow-wrap: anywhere; color: var(--ink-soft); font: 12px/1.45 var(--font-mono); text-align: right; }
+
+    .progress { height: 8px; margin: 16px 0 10px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
+    .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); transition: width .25s ease; }
+
+    .code-panel { color: var(--code-text); border-color: var(--code-line); background: var(--code); box-shadow: 0 24px 80px rgba(18, 24, 23, .12); backdrop-filter: none; }
+    .code-panel .label { color: var(--code-blue); }
+    .code-panel .value { color: #fff; }
+    .code-panel .muted { color: var(--code-muted); }
+    .code-panel .fact { border-color: var(--code-line); }
+    .code-panel .fact span:first-child { color: var(--code-muted); }
+    .code-panel .fact span:last-child { color: var(--code-text); }
+    .code-panel .pill { border-color: #35403d; background: var(--code-raised); color: var(--code-muted); }
+    .code-panel .pill.active, .code-panel .pill.ready, .code-panel .pill.ok { border-color: #285f4b; background: #173c30; color: var(--code-green); }
+    .code-panel .pill.warning, .code-panel .pill.blocked, .code-panel .pill.needs_verification { border-color: #6a5029; background: #332919; color: #e8bd72; }
+    .code-panel .pill.malformed, .code-panel .pill.unavailable { border-color: #6a3339; background: #321c20; color: #ef9aa4; }
+
+    .next-action { padding: 24px; }
+    .command { margin: 13px 0 8px; color: var(--code-blue); font: 600 clamp(20px, 3vw, 29px)/1.3 var(--font-mono); overflow-wrap: anywhere; }
+
+    ul { margin: 0; padding: 0; list-style: none; }
+    li { padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+    li:last-child { border-bottom: 0; }
+    .timeline { max-height: 280px; margin-top: 14px; padding-right: 8px; overflow-y: auto; }
+    .timeline-item { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: baseline; gap: 10px; }
+    .timeline-mark { color: var(--ink-muted); font: 600 12px/1 var(--font-mono); }
+    .timeline-item.done .timeline-mark { color: var(--green); }
+    .timeline-item.current { color: var(--ink); font-weight: 600; }
+    .timeline-item.current .timeline-mark { color: var(--blue); }
+    .timeline-meta { color: var(--ink-muted); font: 10px/1.4 var(--font-mono); text-transform: uppercase; }
+    .timeline-title { min-width: 0; overflow-wrap: anywhere; }
+    .empty { color: var(--ink-muted); }
+    .error { color: var(--red); }
+
+    footer { margin-top: 18px; color: var(--ink-muted); font: 11px/1.6 var(--font-mono); }
+
+    @media (max-width: 860px) {
+      .card, .card.wide { grid-column: span 6; }
+      .card.full { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 24px, 1180px); padding-top: 24px; }
+      header { flex-direction: column; }
+      .brand { margin-bottom: 22px; }
+      .card, .card.wide, .card.full { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" role="img" aria-label="AI Blueprint">
+        <path fill="#155eef" d="M4 4h25.2L16.3 44H4zM39.7 4H44v40H26.8z"></path>
+      </svg>
+      <span>AI Blueprint</span>
+      <span class="brand-separator" aria-hidden="true"></span>
+      <span class="brand-context">Dashboard</span>
+    </div>
+    <header>
+      <div>
+        <div class="eyebrow">Local project status</div>
+        <h1 id="project-name">Loading project...</h1>
+        <div class="path" id="project-path"></div>
+      </div>
+      <div class="live" id="live-state"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head"><span class="label">Blueprint</span><span class="pill" id="health">Loading</span></div>
+        <div class="facts">
+          <div class="fact"><span>Version</span><span id="version">-</span></div>
+          <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
+          <div class="fact"><span>Overview</span><span id="overview">-</span></div>
+        </div>
+      </article>
+
+      <article class="card wide">
+        <div class="card-head"><span class="label">Build plan</span><span class="value" id="build-count">-</span></div>
+        <div class="progress"><span id="build-progress"></span></div>
+        <div class="muted" id="build-next">Reading the plan...</div>
+        <ul class="timeline" id="build-list"><li class="empty">Loading the roadmap...</li></ul>
+      </article>
+
+      <article class="card wide">
+        <div class="card-head"><span class="label">Current work</span><span class="pill" id="work-state">Loading</span></div>
+        <div class="value" id="work-title">-</div>
+        <div class="muted" id="work-meta"></div>
+        <ul class="timeline" id="work-list"><li class="empty">Loading build steps...</li></ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><span class="label">Git</span><span class="pill" id="git-state">Loading</span></div>
+        <div class="facts">
+          <div class="fact"><span>Branch</span><span id="git-branch">-</span></div>
+          <div class="fact"><span>Changed</span><span id="git-changed">-</span></div>
+          <div class="fact"><span>Upstream</span><span id="git-upstream">-</span></div>
+        </div>
+      </article>
+
+      <article class="card full">
+        <div class="card-head"><span class="label">Completed work</span><span class="value" id="history-count">-</span></div>
+        <div class="muted">Archived features, fixes, and rollbacks from Blueprint history.</div>
+        <ul class="timeline" id="history-list"><li class="empty">Loading completed work...</li></ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><span class="label">Findings</span><span class="value" id="findings-count">-</span></div>
+        <ul id="findings-list"><li class="empty">Loading findings...</li></ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><span class="label">Completion</span><span class="pill" id="completion-state">Loading</span></div>
+        <ul id="completion-list"><li class="empty">Checking readiness...</li></ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><span class="label">Attention</span><span class="value" id="warnings-count">-</span></div>
+        <ul id="warnings-list"><li class="empty">Loading warnings...</li></ul>
+      </article>
+
+      <article class="card full code-panel next-action">
+        <span class="label">Next action</span>
+        <div class="command" id="next-command">Loading...</div>
+        <div class="muted" id="next-reason"></div>
+      </article>
+    </section>
+
+    <footer>Read-only local dashboard. Refreshes every second while this Blueprint process is running.</footer>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    let lastPayload = "";
+    let refreshing = false;
+
+    function setPill(id, value) {
+      const node = byId(id);
+      node.textContent = String(value).replaceAll("_", " ");
+      node.className = "pill " + value;
+    }
+
+    function setList(id, values, emptyMessage) {
+      const list = byId(id);
+      list.replaceChildren();
+      const items = values.length > 0 ? values : [emptyMessage];
+      for (const value of items) {
+        const item = document.createElement("li");
+        item.textContent = value;
+        if (values.length === 0) item.className = "empty";
+        list.append(item);
+      }
+    }
+
+    function addTimelineItem(list, options) {
+      const item = document.createElement("li");
+      item.className = "timeline-item" + (options.className ? " " + options.className : "");
+
+      const mark = document.createElement("span");
+      mark.className = "timeline-mark";
+      mark.textContent = options.mark;
+
+      const title = document.createElement("span");
+      title.className = "timeline-title";
+      title.textContent = options.title;
+
+      const meta = document.createElement("span");
+      meta.className = "timeline-meta";
+      meta.textContent = options.meta;
+
+      item.append(mark, title, meta);
+      list.append(item);
+    }
+
+    function setBuildPlan(items, currentId, nextId) {
+      const list = byId("build-list");
+      list.replaceChildren();
+
+      if (items.length === 0) {
+        const item = document.createElement("li");
+        item.className = "empty";
+        item.textContent = "No build-plan items are available.";
+        list.append(item);
+        return;
+      }
+
+      for (const item of items) {
+        const isCurrent = currentId && item.id === currentId;
+        addTimelineItem(list, {
+          mark: item.checked ? "✓" : isCurrent ? "›" : "○",
+          title: (item.id ? item.id + " - " : "") + item.title,
+          meta: isCurrent ? "current" : item.checked ? "done" : item.id === nextId ? "next" : "planned",
+          className: item.checked ? "done" : isCurrent ? "current" : ""
+        });
+      }
+    }
+
+    function setWorkSteps(work) {
+      const list = byId("work-list");
+      list.replaceChildren();
+
+      if (work.steps.length === 0) {
+        const item = document.createElement("li");
+        item.className = "empty";
+        item.textContent = work.state === "idle" ? "No feature is active." : "No valid build steps were found.";
+        list.append(item);
+        return;
+      }
+
+      const nextIndex = work.steps.findIndex((step) => !step.checked);
+      work.steps.forEach((step, index) => {
+        addTimelineItem(list, {
+          mark: step.checked ? "✓" : index === nextIndex ? "›" : "○",
+          title: step.title,
+          meta: step.checked ? "done" : index === nextIndex ? "next" : "waiting",
+          className: step.checked ? "done" : index === nextIndex ? "current" : ""
+        });
+      });
+    }
+
+    function setHistory(history) {
+      const list = byId("history-list");
+      list.replaceChildren();
+      byId("history-count").textContent = String(history.total);
+
+      if (history.items.length === 0) {
+        const item = document.createElement("li");
+        item.className = "empty";
+        item.textContent = "No completed work has been archived yet.";
+        list.append(item);
+        return;
+      }
+
+      for (const item of history.items) {
+        addTimelineItem(list, {
+          mark: "✓",
+          title: (item.buildPlanItem ? item.buildPlanItem + " - " : "") + item.title,
+          meta: item.type,
+          className: "done"
+        });
+      }
+    }
+
+    function render(status) {
+      byId("project-name").textContent = status.project.name;
+      byId("project-path").textContent = status.project.root;
+      setPill("health", status.health);
+      byId("version").textContent = status.blueprint.version || "unknown";
+      byId("adapters").textContent = status.blueprint.adapters.join(", ") || "none detected";
+      byId("overview").textContent = status.plans.overview.state;
+
+      const build = status.plans.build;
+      byId("build-count").textContent = build.completed + "/" + build.total + " complete";
+      byId("build-progress").style.width = build.total > 0 ? ((build.completed / build.total) * 100) + "%" : "0%";
+      byId("build-next").textContent = build.nextItem
+        ? "Next: " + build.nextItem.id + " - " + build.nextItem.title
+        : build.total > 0 ? "All planned work is checked." : "Build plan is not ready.";
+
+      const work = status.currentWork;
+      setBuildPlan(build.items, work.buildPlanItem, build.nextItem ? build.nextItem.id : null);
+      setPill("work-state", work.state);
+      byId("work-title").textContent = work.title || "No active work";
+      byId("work-meta").textContent = work.type
+        ? work.type + (work.status ? " | " + work.status : "") + (work.buildPlanItem ? " | build-plan item " + work.buildPlanItem : "")
+        : "Blueprint is idle.";
+      setWorkSteps(work);
+      setHistory(status.history);
+
+      const git = status.git;
+      setPill("git-state", !git.available ? "unavailable" : git.clean ? "ok" : "warning");
+      byId("git-branch").textContent = git.branch || "unavailable";
+      byId("git-changed").textContent = git.available ? String(git.changedFiles) : "unavailable";
+      byId("git-upstream").textContent = git.upstream || "none";
+
+      byId("findings-count").textContent = String(status.findings.total);
+      setList(
+        "findings-list",
+        status.findings.active.map((finding) => finding.id + " [" + finding.severity + "] " + finding.status + " - " + finding.title),
+        "No active findings."
+      );
+
+      setPill("completion-state", status.completion.state);
+      setList("completion-list", status.completion.blockers, "No completion blockers.");
+      byId("warnings-count").textContent = String(status.warnings.length);
+      setList("warnings-list", status.warnings.map((warning) => warning.message), "Nothing needs attention.");
+
+      byId("next-command").textContent = status.nextAction.command || "No command required";
+      byId("next-reason").textContent = status.nextAction.reason;
+    }
+
+    async function refresh() {
+      if (refreshing || document.hidden) return;
+      refreshing = true;
+
+      try {
+        const response = await fetch("/api/status", { cache: "no-store" });
+        if (!response.ok) throw new Error("Status request failed with " + response.status + ".");
+        const text = await response.text();
+        if (text !== lastPayload) {
+          render(JSON.parse(text));
+          lastPayload = text;
+        }
+        byId("live-state").className = "live";
+        byId("live-label").textContent = "Live";
+      } catch (error) {
+        byId("live-state").className = "live offline";
+        byId("live-label").textContent = "Disconnected";
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 1000);
+    document.addEventListener("visibilitychange", refresh);
+  </script>
+</body>
+</html>`;
+
+export { DASHBOARD_HOST, openDashboard, startDashboardServer };
+
+export type { DashboardServer, DashboardServerOptions };

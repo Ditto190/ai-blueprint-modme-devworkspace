@@ -263,20 +263,43 @@ needs the same versioned state:
 npx create-ai-blueprint@latest status --json
 ```
 
-After an interactive Blueprint install, the installer offers to run this
-optional global installation command:
+After an interactive Blueprint install or update, the installer checks the
+global CLI version. It offers to run this command only when the CLI is missing
+or does not match the npx package version:
 
 ```bash
 npm install --global create-ai-blueprint@latest
 ```
 
 The prompt defaults to no and never runs during non-interactive or `--yes`
-installs. Global installation exposes `blueprint status`. Status reads Markdown
-and Git state without editing either one.
+installs or updates. Matching versions continue without a prompt. Accepting the
+prompt installs or refreshes the CLI at the same version used by the npx
+command. Global installation exposes `blueprint status`, `blueprint status
+--json`, and `blueprint ui`. Both status surfaces read Markdown and Git state
+without editing either one.
 
-The optional global `blueprint` command is status-only. Continue to use
-`npx create-ai-blueprint@latest` for installation and
-`npx create-ai-blueprint@latest update` for managed workflow updates.
+### Open the local dashboard
+
+Run the on-demand read-only dashboard from a Blueprint project or a nested
+directory:
+
+```bash
+blueprint ui
+```
+
+The command binds to `127.0.0.1` on an available port, opens the dashboard in
+your browser, and refreshes the existing status contract every second. It does
+not edit project files, run workflow commands, start the application, or make
+the dashboard available outside the local machine. The dashboard shows the full
+build-plan roadmap, the active work and build steps, archived completed work,
+findings, Git state, completion blockers, and the suggested next action. Press
+Ctrl+C to stop it. Use `blueprint ui --no-open` when you want the URL without
+opening a browser.
+
+The optional global `blueprint` command is limited to read-only project status
+and this local dashboard. Continue to use `npx create-ai-blueprint@latest` for
+installation and `npx create-ai-blueprint@latest update` for managed workflow
+updates.
 
 ## Tool support
 
