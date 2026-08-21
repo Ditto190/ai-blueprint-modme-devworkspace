@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.12.0] - 2026-08-21
+
 ### Changed
 
 - Renamed the canonical live dashboard command to `blueprint dashboard` and
@@ -173,6 +175,7 @@ published `create-ai-blueprint` package.
 - Added Codex and Claude Code adapters for the file-backed planning, feature,
   implementation, checking, audit, and completion workflow.
 
+[0.12.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.9.1...v0.10.0
