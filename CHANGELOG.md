@@ -5,6 +5,15 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.11.1] - 2026-08-21
+
+### Changed
+
+- Clarified dashboard health, Git, findings, connection, and active build-plan
+  labels, balanced the top layout with a compact project and Git status stack,
+  moved actionable state ahead of completed history, improved muted-text contrast
+  and progress semantics, and removed the misleading initial progress animation.
+
 ## [0.11.0] - 2026-08-21
 
 ### Added
@@ -157,6 +166,8 @@ published `create-ai-blueprint` package.
 - Added Codex and Claude Code adapters for the file-backed planning, feature,
   implementation, checking, audit, and completion workflow.
 
+[0.11.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.8.0...v0.9.0
