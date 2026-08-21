@@ -33,8 +33,7 @@ The installer copies the Blueprint workflow files into the current directory:
 - `.claude/`
 - `blueprint/`
 
-It keeps the app's root `README.md` alone and installs the Blueprint workflow
-docs at `blueprint/README.md`.
+It keeps the app's root `README.md` alone.
 
 The installed workflow includes optional Render and Vercel deployment readiness
 through `/release` or `$release`; it prepares local config and checks, but does
@@ -105,10 +104,11 @@ The updater detects the installed adapters and manages only these paths:
 
 - `.agents/skills/`
 - `.claude/skills/`
-- `blueprint/README.md`
 
 It preserves `AGENTS.md`, `CLAUDE.md`, project and build plans, context, history,
-references, and prototypes. The `blueprint/.state/manifest.json` file records the
+references, and prototypes. An unchanged `blueprint/README.md` installed by an
+older version is removed during update; a locally modified copy keeps the normal
+conflict protection. The `blueprint/.state/manifest.json` file records the
 installed version and hashes of managed files.
 
 Locally modified managed files are reported as conflicts. Interactive updates

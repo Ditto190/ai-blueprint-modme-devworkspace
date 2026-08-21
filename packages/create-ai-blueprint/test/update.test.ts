@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -193,7 +194,6 @@ test("new installs record only Blueprint-owned managed files", async (t) => {
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const files = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n"
   };
 
@@ -213,8 +213,7 @@ test("new installs record only Blueprint-owned managed files", async (t) => {
 
   assert.deepEqual(manifest.adapters, ["codex"]);
   assert.deepEqual(Object.keys(manifest.managedFiles), [
-    ".agents/skills/check/SKILL.md",
-    "blueprint/README.md"
+    ".agents/skills/check/SKILL.md"
   ]);
   assert.equal(
     await fs.readFile(path.join(targetDir, CONTROL_DIR, ".gitignore"), "utf8"),
@@ -235,7 +234,6 @@ test("Copilot manifests remain distinct from Codex when they share skills", asyn
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const files = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n"
   };
 
@@ -250,8 +248,7 @@ test("Copilot manifests remain distinct from Codex when they share skills", asyn
 
   assert.deepEqual(manifest.adapters, ["copilot"]);
   assert.deepEqual(Object.keys(manifest.managedFiles), [
-    ".agents/skills/check/SKILL.md",
-    "blueprint/README.md"
+    ".agents/skills/check/SKILL.md"
   ]);
 
   const prepared = await prepareUpdate({
@@ -268,7 +265,6 @@ test("updates preserve pre-Copilot Codex and Claude manifests", async (t) => {
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const files = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n",
     ".claude/skills/check/SKILL.md": "Check skill\n"
   };
@@ -305,7 +301,6 @@ test("update replaces unchanged managed files and preserves project files", asyn
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const oldFiles = {
-    "blueprint/README.md": "Old Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Old check skill\n"
   };
 
@@ -324,7 +319,6 @@ test("update replaces unchanged managed files and preserves project files", asyn
   });
 
   await writeFiles(templateRoot, {
-    "blueprint/README.md": "New Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "New check skill\n",
     ".agents/skills/feature/SKILL.md": "New feature skill\n"
   });
@@ -337,7 +331,7 @@ test("update replaces unchanged managed files and preserves project files", asyn
 
   assert.deepEqual(
     prepared.plan.update.map((operation) => operation.path),
-    [".agents/skills/check/SKILL.md", "blueprint/README.md"]
+    [".agents/skills/check/SKILL.md"]
   );
   assert.deepEqual(
     prepared.plan.add.map((operation) => operation.path),
@@ -349,7 +343,7 @@ test("update replaces unchanged managed files and preserves project files", asyn
     now: () => new Date("2026-07-15T12:00:00Z")
   });
 
-  assert.equal(result.updated, 2);
+  assert.equal(result.updated, 1);
   assert.equal(result.added, 1);
   assert.ok(result.backupDir);
   assert.match(
@@ -390,7 +384,6 @@ test("local changes to managed files require explicit replacement and are backed
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const oldFiles = {
-    "blueprint/README.md": "Old Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Old check skill\n"
   };
 
@@ -452,7 +445,6 @@ test("update removes only obsolete managed files that remain unchanged", async (
   const newTemplateRoot = path.join(workspace, "template-new");
   const targetDir = path.join(workspace, "target");
   const oldFiles = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n",
     ".agents/skills/retired/SKILL.md": "Retired skill\n"
   };
@@ -466,7 +458,6 @@ test("update removes only obsolete managed files that remain unchanged", async (
     adapter: "codex"
   });
   await writeFiles(newTemplateRoot, {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n"
   });
 
@@ -495,13 +486,105 @@ test("update removes only obsolete managed files that remain unchanged", async (
   );
 });
 
+test("update removes an unchanged Blueprint README installed by an older version", async (t) => {
+  const workspace = await createWorkspace(t);
+  const templateRoot = path.join(workspace, "template");
+  const targetDir = path.join(workspace, "target");
+  const readmeContent = "Legacy Blueprint docs\n";
+  const files = {
+    ".agents/skills/check/SKILL.md": "Check skill\n"
+  };
+
+  await writeFiles(templateRoot, files);
+  await writeFiles(targetDir, {
+    ...files,
+    "blueprint/README.md": readmeContent
+  });
+  await writeInstallManifest({
+    targetDir,
+    templateRoot,
+    version: "1.0.0",
+    adapter: "codex"
+  });
+  await addManagedFileToManifest(
+    targetDir,
+    "blueprint/README.md",
+    readmeContent
+  );
+
+  const prepared = await prepareUpdate({
+    targetDir,
+    templateRoot,
+    version: "1.1.0"
+  });
+
+  assert.deepEqual(
+    prepared.plan.remove.map((operation) => operation.path),
+    ["blueprint/README.md"]
+  );
+  const result = await applyPreparedUpdate(prepared);
+  assert.equal(result.removed, 1);
+  assert.ok(result.backupDir);
+  await assert.rejects(fs.access(path.join(targetDir, "blueprint/README.md")), {
+    code: "ENOENT"
+  });
+});
+
+test("update preserves a locally modified legacy Blueprint README", async (t) => {
+  const workspace = await createWorkspace(t);
+  const templateRoot = path.join(workspace, "template");
+  const targetDir = path.join(workspace, "target");
+  const readmeContent = "Legacy Blueprint docs\n";
+  const files = {
+    ".agents/skills/check/SKILL.md": "Check skill\n"
+  };
+
+  await writeFiles(templateRoot, files);
+  await writeFiles(targetDir, {
+    ...files,
+    "blueprint/README.md": readmeContent
+  });
+  await writeInstallManifest({
+    targetDir,
+    templateRoot,
+    version: "1.0.0",
+    adapter: "codex"
+  });
+  await addManagedFileToManifest(
+    targetDir,
+    "blueprint/README.md",
+    readmeContent
+  );
+  await writeFiles(targetDir, {
+    "blueprint/README.md": "Locally customized docs\n"
+  });
+
+  const prepared = await prepareUpdate({
+    targetDir,
+    templateRoot,
+    version: "1.1.0"
+  });
+
+  assert.deepEqual(
+    prepared.plan.conflicts.map((operation) => operation.path),
+    ["blueprint/README.md"]
+  );
+  await assert.rejects(
+    applyPreparedUpdate(prepared),
+    /must be resolved or explicitly replaced/
+  );
+  assert.equal(
+    await fs.readFile(path.join(targetDir, "blueprint/README.md"), "utf8"),
+    "Locally customized docs\n"
+  );
+});
+
 test("legacy installs treat differing managed files as conflicts", async (t) => {
   const workspace = await createWorkspace(t);
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
 
   await writeFiles(templateRoot, {
-    "blueprint/README.md": "Current Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Current check skill\n"
   });
   await writeFiles(targetDir, {
@@ -520,9 +603,10 @@ test("legacy installs treat differing managed files as conflicts", async (t) => 
     prepared.plan.conflicts.map((operation) => operation.path),
     [".agents/skills/check/SKILL.md"]
   );
-  assert.deepEqual(
-    prepared.plan.unchanged.map((operation) => operation.path),
-    ["blueprint/README.md"]
+  assert.equal(prepared.plan.unchanged.length, 0);
+  assert.equal(
+    await fs.readFile(path.join(targetDir, "blueprint/README.md"), "utf8"),
+    "Current Blueprint docs\n"
   );
 });
 
@@ -531,7 +615,6 @@ test("update aborts when a managed file changes after the plan is created", asyn
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const oldFiles = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Old check skill\n"
   };
 
@@ -553,7 +636,7 @@ test("update aborts when a managed file changes after the plan is created", asyn
     version: "1.1.0"
   });
   await writeFiles(targetDir, {
-    "blueprint/README.md": "Changed after preview\n"
+    ".agents/skills/check/SKILL.md": "Changed after preview\n"
   });
 
   await assert.rejects(
@@ -562,7 +645,7 @@ test("update aborts when a managed file changes after the plan is created", asyn
   );
   assert.equal(
     await fs.readFile(path.join(targetDir, ".agents/skills/check/SKILL.md"), "utf8"),
-    "Old check skill\n"
+    "Changed after preview\n"
   );
   assert.equal((await readManifest(targetDir))?.version, "1.0.0");
 });
@@ -572,7 +655,6 @@ test("failed apply removes additions and restores the previous manifest", async 
   const templateRoot = path.join(workspace, "template");
   const targetDir = path.join(workspace, "target");
   const oldFiles = {
-    "blueprint/README.md": "Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Check skill\n"
   };
 
@@ -629,7 +711,6 @@ test("update refuses to write through a symbolic-link directory", async (t) => {
   const outsideDir = path.join(workspace, "outside");
 
   await writeFiles(templateRoot, {
-    "blueprint/README.md": "Current Blueprint docs\n",
     ".agents/skills/check/SKILL.md": "Current check skill\n"
   });
   await fs.mkdir(targetDir, { recursive: true });
@@ -656,4 +737,25 @@ async function writeFiles(root: string, files: Record<string, string>): Promise<
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content);
   }
+}
+
+async function addManagedFileToManifest(
+  targetDir: string,
+  relativePath: string,
+  content: string
+): Promise<void> {
+  const manifest = await readManifest(targetDir);
+
+  if (!manifest) {
+    throw new Error("Expected manifest before adding a legacy managed file");
+  }
+
+  manifest.managedFiles[relativePath] = crypto
+    .createHash("sha256")
+    .update(content)
+    .digest("hex");
+  await fs.writeFile(
+    path.join(targetDir, MANIFEST_PATH),
+    `${JSON.stringify(manifest, null, 2)}\n`
+  );
 }

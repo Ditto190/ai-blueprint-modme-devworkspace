@@ -65,10 +65,11 @@ Gather these, then summarize. Do not dump file contents.
    - Check whether root `README.md` is still the copied Blueprint workflow doc
      by looking for `# AI Coding Blueprint` or opening text that describes the
      Blueprint workflow instead of the app. If so, warn that `/onboard` should
-     move it to `blueprint/README.md` and create a project README before
-     publishing.
-   - If `blueprint/README.md` exists, treat that as the expected home for the
-     copied workflow doc inside a consumer project.
+     replace it with a project README before publishing.
+   - If `blueprint/README.md` clearly contains copied Blueprint workflow docs,
+     report it as an obsolete installer artifact. Its absence is healthy. An
+     unchanged managed copy can be removed by the updater; a modified copy needs
+     user review.
    - Check whether `AGENTS.md` has a `## Commands` section with dev and build
      commands.
    - Report missing lint or test commands as informational unless the project has
@@ -93,9 +94,8 @@ Gather these, then summarize. Do not dump file contents.
      `.claude/`, `blueprint/`, or `CLAUDE.md`. Report it as a visibility choice,
      not a failure, when the local files exist.
    - In local-only mode, check whether tracked `AGENTS.md` still describes the
-     Blueprint workflow, points to `blueprint/README.md`, lists hidden adapter
-     paths, or exposes the core skill list. If so, warn that `/onboard` should
-     make `AGENTS.md` public-safe.
+     Blueprint workflow, lists hidden adapter paths, or exposes the core skill
+     list. If so, warn that `/onboard` should make `AGENTS.md` public-safe.
    - If local-only mode is active but those paths are already tracked by git,
      warn that `.gitignore` does not hide tracked files and the user must approve
      any `git rm --cached` cleanup separately.
@@ -156,8 +156,8 @@ Choose the repair order in this priority:
 - No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the tool
   being used.
 - Onboarding incomplete -> run `/onboard`.
-- Root README is still the Blueprint workflow doc -> run `/onboard` or move it
-  to `blueprint/README.md` before publishing.
+- Root README is still the Blueprint workflow doc -> run `/onboard` to replace
+  it with a project README before publishing.
 - Local-only visibility selected but ignored Blueprint files are missing ->
   reinstall or restore the Blueprint files locally.
 - Local-only visibility selected but Blueprint paths are tracked -> ask whether

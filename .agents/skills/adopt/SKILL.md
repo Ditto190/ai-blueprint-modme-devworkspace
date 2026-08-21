@@ -43,8 +43,8 @@ Protect the project README:
 - If the root `README.md` already looks like a real project README, leave it
   alone.
 - If the root `README.md` is the copied Blueprint workflow doc (for example it
-  starts with `# AI Coding Blueprint`), move it to `blueprint/README.md` unless a
-  different `blueprint/README.md` already exists.
+  starts with `# AI Coding Blueprint`), report it as obsolete overlay content
+  and ask before replacing or removing it. Do not move it into `blueprint/`.
 - Do not create or overwrite a root project README for a brownfield app unless
   the user explicitly asks. The existing project face belongs to the app, not the
   workflow.

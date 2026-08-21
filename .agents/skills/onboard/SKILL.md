@@ -61,19 +61,18 @@ summary rather than inventing a convention.
 
 ## Step 2 - update project entry files
 
-If the root `README.md` is the copied Blueprint workflow document, move it out of
-the product README slot:
+If the root `README.md` is a copied Blueprint workflow document, replace that
+obsolete overlay content in the product README slot:
 
 - Detect it conservatively: the first heading is `# AI Coding Blueprint`, or the
   opening section clearly describes the Blueprint workflow rather than this app.
-- Move that workflow document to `blueprint/README.md`.
-- Do not overwrite an existing different `blueprint/README.md`; stop and report
-  the conflict instead.
 - Create a small root `README.md` stub for the actual project using the detected
   project name, one-line purpose when known, and the Commands from `AGENTS.md`.
   Keep it minimal if the project plan is not filled yet.
-- Update any `AGENTS.md` pointer that says the root `README.md` explains the
-  workflow so it points to `blueprint/README.md` instead.
+- Do not move or copy the workflow document into `blueprint/`. Agents use the
+  local skills, plans, and context files directly.
+- Remove any `AGENTS.md` claim that a project README explains the Blueprint
+  workflow.
 
 If the root `README.md` already looks like a real project README, leave it alone.
 Never replace a project README with Blueprint documentation.
@@ -178,7 +177,7 @@ Recommend option 1 by default. If the user chooses option 2:
   commands and conventions.
 - Make `AGENTS.md` public-safe: keep project description, commands, testing gate,
   and coding conventions, but remove or avoid Blueprint workflow explanations,
-  hidden adapter paths, `blueprint/README.md` pointers, and core skill lists that
+  hidden adapter paths, workflow-document pointers, and core skill lists that
   would expose the local-only workflow.
 - Explain that local-only mode hides the workflow contents from the repo, but the
   `.gitignore` names still reveal the ignored paths.

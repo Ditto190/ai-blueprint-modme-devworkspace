@@ -554,7 +554,6 @@ function printSuccess(
 
   console.log("");
   console.log("Your app README was left alone.");
-  console.log("Blueprint docs are at blueprint/README.md.");
 }
 
 function printOnboardingNextSteps(adapter: AdapterMode): void {

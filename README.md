@@ -233,10 +233,11 @@ Then apply it:
 npx create-ai-blueprint@latest update
 ```
 
-Updates manage only Blueprint-owned workflow files under `.agents/skills/`,
-`.claude/skills/`, and `blueprint/README.md`. They do not overwrite `AGENTS.md`,
-`CLAUDE.md`, project plans, build plans, context, history, references, or
-prototypes.
+Updates manage only Blueprint-owned workflow files under `.agents/skills/` and
+`.claude/skills/`. They do not overwrite `AGENTS.md`, `CLAUDE.md`, project plans,
+build plans, context, history, references, or prototypes. An unchanged
+`blueprint/README.md` installed by an older version is removed during update;
+a locally modified copy keeps the normal conflict protection.
 
 New installs record managed-file hashes in `blueprint/.state/manifest.json`. If a
 managed file changes locally, the updater reports a conflict instead of silently
@@ -829,7 +830,6 @@ step in `current-feature.md`.
 └── blueprint/
     ├── .state/
     │   └── manifest.json     (installed version and managed-file hashes)
-    ├── README.md             (workflow docs installed here)
     ├── project-plan.md        (you write: what and why)
     ├── build-plan.md          (you write: ordered feature list)
     ├── context/

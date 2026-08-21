@@ -22,11 +22,6 @@ async function main(): Promise<void> {
   for (const entry of entries) {
     await copyEntry(entry);
   }
-
-  await fs.copyFile(
-    path.join(repoRoot, "README.md"),
-    path.join(templateRoot, "blueprint", "README.md")
-  );
 }
 
 main().catch((error: unknown) => {

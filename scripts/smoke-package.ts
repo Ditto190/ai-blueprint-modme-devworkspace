@@ -193,7 +193,9 @@ async function main(): Promise<void> {
     await requirePath(path.join(installedPackageRoot, "dist", "lib", "dashboard.js"));
     await requirePath(path.join(installedPackageRoot, "dist", "lib", "update.js"));
     await requirePath(path.join(installedPackageRoot, "dist", "bin", "blueprint.js"));
-    await requirePath(path.join(installedPackageRoot, "template", "blueprint", "README.md"));
+    await requireMissing(
+      path.join(installedPackageRoot, "template", "blueprint", "README.md")
+    );
     await requireMissing(path.join(installedPackageRoot, "evals"));
     await requireMissing(path.join(installedPackageRoot, "scripts", "evals"));
     await requireMissing(path.join(installedPackageRoot, "scripts", "e2e"));
@@ -394,7 +396,6 @@ async function validateInstall(
   const expectsSharedSkills = expectsCodex || expectsCopilot;
   const expectedPaths = [
     "AGENTS.md",
-    "blueprint/README.md",
     "blueprint/project-plan.md",
     "blueprint/build-plan.md",
     "blueprint/context/findings.md",
@@ -424,6 +425,7 @@ async function validateInstall(
   }
 
   await requireMissing(path.join(targetDir, "README.md"));
+  await requireMissing(path.join(targetDir, "blueprint", "README.md"));
   await requireMissing(path.join(targetDir, ".ai-blueprint"));
 
   if (!expectsSharedSkills) {
@@ -459,7 +461,7 @@ async function validateInstall(
     );
   }
 
-  const expectedManagedFiles = ["blueprint/README.md"];
+  const expectedManagedFiles: string[] = [];
 
   if (expectsSharedSkills) {
     expectedManagedFiles.push(

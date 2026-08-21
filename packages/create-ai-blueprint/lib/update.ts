@@ -87,11 +87,12 @@ interface InstallManifestOptions {
 }
 
 const MANAGED_ROOTS: Record<Adapter | "common", readonly string[]> = {
-  common: ["blueprint/README.md"],
+  common: [],
   codex: [".agents/skills"],
   claude: [".claude/skills"],
   copilot: [".agents/skills"]
 };
+const RETIRED_MANAGED_PATHS = new Set(["blueprint/README.md"]);
 
 function adapterListFromMode(adapter: AdapterMode): Adapter[] {
   if (adapter === "all") {
@@ -300,7 +301,11 @@ async function prepareUpdate({
 
   if (manifest) {
     for (const [relativePath, previousHash] of Object.entries(manifest.managedFiles)) {
-      if (templateFiles.has(relativePath) || !isManagedPath(relativePath, adapters)) {
+      if (
+        templateFiles.has(relativePath) ||
+        (!isManagedPath(relativePath, adapters) &&
+          !RETIRED_MANAGED_PATHS.has(relativePath))
+      ) {
         continue;
       }
 
