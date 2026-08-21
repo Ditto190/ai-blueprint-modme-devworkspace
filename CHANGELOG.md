@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.11.0] - 2026-08-21
+
 ### Added
 
 - Added `blueprint ui`, an on-demand read-only dashboard that binds to
