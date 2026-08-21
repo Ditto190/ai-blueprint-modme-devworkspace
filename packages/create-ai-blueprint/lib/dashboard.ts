@@ -179,7 +179,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
       --surface-muted: #eef1ed;
       --ink: #121817;
       --ink-soft: #45504d;
-      --ink-muted: #717b78;
+      --ink-muted: #65706d;
       --line: #d9ded9;
       --line-strong: #bdc7c1;
       --blue: #155eef;
@@ -279,12 +279,15 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .live.offline .live-dot { background: var(--red); box-shadow: 0 0 0 4px rgba(165, 51, 63, .1); }
 
     .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .status-stack { grid-column: span 4; display: grid; gap: 16px; align-content: start; }
+    .status-stack .card { grid-column: 1 / -1; }
     .card { grid-column: span 4; min-width: 0; padding: 22px; border: 1px solid rgba(189, 199, 193, .78); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(18, 24, 23, .05), 0 10px 30px rgba(18, 24, 23, .04); backdrop-filter: blur(14px); }
     .card.wide { grid-column: span 8; }
+    .card.half { grid-column: span 6; }
     .card.full { grid-column: 1 / -1; }
 
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-    .label { color: var(--blue-dark); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+    .label { margin: 0; color: var(--blue-dark); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
     .value { color: var(--ink); font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
     .muted { color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
 
@@ -299,8 +302,15 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .fact span:first-child { color: var(--ink-muted); font-size: 12px; }
     .fact span:last-child { max-width: 70%; overflow-wrap: anywhere; color: var(--ink-soft); font: 12px/1.45 var(--font-mono); text-align: right; }
 
+    .health-summary { margin-top: 20px; padding: 13px 15px; border: 1px solid #efd5a5; border-radius: 10px; background: var(--amber-soft); }
+    .health-summary.clear { border-color: #b9dfce; background: var(--green-soft); }
+    .health-summary .summary-label { color: var(--amber); font: 600 10px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+    .health-summary.clear .summary-label { color: var(--green); }
+    .health-summary li { padding: 8px 0 0; border: 0; color: var(--ink-soft); font-size: 12px; }
+
     .progress { height: 8px; margin: 16px 0 10px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
-    .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); transition: width .25s ease; }
+    .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); }
+    body.hydrated .progress span { transition: width .25s ease; }
 
     .code-panel { color: var(--code-text); border-color: var(--code-line); background: var(--code); box-shadow: 0 24px 80px rgba(18, 24, 23, .12); backdrop-filter: none; }
     .code-panel .label { color: var(--code-blue); }
@@ -334,7 +344,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
     footer { margin-top: 18px; color: var(--ink-muted); font: 11px/1.6 var(--font-mono); }
 
     @media (max-width: 860px) {
-      .card, .card.wide { grid-column: span 6; }
+      .status-stack, .card, .card.wide, .card.half { grid-column: span 6; }
       .card.full { grid-column: 1 / -1; }
     }
 
@@ -342,14 +352,18 @@ const DASHBOARD_HTML: string = `<!doctype html>
       .shell { width: min(100% - 24px, 1180px); padding-top: 24px; }
       header { flex-direction: column; }
       .brand { margin-bottom: 22px; }
-      .card, .card.wide, .card.full { grid-column: 1 / -1; }
+      .status-stack, .card, .card.wide, .card.half, .card.full { grid-column: 1 / -1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body.hydrated .progress span { transition: none; }
     }
   </style>
 </head>
 <body>
   <main class="shell">
     <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 48 48" role="img" aria-label="AI Blueprint">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#155eef" d="M4 4h25.2L16.3 44H4zM39.7 4H44v40H26.8z"></path>
       </svg>
       <span>AI Blueprint</span>
@@ -362,67 +376,68 @@ const DASHBOARD_HTML: string = `<!doctype html>
         <h1 id="project-name">Loading project...</h1>
         <div class="path" id="project-path"></div>
       </div>
-      <div class="live" id="live-state"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
+      <div class="live" id="live-state" aria-live="polite"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
     </header>
 
-    <section class="grid">
-      <article class="card">
-        <div class="card-head"><span class="label">Blueprint</span><span class="pill" id="health">Loading</span></div>
-        <div class="facts">
-          <div class="fact"><span>Version</span><span id="version">-</span></div>
-          <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
-          <div class="fact"><span>Overview</span><span id="overview">-</span></div>
-        </div>
-      </article>
+    <section class="grid" aria-label="Blueprint project status">
+      <div class="status-stack">
+        <article class="card">
+          <div class="card-head"><h2 class="label">Project health</h2><span class="pill" id="health">Loading</span></div>
+          <div class="facts">
+            <div class="fact"><span>Version</span><span id="version">-</span></div>
+            <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
+            <div class="fact"><span>Overview</span><span id="overview">-</span></div>
+          </div>
+          <div class="health-summary" id="health-summary">
+            <span class="summary-label" id="health-summary-label">Checking</span>
+            <ul id="health-list" aria-live="polite"><li class="empty">Reading workflow state...</li></ul>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><h2 class="label">Git</h2><span class="pill" id="git-state">Loading</span></div>
+          <div class="facts">
+            <div class="fact"><span>Branch</span><span id="git-branch">-</span></div>
+            <div class="fact"><span>Changed</span><span id="git-changed">-</span></div>
+            <div class="fact"><span>Upstream</span><span id="git-upstream">-</span></div>
+          </div>
+        </article>
+      </div>
 
       <article class="card wide">
-        <div class="card-head"><span class="label">Build plan</span><span class="value" id="build-count">-</span></div>
-        <div class="progress"><span id="build-progress"></span></div>
+        <div class="card-head"><h2 class="label">Build plan</h2><span class="value" id="build-count">-</span></div>
+        <div class="progress" id="build-progressbar" role="progressbar" aria-label="Build plan completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="build-progress"></span></div>
         <div class="muted" id="build-next">Reading the plan...</div>
-        <ul class="timeline" id="build-list"><li class="empty">Loading the roadmap...</li></ul>
-      </article>
-
-      <article class="card wide">
-        <div class="card-head"><span class="label">Current work</span><span class="pill" id="work-state">Loading</span></div>
-        <div class="value" id="work-title">-</div>
-        <div class="muted" id="work-meta"></div>
-        <ul class="timeline" id="work-list"><li class="empty">Loading build steps...</li></ul>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><span class="label">Git</span><span class="pill" id="git-state">Loading</span></div>
-        <div class="facts">
-          <div class="fact"><span>Branch</span><span id="git-branch">-</span></div>
-          <div class="fact"><span>Changed</span><span id="git-changed">-</span></div>
-          <div class="fact"><span>Upstream</span><span id="git-upstream">-</span></div>
-        </div>
+        <ul class="timeline" id="build-list" tabindex="0" aria-label="Build plan items"><li class="empty">Loading the roadmap...</li></ul>
       </article>
 
       <article class="card full">
-        <div class="card-head"><span class="label">Completed work</span><span class="value" id="history-count">-</span></div>
-        <div class="muted">Archived features, fixes, and rollbacks from Blueprint history.</div>
-        <ul class="timeline" id="history-list"><li class="empty">Loading completed work...</li></ul>
+        <div class="card-head"><h2 class="label">Current work</h2><span class="pill" id="work-state">Loading</span></div>
+        <div class="value" id="work-title">-</div>
+        <div class="muted" id="work-meta"></div>
+        <ul class="timeline" id="work-list" tabindex="0" aria-label="Current build steps"><li class="empty">Loading build steps...</li></ul>
       </article>
 
-      <article class="card">
-        <div class="card-head"><span class="label">Findings</span><span class="value" id="findings-count">-</span></div>
+      <article class="card half">
+        <div class="card-head"><h2 class="label">Findings</h2><span class="value" id="findings-count">-</span></div>
         <ul id="findings-list"><li class="empty">Loading findings...</li></ul>
       </article>
 
-      <article class="card">
-        <div class="card-head"><span class="label">Completion</span><span class="pill" id="completion-state">Loading</span></div>
+      <article class="card half">
+        <div class="card-head"><h2 class="label">Completion</h2><span class="pill" id="completion-state">Loading</span></div>
         <ul id="completion-list"><li class="empty">Checking readiness...</li></ul>
       </article>
 
-      <article class="card">
-        <div class="card-head"><span class="label">Attention</span><span class="value" id="warnings-count">-</span></div>
-        <ul id="warnings-list"><li class="empty">Loading warnings...</li></ul>
+      <article class="card full code-panel next-action">
+        <h2 class="label">Next action</h2>
+        <div class="command" id="next-command" aria-live="polite">Loading...</div>
+        <div class="muted" id="next-reason"></div>
       </article>
 
-      <article class="card full code-panel next-action">
-        <span class="label">Next action</span>
-        <div class="command" id="next-command">Loading...</div>
-        <div class="muted" id="next-reason"></div>
+      <article class="card full">
+        <div class="card-head"><h2 class="label">Completed work</h2><span class="value" id="history-count">-</span></div>
+        <div class="muted">Archived features, fixes, and rollbacks from Blueprint history.</div>
+        <ul class="timeline" id="history-list" tabindex="0" aria-label="Completed Blueprint work"><li class="empty">Loading completed work...</li></ul>
       </article>
     </section>
 
@@ -434,9 +449,9 @@ const DASHBOARD_HTML: string = `<!doctype html>
     let lastPayload = "";
     let refreshing = false;
 
-    function setPill(id, value) {
+    function setPill(id, value, label = value) {
       const node = byId(id);
-      node.textContent = String(value).replaceAll("_", " ");
+      node.textContent = String(label).replaceAll("_", " ");
       node.className = "pill " + value;
     }
 
@@ -544,19 +559,40 @@ const DASHBOARD_HTML: string = `<!doctype html>
     function render(status) {
       byId("project-name").textContent = status.project.name;
       byId("project-path").textContent = status.project.root;
-      setPill("health", status.health);
+      const healthIssues = status.warnings.map((warning) => warning.message).concat(
+        status.findings.blockers.map((finding) => "Blocking finding " + finding.id + ": " + finding.title)
+      );
+      const healthCount = healthIssues.length;
+      setPill(
+        "health",
+        status.health,
+        healthCount === 0 ? "Clear" : healthCount + (healthCount === 1 ? " issue" : " issues")
+      );
+      byId("health-summary").className = "health-summary" + (healthCount === 0 ? " clear" : "");
+      byId("health-summary-label").textContent = healthCount === 0 ? "Clear" : "Needs attention";
+      setList("health-list", healthIssues, "No workflow warnings.");
       byId("version").textContent = status.blueprint.version || "unknown";
       byId("adapters").textContent = status.blueprint.adapters.join(", ") || "none detected";
       byId("overview").textContent = status.plans.overview.state;
 
       const build = status.plans.build;
-      byId("build-count").textContent = build.completed + "/" + build.total + " complete";
-      byId("build-progress").style.width = build.total > 0 ? ((build.completed / build.total) * 100) + "%" : "0%";
-      byId("build-next").textContent = build.nextItem
-        ? "Next: " + build.nextItem.id + " - " + build.nextItem.title
-        : build.total > 0 ? "All planned work is checked." : "Build plan is not ready.";
-
       const work = status.currentWork;
+      const buildPercent = build.total > 0 ? (build.completed / build.total) * 100 : 0;
+      byId("build-count").textContent = build.completed + "/" + build.total + " complete";
+      byId("build-progress").style.width = buildPercent + "%";
+      byId("build-progressbar").setAttribute("aria-valuenow", String(Math.round(buildPercent)));
+      byId("build-progressbar").setAttribute("aria-valuetext", build.completed + " of " + build.total + " build-plan items complete");
+      const currentBuildItem = work.buildPlanItem && build.items.find((item) => item.id === work.buildPlanItem);
+      let buildSummary = "Build plan is not ready.";
+      if (currentBuildItem && !currentBuildItem.checked) {
+        buildSummary = "Current: " + currentBuildItem.id + " - " + currentBuildItem.title;
+      } else if (build.nextItem) {
+        buildSummary = "Next: " + build.nextItem.id + " - " + build.nextItem.title;
+      } else if (build.total > 0) {
+        buildSummary = "All planned work is checked.";
+      }
+      byId("build-next").textContent = buildSummary;
+
       setBuildPlan(build.items, work.buildPlanItem, build.nextItem ? build.nextItem.id : null);
       setPill("work-state", work.state);
       byId("work-title").textContent = work.title || "No active work";
@@ -567,12 +603,16 @@ const DASHBOARD_HTML: string = `<!doctype html>
       setHistory(status.history);
 
       const git = status.git;
-      setPill("git-state", !git.available ? "unavailable" : git.clean ? "ok" : "warning");
+      setPill(
+        "git-state",
+        !git.available ? "unavailable" : git.clean ? "ok" : "warning",
+        !git.available ? "Unavailable" : git.clean ? "Clean" : git.changedFiles + " changed"
+      );
       byId("git-branch").textContent = git.branch || "unavailable";
       byId("git-changed").textContent = git.available ? String(git.changedFiles) : "unavailable";
       byId("git-upstream").textContent = git.upstream || "none";
 
-      byId("findings-count").textContent = String(status.findings.total);
+      byId("findings-count").textContent = status.findings.active.length + " active";
       setList(
         "findings-list",
         status.findings.active.map((finding) => finding.id + " [" + finding.severity + "] " + finding.status + " - " + finding.title),
@@ -581,8 +621,6 @@ const DASHBOARD_HTML: string = `<!doctype html>
 
       setPill("completion-state", status.completion.state);
       setList("completion-list", status.completion.blockers, "No completion blockers.");
-      byId("warnings-count").textContent = String(status.warnings.length);
-      setList("warnings-list", status.warnings.map((warning) => warning.message), "Nothing needs attention.");
 
       byId("next-command").textContent = status.nextAction.command || "No command required";
       byId("next-reason").textContent = status.nextAction.reason;
@@ -597,11 +635,13 @@ const DASHBOARD_HTML: string = `<!doctype html>
         if (!response.ok) throw new Error("Status request failed with " + response.status + ".");
         const text = await response.text();
         if (text !== lastPayload) {
+          const firstRender = lastPayload === "";
           render(JSON.parse(text));
           lastPayload = text;
+          if (firstRender) requestAnimationFrame(() => document.body.classList.add("hydrated"));
         }
         byId("live-state").className = "live";
-        byId("live-label").textContent = "Live";
+        byId("live-label").textContent = "Connected";
       } catch (error) {
         byId("live-state").className = "live offline";
         byId("live-label").textContent = "Disconnected";
