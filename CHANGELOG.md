@@ -5,10 +5,14 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.12.1] - 2026-08-21
+
 ### Fixed
 
 - Kept optional CLI details subordinate to fresh-project onboarding and made
   `onboard` the final installation next step.
+- Stopped installing the public repository README inside consumer projects and
+  removed unchanged legacy copies during updates.
 
 ## [0.12.0] - 2026-08-21
 
@@ -180,6 +184,7 @@ published `create-ai-blueprint` package.
 - Added Codex and Claude Code adapters for the file-backed planning, feature,
   implementation, checking, audit, and completion workflow.
 
+[0.12.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/aiblueprinthq/ai-blueprint/compare/v0.10.0...v0.11.0
