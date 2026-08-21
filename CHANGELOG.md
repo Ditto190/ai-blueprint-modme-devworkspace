@@ -5,6 +5,13 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Changed
+
+- Renamed the canonical live dashboard command to `blueprint dashboard` and
+  kept `blueprint ui` as a deprecated compatibility alias.
+- Clarified that the optional global `blueprint` CLI only provides shorter
+  commands and that status and dashboard remain available through npx.
+
 ## [0.11.1] - 2026-08-21
 
 ### Changed

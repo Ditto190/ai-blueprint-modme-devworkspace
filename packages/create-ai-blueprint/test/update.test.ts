@@ -8,6 +8,7 @@ import {
   ADAPTER_PROMPT,
   getTemplateEntries,
   getGlobalCliInstallCommand,
+  getGlobalCliPrompt,
   isGlobalCliInstallConfirmed,
   parseArgs,
   selectGlobalCliAction,
@@ -33,6 +34,7 @@ test("parseArgs supports install and update modes", () => {
     adapter: null,
     command: "update",
     deprecatedBoth: false,
+    deprecatedUi: false,
     dryRun: true,
     force: false,
     help: false,
@@ -46,6 +48,7 @@ test("parseArgs supports install and update modes", () => {
     adapter: null,
     command: "status",
     deprecatedBoth: false,
+    deprecatedUi: false,
     dryRun: false,
     force: false,
     help: false,
@@ -59,10 +62,11 @@ test("parseArgs supports install and update modes", () => {
     () => parseArgs(["update", "--codex"]),
     /Update detects the installed adapters/
   );
-  assert.deepEqual(parseArgs(["ui", "--no-open", "--target", "./app"]), {
+  assert.deepEqual(parseArgs(["dashboard", "--no-open", "--target", "./app"]), {
     adapter: null,
-    command: "ui",
+    command: "dashboard",
     deprecatedBoth: false,
+    deprecatedUi: false,
     dryRun: false,
     force: false,
     help: false,
@@ -72,8 +76,22 @@ test("parseArgs supports install and update modes", () => {
     version: false,
     yes: false
   });
+  assert.deepEqual(parseArgs(["ui", "--no-open"]), {
+    adapter: null,
+    command: "dashboard",
+    deprecatedBoth: false,
+    deprecatedUi: true,
+    dryRun: false,
+    force: false,
+    help: false,
+    json: false,
+    open: false,
+    target: null,
+    version: false,
+    yes: false
+  });
   assert.throws(
-    () => parseArgs(["ui", "--json"]),
+    () => parseArgs(["dashboard", "--json"]),
     /--json is available only with the status command/
   );
   assert.throws(
@@ -94,6 +112,7 @@ test("parseArgs supports install and update modes", () => {
     adapter: "all",
     command: "install",
     deprecatedBoth: true,
+    deprecatedUi: false,
     dryRun: false,
     force: false,
     help: false,
@@ -143,6 +162,26 @@ test("global CLI installation is offered after interactive installs and updates"
   assert.equal(
     getGlobalCliInstallCommand("0.9.0"),
     "npm install --global create-ai-blueprint@0.9.0"
+  );
+  assert.equal(
+    getGlobalCliPrompt("install", null, "0.12.0"),
+    "\nInstall the optional global `blueprint` CLI command?\n" +
+      "This adds the shorter `blueprint status` and `blueprint dashboard` commands.\n" +
+      "Without it, use:\n" +
+      "  npx create-ai-blueprint@latest status\n" +
+      "  npx create-ai-blueprint@latest dashboard\n" +
+      "This runs: npm install --global create-ai-blueprint@0.12.0\n" +
+      "Continue? [y/N]: "
+  );
+  assert.equal(
+    getGlobalCliPrompt("update", "0.11.1", "0.12.0"),
+    "\nUpdate the optional global `blueprint` CLI from 0.11.1 to 0.12.0?\n" +
+      "This adds the shorter `blueprint status` and `blueprint dashboard` commands.\n" +
+      "Without it, use:\n" +
+      "  npx create-ai-blueprint@latest status\n" +
+      "  npx create-ai-blueprint@latest dashboard\n" +
+      "This runs: npm install --global create-ai-blueprint@0.12.0\n" +
+      "Continue? [y/N]: "
   );
   assert.equal(selectGlobalCliAction(null, "0.11.0"), "install");
   assert.equal(selectGlobalCliAction("0.10.0", "0.11.0"), "update");

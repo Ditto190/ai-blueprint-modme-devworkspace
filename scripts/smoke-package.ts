@@ -167,7 +167,8 @@ async function main(): Promise<void> {
 
     if (
       !blueprintHelpResult.stdout.includes("Read AI Blueprint project status and run its local dashboard") ||
-      !blueprintHelpResult.stdout.includes("does not install or update Blueprint")
+      !blueprintHelpResult.stdout.includes("does not install or update Blueprint") ||
+      !blueprintHelpResult.stdout.includes("blueprint dashboard")
     ) {
       throw new Error("Installed blueprint command did not show inspection-only help");
     }
@@ -213,7 +214,10 @@ async function main(): Promise<void> {
         true
       );
 
-      if (!installResult.stdout.includes("Optional global CLI:")) {
+      if (
+        !installResult.stdout.includes("Optional global CLI:") ||
+        !installResult.stdout.includes("blueprint dashboard")
+      ) {
         throw new Error(`${mode} install did not print the optional CLI command`);
       }
 

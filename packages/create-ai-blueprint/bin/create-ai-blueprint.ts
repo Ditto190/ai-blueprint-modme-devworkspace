@@ -23,8 +23,9 @@ const ADAPTER_PROMPT =
 
 interface CliOptions {
   adapter: AdapterMode | null;
-  command: "install" | "status" | "ui" | "update";
+  command: "dashboard" | "install" | "status" | "update";
   deprecatedBoth: boolean;
+  deprecatedUi: boolean;
   dryRun: boolean;
   force: boolean;
   help: boolean;
@@ -65,10 +66,14 @@ async function runCli(
     return;
   }
 
+  if (options.deprecatedUi) {
+    console.warn("Warning: `ui` is deprecated; use `dashboard` instead.");
+  }
+
   if (
     surface === "global" &&
     options.command !== "status" &&
-    options.command !== "ui"
+    options.command !== "dashboard"
   ) {
     throw new Error(
       "The global blueprint command supports project status and the local dashboard only. Use `npx create-ai-blueprint@latest` to install Blueprint or `npx create-ai-blueprint@latest update` to update it."
@@ -87,7 +92,7 @@ async function runCli(
     return;
   }
 
-  if (options.command === "ui") {
+  if (options.command === "dashboard") {
     const dashboard = await startDashboardServer(targetDir);
     console.log(`Blueprint dashboard: ${dashboard.url}`);
     console.log("Press Ctrl+C to stop.");
@@ -172,6 +177,7 @@ function parseArgs(args: readonly string[]): CliOptions {
     adapter: null,
     command: "install",
     deprecatedBoth: false,
+    deprecatedUi: false,
     dryRun: false,
     force: false,
     help: false,
@@ -192,12 +198,17 @@ function parseArgs(args: readonly string[]): CliOptions {
       continue;
     }
 
-    if (arg === "status" || arg === "ui" || arg === "update") {
+    if (arg === "status" || arg === "dashboard" || arg === "ui" || arg === "update") {
       if (commandSeen) {
         throw new Error("Choose only one command.");
       }
 
-      options.command = arg;
+      if (arg === "ui") {
+        options.command = "dashboard";
+        options.deprecatedUi = true;
+      } else {
+        options.command = arg;
+      }
       commandSeen = true;
       continue;
     }
@@ -298,16 +309,16 @@ function parseArgs(args: readonly string[]): CliOptions {
   }
 
   if (
-    options.command === "ui" &&
+    options.command === "dashboard" &&
     (options.adapter || options.dryRun || options.force || options.yes)
   ) {
     throw new Error(
-      "UI accepts only --target, --no-open, --help, and --version options."
+      "Dashboard accepts only --target, --no-open, --help, and --version options."
     );
   }
 
-  if (options.command !== "ui" && !options.open) {
-    throw new Error("--no-open is available only with the ui command.");
+  if (options.command !== "dashboard" && !options.open) {
+    throw new Error("--no-open is available only with the dashboard command.");
   }
 
   return options;
@@ -614,10 +625,6 @@ async function offerGlobalCliInstall(
     return;
   }
 
-  const question = action === "install"
-    ? "Install the global blueprint command?"
-    : `Update the global blueprint command from ${installedVersion} to ${version}?`;
-
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -625,9 +632,7 @@ async function offerGlobalCliInstall(
   let answer = "";
 
   try {
-    answer = await rl.question(
-      `\n${question}\nThis runs: ${command}\nContinue? [y/N]: `
-    );
+    answer = await rl.question(getGlobalCliPrompt(action, installedVersion, version));
   } finally {
     rl.close();
   }
@@ -640,7 +645,7 @@ async function offerGlobalCliInstall(
   try {
     await installGlobalCli(version);
     console.log(
-      "\nGlobal CLI ready. Run `blueprint status` or `blueprint ui` from a Blueprint project."
+      "\nGlobal CLI ready. Run `blueprint status` or `blueprint dashboard` from a Blueprint project."
     );
   } catch (error: unknown) {
     console.error(
@@ -747,6 +752,24 @@ function getGlobalCliInstallCommand(version: string): string {
   return `npm install --global create-ai-blueprint@${version}`;
 }
 
+function getGlobalCliPrompt(
+  action: Exclude<GlobalCliAction, null>,
+  installedVersion: string | null,
+  targetVersion: string
+): string {
+  const question = action === "install"
+    ? "Install the optional global `blueprint` CLI command?"
+    : `Update the optional global \`blueprint\` CLI from ${installedVersion} to ${targetVersion}?`;
+
+  return `\n${question}
+This adds the shorter \`blueprint status\` and \`blueprint dashboard\` commands.
+Without it, use:
+  npx create-ai-blueprint@latest status
+  npx create-ai-blueprint@latest dashboard
+This runs: ${getGlobalCliInstallCommand(targetVersion)}
+Continue? [y/N]: `;
+}
+
 async function installGlobalCli(version: string): Promise<void> {
   const npmExecPath = process.env.npm_execpath;
   const packageSpec = `create-ai-blueprint@${version}`;
@@ -798,7 +821,7 @@ async function waitForShutdown(): Promise<void> {
 
 function printOptionalGlobalCli(command: string): void {
   console.log(
-    `\nOptional global CLI:\n  ${command}\n  blueprint status\n  blueprint ui`
+    `\nOptional global CLI:\n  ${command}\n  blueprint status\n  blueprint dashboard`
   );
 }
 
@@ -812,7 +835,7 @@ Usage:
   npx create-ai-blueprint@latest update
   npx create-ai-blueprint@latest status
   npx create-ai-blueprint@latest status --json
-  npx create-ai-blueprint@latest ui
+  npx create-ai-blueprint@latest dashboard
   npx create-ai-blueprint@latest -- --codex
   npx create-ai-blueprint@latest -- --claude
   npx create-ai-blueprint@latest -- --copilot
@@ -846,8 +869,8 @@ Usage:
   blueprint status
   blueprint status --json
   blueprint status --target ./my-app
-  blueprint ui
-  blueprint ui --no-open
+  blueprint dashboard
+  blueprint dashboard --no-open
 
 Options:
   --target, -t     Project directory, defaults to the current directory
@@ -892,6 +915,7 @@ if (
 export {
   ADAPTER_PROMPT,
   getGlobalCliInstallCommand,
+  getGlobalCliPrompt,
   getTemplateEntries,
   isGlobalCliInstallConfirmed,
   parseArgs,
