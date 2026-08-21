@@ -5,6 +5,11 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Fixed
+
+- Kept optional CLI details subordinate to fresh-project onboarding and made
+  `onboard` the final installation next step.
+
 ## [0.12.0] - 2026-08-21
 
 ### Changed

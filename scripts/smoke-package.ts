@@ -215,10 +215,22 @@ async function main(): Promise<void> {
       );
 
       if (
-        !installResult.stdout.includes("Optional global CLI:") ||
-        !installResult.stdout.includes("blueprint dashboard")
+        installResult.stdout.includes("Optional global CLI:") ||
+        installResult.stdout.includes("blueprint status") ||
+        installResult.stdout.includes("blueprint dashboard")
       ) {
-        throw new Error(`${mode} install did not print the optional CLI command`);
+        throw new Error(`${mode} install promoted optional CLI commands`);
+      }
+
+      if (
+        !installResult.stdout.includes("\nNext: run onboard\n") ||
+        !installResult.stdout.trimEnd().endsWith(
+          "If a different skill loads, tell the agent to follow the local Blueprint skill file directly."
+        )
+      ) {
+        throw new Error(
+          `${mode} install did not leave onboarding as the final next step`
+        );
       }
 
       if (

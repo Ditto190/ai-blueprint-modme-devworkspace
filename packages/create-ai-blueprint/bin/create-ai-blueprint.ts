@@ -170,6 +170,7 @@ async function runCli(
 
   printSuccess(targetDir, adapter, entries, existingEntries);
   await offerGlobalCliInstall(options, version);
+  printOnboardingNextSteps(adapter);
 }
 
 function parseArgs(args: readonly string[]): CliOptions {
@@ -554,8 +555,11 @@ function printSuccess(
   console.log("");
   console.log("Your app README was left alone.");
   console.log("Blueprint docs are at blueprint/README.md.");
+}
+
+function printOnboardingNextSteps(adapter: AdapterMode): void {
   console.log("");
-  console.log("Next:");
+  console.log("Next: run onboard");
   console.log(getNextCommand(adapter));
   printClaudeRestartNote(adapter);
   console.log(
@@ -610,10 +614,7 @@ async function offerGlobalCliInstall(
   options: CliOptions,
   version: string
 ): Promise<void> {
-  const command = getGlobalCliInstallCommand(version);
-
   if (!shouldOfferGlobalCliInstall(options)) {
-    printOptionalGlobalCli(command);
     return;
   }
 
@@ -621,7 +622,6 @@ async function offerGlobalCliInstall(
   const action = selectGlobalCliAction(installedVersion, version);
 
   if (!action) {
-    console.log(`\nGlobal CLI already matches version ${version}.`);
     return;
   }
 
@@ -638,20 +638,16 @@ async function offerGlobalCliInstall(
   }
 
   if (!isGlobalCliInstallConfirmed(answer)) {
-    printOptionalGlobalCli(command);
     return;
   }
 
   try {
     await installGlobalCli(version);
-    console.log(
-      "\nGlobal CLI ready. Run `blueprint status` or `blueprint dashboard` from a Blueprint project."
-    );
+    console.log("\nOptional global CLI ready.");
   } catch (error: unknown) {
     console.error(
       `\nGlobal CLI was not installed or updated: ${error instanceof Error ? error.message : String(error)}`
     );
-    printOptionalGlobalCli(command);
   }
 }
 
@@ -817,12 +813,6 @@ async function waitForShutdown(): Promise<void> {
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
   });
-}
-
-function printOptionalGlobalCli(command: string): void {
-  console.log(
-    `\nOptional global CLI:\n  ${command}\n  blueprint status\n  blueprint dashboard`
-  );
 }
 
 function printHelp(): void {
