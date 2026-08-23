@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.13.0] - 2026-08-23
+
 ### Added
 
 - Added OpenCode support and a checkbox-based installer that can select multiple
