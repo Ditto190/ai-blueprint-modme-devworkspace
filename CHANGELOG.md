@@ -5,6 +5,12 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added a Blueprint visibility choice to `/adopt` so brownfield projects can
+  commit workflow files or keep them local, contributed by
+  [@sushantrahate](https://github.com/sushantrahate).
+
 ## [0.12.1] - 2026-08-21
 
 ### Fixed
