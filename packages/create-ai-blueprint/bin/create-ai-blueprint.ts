@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import checkbox from "@inquirer/checkbox";
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -12,17 +13,38 @@ import {
   readProjectStatus,
   shouldUseColor
 } from "../lib/status.js";
-import { MANIFEST_PATH, applyPreparedUpdate, prepareUpdate, writeInstallManifest } from "../lib/update.js";
-import type { AdapterMode, PreparedUpdate, UpdateResult } from "../lib/update.js";
+import {
+  MANIFEST_PATH,
+  adapterListFromMode,
+  applyPreparedUpdate,
+  managedRootsForAdapters,
+  prepareUpdate,
+  writeInstallManifest
+} from "../lib/update.js";
+import type { Adapter, PreparedUpdate, UpdateResult } from "../lib/update.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, "..", "..");
 const templateRoot = path.join(packageRoot, "template");
-const ADAPTER_PROMPT =
-  "Install which adapter?\n1: Codex\n2: Claude Code\n3: GitHub Copilot\n4: all (default): ";
+const ADAPTER_PROMPT = "Select AI tool adapters";
+const ALL_ADAPTERS = adapterListFromMode("all");
+
+interface AdapterCheckboxChoice {
+  name: string;
+  value: Adapter;
+  checked: boolean;
+}
+
+interface AdapterCheckboxConfig {
+  message: string;
+  choices: readonly AdapterCheckboxChoice[];
+  required: boolean;
+}
+
+type AdapterCheckbox = (config: AdapterCheckboxConfig) => Promise<Adapter[]>;
 
 interface CliOptions {
-  adapter: AdapterMode | null;
+  adapters: Adapter[] | null;
   command: "dashboard" | "install" | "status" | "update";
   deprecatedBoth: boolean;
   deprecatedUi: boolean;
@@ -43,7 +65,7 @@ interface TemplateEntry {
 
 type GlobalCliAction = "install" | "update" | null;
 
-const adapterChoices = new Set<AdapterMode>(["all", "claude", "codex", "copilot"]);
+const adapterChoices = new Set<Adapter>(ALL_ADAPTERS);
 
 async function runCli(
   args: readonly string[] = process.argv.slice(2),
@@ -144,14 +166,14 @@ async function runCli(
     console.warn("Warning: --both is deprecated; use --all instead.");
   }
 
-  const adapter = await resolveAdapter(options);
-  const entries = getTemplateEntries(adapter);
+  const adapters = await resolveAdapters(options);
+  const entries = getTemplateEntries(adapters);
   const existingEntries = entries.filter((entry) =>
     fsSync.existsSync(path.join(targetDir, entry.target))
   );
 
   if (options.dryRun) {
-    printPlan(targetDir, adapter, entries, existingEntries);
+    printPlan(targetDir, adapters, entries, existingEntries);
     return;
   }
 
@@ -165,17 +187,17 @@ async function runCli(
     targetDir,
     templateRoot,
     version,
-    adapter
+    adapters
   });
 
-  printSuccess(targetDir, adapter, entries, existingEntries);
+  printSuccess(targetDir, adapters, entries, existingEntries);
   await offerGlobalCliInstall(options, version);
-  printOnboardingNextSteps(adapter);
+  printOnboardingNextSteps(adapters);
 }
 
 function parseArgs(args: readonly string[]): CliOptions {
   const options: CliOptions = {
-    adapter: null,
+    adapters: null,
     command: "install",
     deprecatedBoth: false,
     deprecatedUi: false,
@@ -189,7 +211,8 @@ function parseArgs(args: readonly string[]): CliOptions {
     yes: false
   };
 
-  const modeFlags: AdapterMode[] = [];
+  const adapterFlags: Adapter[] = [];
+  let allAdapters = false;
   let commandSeen = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -255,12 +278,17 @@ function parseArgs(args: readonly string[]): CliOptions {
 
     if (arg === "--both") {
       options.deprecatedBoth = true;
-      modeFlags.push("all");
+      allAdapters = true;
       continue;
     }
 
-    if (arg === "--all" || arg === "--claude" || arg === "--codex" || arg === "--copilot") {
-      modeFlags.push(arg.slice(2) as AdapterMode);
+    if (arg === "--all") {
+      allAdapters = true;
+      continue;
+    }
+
+    if (arg === "--claude" || arg === "--codex" || arg === "--copilot" || arg === "--opencode") {
+      adapterFlags.push(arg.slice(2) as Adapter);
       continue;
     }
 
@@ -282,17 +310,21 @@ function parseArgs(args: readonly string[]): CliOptions {
     throw new Error(`Unknown option: ${arg}`);
   }
 
-  if (modeFlags.length > 1) {
+  if (allAdapters && adapterFlags.length > 0) {
     throw new Error(
-      "Choose only one adapter option: --codex, --claude, --copilot, --all, or --both."
+      "Do not combine --all or --both with individual adapter flags."
     );
   }
 
-  options.adapter = modeFlags[0] || null;
+  options.adapters = allAdapters
+    ? [...ALL_ADAPTERS]
+    : adapterFlags.length > 0
+      ? ALL_ADAPTERS.filter((adapter) => adapterFlags.includes(adapter))
+      : null;
 
-  if (options.command === "update" && options.adapter) {
+  if (options.command === "update" && options.adapters) {
     throw new Error(
-      "Update detects the installed adapters. Do not pass --codex, --claude, --copilot, --all, or --both."
+      "Update detects the installed adapters. Do not pass adapter flags."
     );
   }
 
@@ -302,7 +334,7 @@ function parseArgs(args: readonly string[]): CliOptions {
 
   if (
     options.command === "status" &&
-    (options.adapter || options.dryRun || options.force || options.yes || !options.open)
+    (options.adapters || options.dryRun || options.force || options.yes || !options.open)
   ) {
     throw new Error(
       "Status accepts only --json, --target, --help, and --version options."
@@ -311,7 +343,7 @@ function parseArgs(args: readonly string[]): CliOptions {
 
   if (
     options.command === "dashboard" &&
-    (options.adapter || options.dryRun || options.force || options.yes)
+    (options.adapters || options.dryRun || options.force || options.yes)
   ) {
     throw new Error(
       "Dashboard accepts only --target, --no-open, --help, and --version options."
@@ -325,54 +357,34 @@ function parseArgs(args: readonly string[]): CliOptions {
   return options;
 }
 
-async function resolveAdapter(options: CliOptions): Promise<AdapterMode> {
-  if (options.adapter) {
-    return options.adapter;
+async function resolveAdapters(
+  options: CliOptions,
+  prompt: AdapterCheckbox = checkbox as AdapterCheckbox,
+  isTTY: boolean | undefined = process.stdin.isTTY
+): Promise<Adapter[]> {
+  if (options.adapters) {
+    return options.adapters;
   }
 
-  if (options.yes || !process.stdin.isTTY) {
-    return "all";
+  if (options.yes || !isTTY) {
+    return [...ALL_ADAPTERS];
   }
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
+  return prompt({
+    message: ADAPTER_PROMPT,
+    choices: [
+      { name: "Codex", value: "codex", checked: true },
+      { name: "Claude Code", value: "claude", checked: true },
+      { name: "GitHub Copilot", value: "copilot", checked: true },
+      { name: "OpenCode", value: "opencode", checked: true }
+    ],
+    required: true
   });
-
-  try {
-    const answer = await rl.question(ADAPTER_PROMPT);
-
-    const normalized = answer.trim().toLowerCase();
-
-    if (normalized === "" || normalized === "4" || normalized === "all") {
-      return "all";
-    }
-
-    if (normalized === "1" || normalized === "codex") {
-      return "codex";
-    }
-
-    if (
-      normalized === "2" ||
-      normalized === "claude" ||
-      normalized === "claude code"
-    ) {
-      return "claude";
-    }
-
-    if (normalized === "3" || normalized === "copilot" || normalized === "github copilot") {
-      return "copilot";
-    }
-
-    throw new Error("Choose 1, 2, 3, or 4.");
-  } finally {
-    rl.close();
-  }
 }
 
-function getTemplateEntries(adapter: AdapterMode): TemplateEntry[] {
-  if (!adapterChoices.has(adapter)) {
-    throw new Error(`Unknown adapter mode: ${adapter}`);
+function getTemplateEntries(adapters: readonly Adapter[]): TemplateEntry[] {
+  if (adapters.length === 0 || adapters.some((adapter) => !adapterChoices.has(adapter))) {
+    throw new Error(`Unknown or empty adapter selection: ${adapters.join(", ")}`);
   }
 
   const entries = [
@@ -380,11 +392,13 @@ function getTemplateEntries(adapter: AdapterMode): TemplateEntry[] {
     { source: "blueprint", target: "blueprint" }
   ];
 
-  if (adapter === "all" || adapter === "codex" || adapter === "copilot") {
+  const managedRoots = managedRootsForAdapters(adapters);
+
+  if (managedRoots.includes(".agents/skills")) {
     entries.push({ source: ".agents", target: ".agents" });
   }
 
-  if (adapter === "all" || adapter === "claude") {
+  if (managedRoots.includes(".claude/skills")) {
     entries.push({ source: "CLAUDE.md", target: "CLAUDE.md" });
     entries.push({ source: ".claude", target: ".claude" });
   }
@@ -488,12 +502,12 @@ async function copyPath(source: string, target: string): Promise<void> {
 
 function printPlan(
   targetDir: string,
-  adapter: AdapterMode,
+  adapters: readonly Adapter[],
   entries: readonly TemplateEntry[],
   existingEntries: readonly TemplateEntry[]
 ): void {
   console.log(`Target: ${targetDir}`);
-  console.log(`Adapters: ${adapter}`);
+  console.log(`Adapters: ${adapters.join(", ")}`);
   console.log("Would copy:");
 
   for (const entry of entries) {
@@ -534,13 +548,13 @@ function printUpdatePlan(prepared: PreparedUpdate): void {
 
 function printSuccess(
   targetDir: string,
-  adapter: AdapterMode,
+  adapters: readonly Adapter[],
   entries: readonly TemplateEntry[],
   existingEntries: readonly TemplateEntry[]
 ): void {
   console.log("AI Blueprint installed.");
   console.log(`Target: ${targetDir}`);
-  console.log(`Adapters: ${adapter}`);
+  console.log(`Adapters: ${adapters.join(", ")}`);
   console.log("Copied:");
 
   for (const entry of entries) {
@@ -556,11 +570,11 @@ function printSuccess(
   console.log("Your app README was left alone.");
 }
 
-function printOnboardingNextSteps(adapter: AdapterMode): void {
+function printOnboardingNextSteps(adapters: readonly Adapter[]): void {
   console.log("");
   console.log("Next: run onboard");
-  console.log(getNextCommand(adapter));
-  printClaudeRestartNote(adapter);
+  console.log(getNextCommand(adapters));
+  printClaudeRestartNote(adapters);
   console.log(
     "If a different skill loads, tell the agent to follow the local Blueprint skill file directly."
   );
@@ -583,24 +597,34 @@ function printUpdateSuccess(prepared: PreparedUpdate, result: UpdateResult): voi
   );
 }
 
-function getNextCommand(adapter: AdapterMode): string {
-  if (adapter === "codex") {
-    return "$onboard";
+function getNextCommand(adapters: readonly Adapter[]): string {
+  const instructions: Record<Adapter, { label: string; command: string }> = {
+    codex: { label: "Codex", command: "$onboard" },
+    claude: { label: "Claude Code", command: "/onboard" },
+    copilot: {
+      label: "GitHub Copilot",
+      command: "Ask Copilot to run the onboard skill."
+    },
+    opencode: {
+      label: "OpenCode",
+      command: "Ask OpenCode to run the onboard skill."
+    }
+  };
+  const selected = ALL_ADAPTERS
+    .filter((adapter) => adapters.includes(adapter))
+    .map((adapter) => instructions[adapter]);
+
+  if (selected.length === 1) {
+    return selected[0].command;
   }
 
-  if (adapter === "claude") {
-    return "/onboard";
-  }
-
-  if (adapter === "copilot") {
-    return "Ask Copilot to run the onboard skill.";
-  }
-
-  return "$onboard, /onboard, or ask Copilot to run the onboard skill.";
+  return selected
+    .map((instruction) => `- ${instruction.label}: ${instruction.command}`)
+    .join("\n");
 }
 
-function printClaudeRestartNote(adapter: AdapterMode): void {
-  if (adapter !== "all" && adapter !== "claude") {
+function printClaudeRestartNote(adapters: readonly Adapter[]): void {
+  if (!adapters.includes("claude")) {
     return;
   }
 
@@ -828,14 +852,17 @@ Usage:
   npx create-ai-blueprint@latest -- --codex
   npx create-ai-blueprint@latest -- --claude
   npx create-ai-blueprint@latest -- --copilot
+  npx create-ai-blueprint@latest -- --opencode
+  npx create-ai-blueprint@latest -- --codex --opencode
   npx create-ai-blueprint@latest -- --all
   npx create-ai-blueprint@latest -- --both
 
 Options:
-  --codex          Install AGENTS.md, .agents/, and blueprint/
-  --claude         Install AGENTS.md, CLAUDE.md, .claude/, and blueprint/
-  --copilot        Install AGENTS.md, .agents/, and blueprint/
-  --all            Install Codex, Claude Code, and GitHub Copilot adapters
+  --codex          Add Codex to the adapter selection
+  --claude         Add Claude Code to the adapter selection
+  --copilot        Add GitHub Copilot to the adapter selection
+  --opencode       Add OpenCode to the adapter selection
+  --all            Install every supported adapter
   --both           Deprecated alias for --all
   --target, -t     Target directory, defaults to the current directory
   --force, -f      Install: overwrite matching files. Update: back up and replace managed conflicts
@@ -908,6 +935,7 @@ export {
   getTemplateEntries,
   isGlobalCliInstallConfirmed,
   parseArgs,
+  resolveAdapters,
   runCli,
   selectGlobalCliAction,
   shouldOfferGlobalCliInstall

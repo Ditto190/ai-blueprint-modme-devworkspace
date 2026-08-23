@@ -5,7 +5,7 @@ import path from "node:path";
 const CONTROL_DIR = "blueprint/.state";
 const MANIFEST_PATH = `${CONTROL_DIR}/manifest.json`;
 const MANIFEST_SCHEMA_VERSION = 1;
-type Adapter = "codex" | "claude" | "copilot";
+type Adapter = "codex" | "claude" | "copilot" | "opencode";
 type AdapterMode = Adapter | "all";
 
 interface TemplateFile {
@@ -83,23 +83,41 @@ interface InstallManifestOptions {
   targetDir: string;
   templateRoot: string;
   version: string;
-  adapter: AdapterMode;
+  adapters: readonly Adapter[];
 }
 
-const MANAGED_ROOTS: Record<Adapter | "common", readonly string[]> = {
+const MANAGED_ROOTS = {
   common: [],
-  codex: [".agents/skills"],
-  claude: [".claude/skills"],
-  copilot: [".agents/skills"]
-};
+  agents: [".agents/skills"],
+  claude: [".claude/skills"]
+} as const;
 const RETIRED_MANAGED_PATHS = new Set(["blueprint/README.md"]);
 
 function adapterListFromMode(adapter: AdapterMode): Adapter[] {
   if (adapter === "all") {
-    return ["codex", "claude", "copilot"];
+    return ["codex", "claude", "copilot", "opencode"];
   }
 
   return [adapter];
+}
+
+function managedRootsForAdapters(adapters: readonly Adapter[]): string[] {
+  const roots: string[] = [...MANAGED_ROOTS.common];
+  const hasClaude = adapters.includes("claude");
+  const needsAgents =
+    adapters.includes("codex") ||
+    adapters.includes("copilot") ||
+    (adapters.includes("opencode") && !hasClaude);
+
+  if (needsAgents) {
+    roots.push(...MANAGED_ROOTS.agents);
+  }
+
+  if (hasClaude) {
+    roots.push(...MANAGED_ROOTS.claude);
+  }
+
+  return roots;
 }
 
 function createManifest(
@@ -128,10 +146,7 @@ async function collectManagedTemplateFiles(
   adapters: readonly Adapter[]
 ): Promise<Map<string, TemplateFile>> {
   const files = new Map<string, TemplateFile>();
-  const roots = [
-    ...MANAGED_ROOTS.common,
-    ...adapters.flatMap((adapter) => MANAGED_ROOTS[adapter] || [])
-  ];
+  const roots = managedRootsForAdapters(adapters);
 
   for (const relativeRoot of roots) {
     const sourceRoot = path.join(templateRoot, ...relativeRoot.split("/"));
@@ -198,7 +213,7 @@ async function readManifest(targetDir: string): Promise<Manifest | null> {
 }
 
 function validateManifest(manifest: unknown): asserts manifest is Manifest {
-  const validAdapters: readonly Adapter[] = ["codex", "claude", "copilot"];
+  const validAdapters: readonly Adapter[] = ["codex", "claude", "copilot", "opencode"];
   const validManagedFiles =
     isRecord(manifest) &&
     isRecord(manifest.managedFiles) &&
@@ -245,7 +260,7 @@ async function prepareUpdate({
 
   if (adapters.length === 0) {
     throw new Error(
-      "No installed Codex or Claude Blueprint skills were found in the target directory."
+      "No installed Blueprint adapter skills were found in the target directory."
     );
   }
 
@@ -491,9 +506,8 @@ async function writeInstallManifest({
   targetDir,
   templateRoot,
   version,
-  adapter
+  adapters
 }: InstallManifestOptions): Promise<Manifest> {
-  const adapters = adapterListFromMode(adapter);
   const templateFiles = await collectManagedTemplateFiles(templateRoot, adapters);
   const manifest = createManifest(version, adapters, templateFiles);
   await writeManifest(targetDir, manifest);
@@ -595,10 +609,7 @@ async function assertNoSymlinkParents(targetDir: string, relativePath: string): 
 }
 
 function isManagedPath(relativePath: string, adapters: readonly Adapter[]): boolean {
-  const roots = [
-    ...MANAGED_ROOTS.common,
-    ...adapters.flatMap((adapter) => MANAGED_ROOTS[adapter] || [])
-  ];
+  const roots = managedRootsForAdapters(adapters);
 
   return roots.some(
     (root) => relativePath === root || relativePath.startsWith(`${root}/`)
@@ -752,6 +763,7 @@ export {
   applyPreparedUpdate,
   collectManagedTemplateFiles,
   createManifest,
+  managedRootsForAdapters,
   prepareUpdate,
   readManifest,
   writeInstallManifest

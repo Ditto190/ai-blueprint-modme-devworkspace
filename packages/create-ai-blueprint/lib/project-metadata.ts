@@ -7,8 +7,13 @@ import type { Adapter } from "./update.js";
 
 const PROJECT_STATE_SCHEMA_VERSION = 1 as const;
 type ProjectAdapter = Adapter;
-type LegacyFilesystemAdapter = Exclude<ProjectAdapter, "copilot">;
-const ADAPTER_ORDER: readonly ProjectAdapter[] = ["codex", "claude", "copilot"];
+type LegacyFilesystemAdapter = Extract<ProjectAdapter, "codex" | "claude">;
+const ADAPTER_ORDER: readonly ProjectAdapter[] = [
+  "codex",
+  "claude",
+  "copilot",
+  "opencode"
+];
 
 interface ProjectWarning {
   code: "invalid_manifest";

@@ -234,7 +234,7 @@ async function createProject(t: TestContext): Promise<string> {
     `${JSON.stringify({
       schemaVersion: 1,
       version: "0.10.0",
-      adapters: ["codex", "claude", "copilot"],
+      adapters: ["codex", "claude", "copilot", "opencode"],
       managedFiles: {}
     }, null, 2)}\n`
   );

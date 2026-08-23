@@ -75,6 +75,27 @@ test("readProjectMetadata keeps Copilot distinct from Codex through the manifest
   assert.deepEqual(metadata.blueprint.adapters, ["copilot"]);
 });
 
+test("readProjectMetadata reports OpenCode from the manifest", async (t) => {
+  const workspace = await createWorkspace(t);
+  const projectRoot = path.join(workspace, "app");
+
+  await fs.cp(fixtureRoot, projectRoot, { recursive: true });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", ".state", "manifest.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      version: "0.13.0",
+      adapters: ["opencode"],
+      managedFiles: {}
+    }, null, 2)}\n`
+  );
+
+  const metadata = await readProjectMetadata(projectRoot);
+
+  assert.equal(metadata.blueprint.version, "0.13.0");
+  assert.deepEqual(metadata.blueprint.adapters, ["opencode"]);
+});
+
 test("readProjectMetadata rejects paths outside a Blueprint project", async (t) => {
   const workspace = await createWorkspace(t);
 

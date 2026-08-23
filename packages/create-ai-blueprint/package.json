@@ -21,6 +21,7 @@
     "codex",
     "claude",
     "claude-code",
+    "opencode",
     "agent",
     "context-engineering",
     "spec-driven-development",
@@ -30,6 +31,9 @@
   "bin": {
     "create-ai-blueprint": "dist/bin/create-ai-blueprint.js",
     "blueprint": "dist/bin/blueprint.js"
+  },
+  "dependencies": {
+    "@inquirer/checkbox": "^4.2.4"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

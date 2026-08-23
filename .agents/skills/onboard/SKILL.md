@@ -51,7 +51,7 @@ Read only enough to identify the setup:
   `tailwind.config.*`, database config, test config)
 - source layout, route layout, and app/package directories
 - existing `.gitignore`
-- whether `.agents/` and `.claude/` are both needed
+- which selected tools need `.agents/`, `.claude/`, or both
 - whether Blueprint workflow paths are already tracked by git
 - existing verification commands and `.github/workflows/`
 - project name, from `package.json`, the folder name, existing docs, or the user
@@ -196,7 +196,13 @@ Then report which adapter folders are needed:
   `.claude/` can be deleted.
 - Claude Code only: keep `AGENTS.md`, `CLAUDE.md`, `.claude/`, and `blueprint/`;
   `.agents/` can be deleted.
-- Mixed tools: keep both adapters.
+- GitHub Copilot only: keep `AGENTS.md`, `.agents/`, and `blueprint/`.
+- OpenCode only: keep `AGENTS.md`, `.agents/`, and `blueprint/`.
+- OpenCode with Claude Code: OpenCode can reuse `.claude/`; no separate
+  `.opencode/skills/` copy is needed.
+- Mixed tools: keep only the compatible adapter trees required by the selected
+  tools. Never duplicate Blueprint skills under `.opencode/skills/` because
+  OpenCode already discovers `.agents/skills/` and `.claude/skills/`.
 
 Do not delete adapters unless the user explicitly asks.
 

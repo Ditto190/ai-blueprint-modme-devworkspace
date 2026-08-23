@@ -9,7 +9,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const packageRoot = path.join(repoRoot, "packages", "create-ai-blueprint");
 
-type Adapter = "codex" | "claude" | "copilot";
+type Adapter = "codex" | "claude" | "copilot" | "opencode";
+
+interface InstallMode {
+  flags: string[];
+  adapters: Adapter[];
+}
 
 interface PackageManifest {
   schemaVersion: number;
@@ -18,13 +23,27 @@ interface PackageManifest {
   managedFiles: Record<string, string>;
 }
 
-const modes: Record<string, Adapter[]> = {
-  default: ["codex", "claude", "copilot"],
-  codex: ["codex"],
-  claude: ["claude"],
-  copilot: ["copilot"],
-  all: ["codex", "claude", "copilot"],
-  both: ["codex", "claude", "copilot"]
+const modes: Record<string, InstallMode> = {
+  default: {
+    flags: [],
+    adapters: ["codex", "claude", "copilot", "opencode"]
+  },
+  codex: { flags: ["--codex"], adapters: ["codex"] },
+  claude: { flags: ["--claude"], adapters: ["claude"] },
+  copilot: { flags: ["--copilot"], adapters: ["copilot"] },
+  opencode: { flags: ["--opencode"], adapters: ["opencode"] },
+  "codex-opencode": {
+    flags: ["--codex", "--opencode"],
+    adapters: ["codex", "opencode"]
+  },
+  all: {
+    flags: ["--all"],
+    adapters: ["codex", "claude", "copilot", "opencode"]
+  },
+  both: {
+    flags: ["--both"],
+    adapters: ["codex", "claude", "copilot", "opencode"]
+  }
 };
 
 function getErrorCode(error: unknown): string | undefined {
@@ -52,7 +71,10 @@ function parseManifest(content: string): PackageManifest {
     !Array.isArray(manifest.adapters) ||
     !manifest.adapters.every(
       (adapter): adapter is Adapter =>
-        adapter === "codex" || adapter === "claude" || adapter === "copilot"
+        adapter === "codex" ||
+        adapter === "claude" ||
+        adapter === "copilot" ||
+        adapter === "opencode"
     ) ||
     typeof manifest.managedFiles !== "object" ||
     manifest.managedFiles === null ||
@@ -200,7 +222,8 @@ async function main(): Promise<void> {
     await requireMissing(path.join(installedPackageRoot, "scripts", "evals"));
     await requireMissing(path.join(installedPackageRoot, "scripts", "e2e"));
 
-    for (const [mode, adapters] of Object.entries(modes)) {
+    for (const [mode, config] of Object.entries(modes)) {
+      const { adapters, flags } = config;
       const targetDir = path.join(workspace, `target-${mode}`);
       await fs.mkdir(targetDir, { recursive: true });
       const installResult = run(
@@ -209,7 +232,7 @@ async function main(): Promise<void> {
           binary,
           "--target",
           targetDir,
-          ...(mode === "default" ? [] : [`--${mode}`]),
+          ...flags,
           "--yes"
         ],
         workspace,
@@ -251,10 +274,22 @@ async function main(): Promise<void> {
       }
 
       if (
+        mode === "opencode" &&
+        !installResult.stdout.includes("Ask OpenCode to run the onboard skill.")
+      ) {
+        throw new Error("opencode install did not print OpenCode-specific guidance");
+      }
+
+      if (
         (mode === "all" || mode === "both" || mode === "default") &&
-        !installResult.stdout.includes(
-          "$onboard, /onboard, or ask Copilot to run the onboard skill."
-        )
+        (!installResult.stdout.includes("- Codex: $onboard") ||
+          !installResult.stdout.includes("- Claude Code: /onboard") ||
+          !installResult.stdout.includes(
+            "- GitHub Copilot: Ask Copilot to run the onboard skill."
+          ) ||
+          !installResult.stdout.includes(
+            "- OpenCode: Ask OpenCode to run the onboard skill."
+          ))
       ) {
         throw new Error(`${mode} install did not print all-adapter guidance`);
       }
@@ -378,7 +413,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      "Packed installer passed for the default, Codex, Claude Code, GitHub Copilot, all, and both adapter modes."
+      "Packed installer passed for default, individual, combined, all, and legacy both adapter modes."
     );
   } finally {
     await fs.rm(workspace, { recursive: true, force: true });
@@ -393,7 +428,9 @@ async function validateInstall(
   const expectsCodex = adapters.includes("codex");
   const expectsClaude = adapters.includes("claude");
   const expectsCopilot = adapters.includes("copilot");
-  const expectsSharedSkills = expectsCodex || expectsCopilot;
+  const expectsOpenCode = adapters.includes("opencode");
+  const expectsSharedSkills =
+    expectsCodex || expectsCopilot || (expectsOpenCode && !expectsClaude);
   const expectedPaths = [
     "AGENTS.md",
     "blueprint/project-plan.md",

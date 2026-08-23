@@ -12,6 +12,7 @@ import {
   getGlobalCliPrompt,
   isGlobalCliInstallConfirmed,
   parseArgs,
+  resolveAdapters,
   selectGlobalCliAction,
   shouldOfferGlobalCliInstall
 } from "../bin/create-ai-blueprint.js";
@@ -28,11 +29,11 @@ import {
 test("parseArgs supports install and update modes", () => {
   assert.equal(
     ADAPTER_PROMPT,
-    "Install which adapter?\n1: Codex\n2: Claude Code\n3: GitHub Copilot\n4: all (default): "
+    "Select AI tool adapters"
   );
   assert.equal(parseArgs([]).command, "install");
   assert.deepEqual(parseArgs(["update", "--dry-run"]), {
-    adapter: null,
+    adapters: null,
     command: "update",
     deprecatedBoth: false,
     deprecatedUi: false,
@@ -46,7 +47,7 @@ test("parseArgs supports install and update modes", () => {
     yes: false
   });
   assert.deepEqual(parseArgs(["status", "--json", "--target", "./app"]), {
-    adapter: null,
+    adapters: null,
     command: "status",
     deprecatedBoth: false,
     deprecatedUi: false,
@@ -64,7 +65,7 @@ test("parseArgs supports install and update modes", () => {
     /Update detects the installed adapters/
   );
   assert.deepEqual(parseArgs(["dashboard", "--no-open", "--target", "./app"]), {
-    adapter: null,
+    adapters: null,
     command: "dashboard",
     deprecatedBoth: false,
     deprecatedUi: false,
@@ -78,7 +79,7 @@ test("parseArgs supports install and update modes", () => {
     yes: false
   });
   assert.deepEqual(parseArgs(["ui", "--no-open"]), {
-    adapter: null,
+    adapters: null,
     command: "dashboard",
     deprecatedBoth: false,
     deprecatedUi: true,
@@ -107,10 +108,23 @@ test("parseArgs supports install and update modes", () => {
     () => parseArgs(["--json"]),
     /--json is available only with the status command/
   );
-  assert.equal(parseArgs(["--copilot"]).adapter, "copilot");
-  assert.equal(parseArgs(["--all"]).adapter, "all");
+  assert.deepEqual(parseArgs(["--copilot"]).adapters, ["copilot"]);
+  assert.deepEqual(parseArgs(["--codex", "--opencode"]).adapters, [
+    "codex",
+    "opencode"
+  ]);
+  assert.deepEqual(parseArgs(["--all"]).adapters, [
+    "codex",
+    "claude",
+    "copilot",
+    "opencode"
+  ]);
+  assert.throws(
+    () => parseArgs(["--all", "--opencode"]),
+    /Do not combine --all or --both/
+  );
   assert.deepEqual(parseArgs(["--both"]), {
-    adapter: "all",
+    adapters: ["codex", "claude", "copilot", "opencode"],
     command: "install",
     deprecatedBoth: true,
     deprecatedUi: false,
@@ -125,16 +139,56 @@ test("parseArgs supports install and update modes", () => {
   });
 });
 
-test("Copilot shares the .agents adapter files without managing Copilot instructions", () => {
+test("shared adapters reuse compatible skill trees", () => {
   assert.deepEqual(
-    getTemplateEntries("copilot").map((entry) => entry.target),
+    getTemplateEntries(["copilot"]).map((entry) => entry.target),
     ["AGENTS.md", "blueprint", ".agents"]
   );
   assert.deepEqual(
-    getTemplateEntries("all").map((entry) => entry.target),
+    getTemplateEntries(["opencode"]).map((entry) => entry.target),
+    ["AGENTS.md", "blueprint", ".agents"]
+  );
+  assert.deepEqual(
+    getTemplateEntries(["claude", "opencode"]).map((entry) => entry.target),
+    ["AGENTS.md", "blueprint", "CLAUDE.md", ".claude"]
+  );
+  assert.deepEqual(
+    getTemplateEntries(["codex", "claude", "copilot", "opencode"]).map(
+      (entry) => entry.target
+    ),
     ["AGENTS.md", "blueprint", ".agents", "CLAUDE.md", ".claude"]
   );
-  assert.deepEqual(adapterListFromMode("all"), ["codex", "claude", "copilot"]);
+  assert.deepEqual(adapterListFromMode("all"), [
+    "codex",
+    "claude",
+    "copilot",
+    "opencode"
+  ]);
+});
+
+test("interactive installs use a default-selected checkbox prompt", async () => {
+  let receivedConfig: unknown = null;
+  const options = parseArgs([]);
+  const selected = await resolveAdapters(
+    options,
+    async (config) => {
+      receivedConfig = config;
+      return ["codex", "opencode"];
+    },
+    true
+  );
+
+  assert.deepEqual(selected, ["codex", "opencode"]);
+  assert.deepEqual(receivedConfig, {
+    message: "Select AI tool adapters",
+    choices: [
+      { name: "Codex", value: "codex", checked: true },
+      { name: "Claude Code", value: "claude", checked: true },
+      { name: "GitHub Copilot", value: "copilot", checked: true },
+      { name: "OpenCode", value: "opencode", checked: true }
+    ],
+    required: true
+  });
 });
 
 test("global CLI installation is offered after interactive installs and updates", () => {
@@ -208,7 +262,7 @@ test("new installs record only Blueprint-owned managed files", async (t) => {
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
 
   assert.deepEqual(manifest.adapters, ["codex"]);
@@ -243,7 +297,7 @@ test("Copilot manifests remain distinct from Codex when they share skills", asyn
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "copilot"
+    adapters: ["copilot"]
   });
 
   assert.deepEqual(manifest.adapters, ["copilot"]);
@@ -258,6 +312,32 @@ test("Copilot manifests remain distinct from Codex when they share skills", asyn
   });
 
   assert.deepEqual(prepared.adapters, ["copilot"]);
+});
+
+test("OpenCode manifests reuse one compatible skill tree", async (t) => {
+  const workspace = await createWorkspace(t);
+  const templateRoot = path.join(workspace, "template");
+  const targetDir = path.join(workspace, "target");
+
+  await writeFiles(templateRoot, {
+    ".agents/skills/check/SKILL.md": "Check skill\n",
+    ".claude/skills/check/SKILL.md": "Check skill\n"
+  });
+  await writeFiles(targetDir, {
+    ".claude/skills/check/SKILL.md": "Check skill\n"
+  });
+
+  const manifest = await writeInstallManifest({
+    targetDir,
+    templateRoot,
+    version: "1.0.0",
+    adapters: ["claude", "opencode"]
+  });
+
+  assert.deepEqual(manifest.adapters, ["claude", "opencode"]);
+  assert.deepEqual(Object.keys(manifest.managedFiles), [
+    ".claude/skills/check/SKILL.md"
+  ]);
 });
 
 test("updates preserve pre-Copilot Codex and Claude manifests", async (t) => {
@@ -275,7 +355,7 @@ test("updates preserve pre-Copilot Codex and Claude manifests", async (t) => {
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "all"
+    adapters: ["codex", "claude", "copilot", "opencode"]
   });
   await fs.writeFile(
     path.join(targetDir, MANIFEST_PATH),
@@ -315,7 +395,7 @@ test("update replaces unchanged managed files and preserves project files", asyn
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
 
   await writeFiles(templateRoot, {
@@ -393,7 +473,7 @@ test("local changes to managed files require explicit replacement and are backed
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await writeFiles(targetDir, {
     ".agents/skills/check/SKILL.md": "Locally customized skill\n"
@@ -455,7 +535,7 @@ test("update removes only obsolete managed files that remain unchanged", async (
     targetDir,
     templateRoot: oldTemplateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await writeFiles(newTemplateRoot, {
     ".agents/skills/check/SKILL.md": "Check skill\n"
@@ -504,7 +584,7 @@ test("update removes an unchanged Blueprint README installed by an older version
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await addManagedFileToManifest(
     targetDir,
@@ -548,7 +628,7 @@ test("update preserves a locally modified legacy Blueprint README", async (t) =>
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await addManagedFileToManifest(
     targetDir,
@@ -624,7 +704,7 @@ test("update aborts when a managed file changes after the plan is created", asyn
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await writeFiles(templateRoot, {
     ".agents/skills/check/SKILL.md": "New check skill\n"
@@ -664,7 +744,7 @@ test("failed apply removes additions and restores the previous manifest", async 
     targetDir,
     templateRoot,
     version: "1.0.0",
-    adapter: "codex"
+    adapters: ["codex"]
   });
   await writeFiles(templateRoot, {
     ".agents/skills/feature/SKILL.md": "Feature skill\n"

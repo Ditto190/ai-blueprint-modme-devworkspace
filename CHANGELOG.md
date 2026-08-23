@@ -7,6 +7,9 @@ published `create-ai-blueprint` package.
 
 ### Added
 
+- Added OpenCode support and a checkbox-based installer that can select multiple
+  adapters. OpenCode reuses compatible skill files instead of installing a
+  duplicate `.opencode/skills/` tree.
 - Added a Blueprint visibility choice to `/adopt` so brownfield projects can
   commit workflow files or keep them local, contributed by
   [@sushantrahate](https://github.com/sushantrahate).

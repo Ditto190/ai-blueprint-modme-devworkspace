@@ -93,6 +93,20 @@ test("readProjectStatus reports Copilot from the manifest", async (t) => {
   assert.match(formatHumanStatus(status), /Adapters\s+copilot/);
 });
 
+test("readProjectStatus reports OpenCode from the manifest", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "feature/opencode-status",
+    adapters: ["opencode"]
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.deepEqual(status.blueprint.adapters, ["opencode"]);
+  assert.match(formatHumanStatus(status), /Adapters\s+opencode/);
+});
+
 test("readProjectStatus selects overview before new feature work", async (t) => {
   const projectRoot = await createProject(t, {
     currentWork: resetCurrentWork(),
@@ -239,7 +253,7 @@ test("shouldUseColor requires a TTY and respects NO_COLOR", () => {
 });
 
 interface ProjectOptions {
-  adapters?: readonly ("claude" | "codex" | "copilot")[];
+  adapters?: readonly ("claude" | "codex" | "copilot" | "opencode")[];
   currentWork: string;
   findings: string;
   branch: string;

@@ -65,7 +65,7 @@ helping you write.
 | Small diffs | Implementation happens one reviewed step at a time, with proof each step works. |
 | File-backed state | Plans, current work, and history live in markdown files, so context clears are survivable. |
 | Findings gate | `/audit` findings live in a ledger with durable IDs; open or unreviewed P0/P1 findings block `/complete`. |
-| Tool adapters | Codex and GitHub Copilot use `.agents/skills`; Claude Code uses `.claude/skills`. |
+| Tool adapters | Codex, GitHub Copilot, and OpenCode can use `.agents/skills`; Claude Code uses `.claude/skills`, which OpenCode can also read. |
 | Optional visibility | Commit the workflow files for portability, or keep them local with `.gitignore`. |
 
 ## Contents
@@ -129,8 +129,8 @@ npx create-ai-blueprint@latest
 
 You can also run `npm create ai-blueprint@latest`.
 
-The installer asks which AI tool adapters you want and adds only the Blueprint
-workflow files your app needs.
+The interactive installer shows a checkbox list of AI tool adapters and adds only
+the Blueprint workflow files your app needs.
 
 > [!IMPORTANT]
 > After installing, run `/onboard` before filling in plans or running
@@ -149,7 +149,8 @@ committed or kept local-only through `.gitignore`:
 /onboard
 ```
 
-In Codex, invoke it as `$onboard`. In Claude Code, invoke it as `/onboard`.
+In Codex, invoke it as `$onboard`. In Claude Code, invoke it as `/onboard`. In
+OpenCode, ask it to run the onboard skill.
 
 **4. Review the setup.** Skim
 [blueprint/context/coding-standards.md](blueprint/context/coding-standards.md) and
@@ -310,13 +311,15 @@ updates.
 | Codex | Native project skills in `.agents/skills/` | `$feature`, `$implement`, or plain language |
 | Claude Code | Native project skills in `.claude/skills/` | `/feature`, `/implement`, and other slash commands |
 | GitHub Copilot | `AGENTS.md` and shared skills in `.agents/skills/` | Ask Copilot to run the matching skill |
+| OpenCode | `AGENTS.md` and compatible shared skills | Ask OpenCode to run the matching skill |
 | Other AGENTS.md-aware tools | Shared project instructions plus readable skill files | Ask the agent to follow the matching `SKILL.md` |
 
-The installer defaults to all three adapters. Use `--codex`, `--claude`, or
-`--copilot` to install one adapter. `--both` remains as a deprecated alias for
-`--all` and prints a warning. The workflow state under `blueprint/` stays
-tool-independent, so a project can move between supported agents without moving
-its plan or history back into chat.
+The installer defaults to all four adapters. In an interactive terminal, use the
+checkboxes to select one or more. For scripts, combine `--codex`, `--claude`,
+`--copilot`, and `--opencode` as needed, or use `--all`. `--both` remains as a
+deprecated alias for `--all` and prints a warning. The workflow state under
+`blueprint/` stays tool-independent, so a project can move between supported
+agents without moving its plan or history back into chat.
 
 ## The AI workflow
 
@@ -913,13 +916,16 @@ project plan. The `/prototype` helper can create throwaway static mockups in
 ### Works in other tools
 
 The blueprint is not Claude-specific. `AGENTS.md` is the cross-tool entry point,
-`.agents/skills` exposes the workflow to Codex and GitHub Copilot, and
-`.claude/skills` exposes it to Claude Code.
+`.agents/skills` exposes the workflow to Codex, GitHub Copilot, and OpenCode, and
+`.claude/skills` exposes it to Claude Code and OpenCode.
 
 You do not have to keep all adapters. For Codex-only work, keep `AGENTS.md`,
 `.agents/`, and `blueprint/`. For Claude Code-only work, keep `AGENTS.md`,
 `CLAUDE.md`, `.claude/`, and `blueprint/`. For GitHub Copilot-only work, keep
-`AGENTS.md`, `.agents/`, and `blueprint/`. Keep all adapters if you switch
+`AGENTS.md`, `.agents/`, and `blueprint/`. For OpenCode-only work, keep
+`AGENTS.md`, `.agents/`, and `blueprint/`. When Claude Code and OpenCode are both
+selected, OpenCode reuses `.claude/skills/`. Do not add duplicate Blueprint
+skills under `.opencode/skills/`. Keep all required adapter trees if you switch
 between tools.
 
 Use the native invocation style for your tool:
@@ -933,6 +939,8 @@ Use the native invocation style for your tool:
   `/complete`, `/release`, `/prototype`, `/status`. Autopilot: `/autopilot`.
 - GitHub Copilot: ask Copilot to run the matching skill or follow the local
   `.agents/skills/<skill>/SKILL.md` file.
+- OpenCode: ask OpenCode to run the matching skill. It loads the compatible
+  `.agents/skills/` or `.claude/skills/` definition on demand.
 - Other tools: ask the agent to follow the matching `SKILL.md`.
 
 ```text

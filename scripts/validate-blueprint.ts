@@ -166,8 +166,16 @@ async function validateSkillMetadata(skills: readonly string[]): Promise<void> {
       throw new Error(`Skill name does not match its directory: ${skill}`);
     }
 
+    if (name.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+      throw new Error(`Skill name is not portable to OpenCode: ${skill}`);
+    }
+
     if (!description) {
       throw new Error(`Skill description is missing: ${skill}`);
+    }
+
+    if (description.length > 1024) {
+      throw new Error(`Skill description exceeds OpenCode's limit: ${skill}`);
     }
   }
 }

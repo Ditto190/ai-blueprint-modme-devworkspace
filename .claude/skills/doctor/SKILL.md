@@ -49,11 +49,18 @@ Gather these, then summarize. Do not dump file contents.
      the files to exist on disk. Ignored but present is healthy; ignored and
      missing means the local workflow needs to be restored.
 2. **Tool adapters**
-   - Confirm at least one adapter exists: `.agents/skills/` for Codex or
-     `.claude/skills/` for Claude Code.
-   - If both adapters are present, say that is healthy when both tools are used.
-   - If both adapters are present, compare their skill folder names. Warn about
-     missing skills on either side.
+   - Read `blueprint/.state/manifest.json` when present and report its exact
+     logical adapters: Codex, Claude Code, GitHub Copilot, and OpenCode.
+   - Confirm at least one compatible skill tree exists. Codex and GitHub Copilot
+     use `.agents/skills/`. Claude Code uses `.claude/skills/`. OpenCode can use
+     either tree.
+   - If both skill trees are present, say that is healthy when the selected
+     tools require both. Compare their skill folder names and warn about missing
+     skills on either side.
+   - If OpenCode is selected, do not require `.opencode/skills/`. If it contains
+     duplicate Blueprint skills alongside `.agents/skills/` or `.claude/skills/`,
+     warn that OpenCode discovers all of those locations and the duplicate tree
+     should be reviewed.
    - If git shows changes under `.agents/skills/` or `.claude/skills/`, check
      the matching adapter file too. Warn when workflow behavior was updated in
      one adapter but not the other.
@@ -153,8 +160,8 @@ Choose the repair order in this priority:
 - Required Blueprint files missing -> overlay the Blueprint again, or use
   `/adopt` for a brownfield app.
 - No git repo -> initialize git before using the build loop.
-- No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the tool
-  being used.
+- No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the
+  selected tool. OpenCode can use either compatible tree.
 - Onboarding incomplete -> run `/onboard`.
 - Root README is still the Blueprint workflow doc -> run `/onboard` to replace
   it with a project README before publishing.
