@@ -5,6 +5,22 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [0.14.0] - 2026-08-25
+
+### Added
+
+- Added deterministic project configuration for review cadence, checkpoint
+  commits, branch prefixes, verification strictness, regular and Continuous
+  quality gates, and Continuous Mode limits.
+- Added the explicit `/continuous` and `$continuous` workflow for completing
+  remaining planned features serially with local branches, verification,
+  archives, and one local main commit per feature without pushing.
+
+### Fixed
+
+- Made onboarding adapter choices name Codex, Claude Code, GitHub Copilot, and
+  OpenCode accurately when recommending which shared skill trees to keep.
+
 ## [0.13.0] - 2026-08-23
 
 ### Added
