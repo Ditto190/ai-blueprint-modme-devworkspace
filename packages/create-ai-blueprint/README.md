@@ -51,6 +51,11 @@ a completed feature from its archived spec and exact git commit. Rollbacks keep
 the original feature archive and use the normal implement, check, and complete
 gates.
 
+The explicit `/continuous` or `$continuous` mode uses the build plan as its
+queue and completes planned features serially with one local branch and one
+local main commit per feature. It honors the configured Continuous quality
+gates and limits, stops on real blockers, and never pushes.
+
 If you install `--claude` or `--all` while Claude Code is already open in the
 project, restart Claude Code in that folder so the newly added project skills
 appear.
@@ -120,12 +125,12 @@ installed version and hashes of managed files.
 
 `blueprint/config.json` is user-owned project policy. It controls review cadence,
 checkpoint availability, branch prefixes, verification strictness, regular and
-Continuous quality gates, and future Continuous Mode limits. Audit, check, and
+Continuous quality gates, and Continuous Mode limits. Audit, check, and
 try-guide gates all default to manual. A missing file uses built-in defaults;
 an invalid file is reported by status and blocks mutating workflow skills until
 `/doctor` identifies the repair. Configuration never grants permission to
-commit, merge, push, deploy, publish, or take destructive action. Continuous
-settings are validated now but do not run multiple features in this release.
+commit, merge, push, deploy, publish, or take destructive action. Only an
+explicit `/continuous` or `$continuous` request starts the multi-feature loop.
 
 Locally modified managed files are reported as conflicts. Interactive updates
 ask before replacing them. Non-interactive updates exit unless you pass

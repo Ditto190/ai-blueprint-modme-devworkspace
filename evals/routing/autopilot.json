@@ -7,6 +7,7 @@
   ],
   "negative": [
     { "prompt": "Run /implement one reviewed step at a time", "owner": "implement" },
-    { "prompt": "Run /complete and ask me before merging the finished branch", "owner": "complete" }
+    { "prompt": "Run /complete and ask me before merging the finished branch", "owner": "complete" },
+    { "prompt": "Use /continuous to finish every remaining build-plan feature", "owner": "continuous" }
   ]
 }

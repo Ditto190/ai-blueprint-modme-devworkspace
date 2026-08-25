@@ -277,6 +277,14 @@ async function validateVerificationContract(): Promise<void> {
       ".agents/skills/autopilot/SKILL.md",
       ["exact `Verify` command from `AGENTS.md`"]
     ],
+    [
+      ".agents/skills/continuous/SKILL.md",
+      [
+        "Run the exact documented `Verify` command",
+        "one clean local main commit per completed feature",
+        "Never push the default branch"
+      ]
+    ],
     ["AGENTS.md", ["## Automatic verification", "`contents: read`"]],
     ["README.md", ["## Automatic GitHub checks", "**Verify is the recipe.**"]],
     [
@@ -285,7 +293,10 @@ async function validateVerificationContract(): Promise<void> {
     ],
     [
       "blueprint/context/ai-interaction.md",
-      ["run that exact command as the final automated gate"]
+      [
+        "run that exact command as the final automated gate",
+        "Continuous Mode also exists only as an explicit opt-in command"
+      ]
     ],
     [
       "packages/create-ai-blueprint/README.md",

@@ -107,6 +107,13 @@ create checkpoint commits on the feature or fix branch after passing steps and
 repair confirmed P0/P1 findings when its audit gate runs. It stops before
 `/complete`, merge, push, deploy, or destructive actions.
 
+Optional explicit-only skill: `continuous` can resume or select the next planned
+feature and repeat the complete local feature lifecycle through the configured
+limit or end of the build plan. It creates one branch and one local main commit
+per feature, applies the Continuous quality gates, archives and merges serially,
+and stops on decisions or failed safety gates. It never pushes, deploys,
+publishes, sends, or performs destructive actions.
+
 Deployment is also explicit. `/release` can prepare local Render or Vercel config
 and run readiness checks, but it must stop before deploy, remote service changes,
 push, or publish unless the user gives a separate yes in the current chat.

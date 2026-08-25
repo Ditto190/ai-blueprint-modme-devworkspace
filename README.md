@@ -65,6 +65,7 @@ helping you write.
 | Small diffs | Implementation happens one reviewed step at a time, with proof each step works. |
 | File-backed state | Plans, current work, and history live in markdown files, so context clears are survivable. |
 | Findings gate | `/audit` findings live in a ledger with durable IDs; open or unreviewed P0/P1 findings block `/complete`. |
+| Optional continuous loop | `/continuous` completes planned features serially with local branches, commits, merges, and no push. |
 | Tool adapters | Codex, GitHub Copilot, and OpenCode can use `.agents/skills`; Claude Code uses `.claude/skills`, which OpenCode can also read. |
 | Optional visibility | Commit the workflow files for portability, or keep them local with `.gitignore`. |
 
@@ -80,6 +81,7 @@ helping you write.
 - [What gets generated](#what-gets-generated)
 - [Using the workflow](#using-the-workflow)
 - [Command reference](#command-reference)
+- [Continuous Mode](#continuous-mode)
 - [Automatic GitHub checks](#automatic-github-checks)
 - [Testing](#testing)
 - [Code quality audits](#code-quality-audits)
@@ -200,9 +202,11 @@ other workflows a person directly uses. `always` applies the gate to every work
 item. A try guide is instructions for a human, not evidence that the review was
 performed.
 
-The `continuous` section is installed and validated now so projects can settle
-their policy before Continuous Mode is added. The Continuous gate policies and
-limits do not change Autopilot or run multiple features in this release.
+The `continuous` section controls the explicit `/continuous` loop. Continuous
+gate policies apply per feature, `maxFeatures` limits successful feature
+completions in one run, `maxRepairAttempts` bounds repeated repair attempts, and
+`finalIntegrationAudit` enables a final cross-feature audit. These settings do
+not change Autopilot, which uses the regular gates.
 
 Config values never authorize commits, merges, pushes, deployments,
 publication, destructive actions, check waivers, or finding acceptance. Commands
@@ -251,6 +255,16 @@ at a time:
 
 That loop specs the next feature, builds it, proves the behavior, reviews the
 changed code, then archives and merges it.
+
+For an explicit local run through the remaining build plan, use:
+
+```text
+/continuous
+```
+
+Continuous Mode performs the same feature lifecycle serially, with one local
+main commit per completed feature. It stops on decisions or failed gates and
+never pushes.
 
 In Codex, invoke the same steps as skills (`$overview`, `$feature`, `$implement`,
 `$check`, `$complete`) or ask naturally, such as "run the overview." In Claude
@@ -381,6 +395,15 @@ The recommended build loop is:
 ```text
 /feature -> review spec -> /implement -> /check -> /audit current -> /complete
 ```
+
+The explicit multi-feature alternative is:
+
+```text
+/continuous -> next unchecked feature -> local completion -> repeat
+```
+
+It uses the build plan as its queue, so no feature list is required. It preserves
+one branch and one local main commit per completed feature and never pushes.
 
 Use `/try` when you want a manual review path. Use a broader `/audit` scope when
 you want to look beyond the current feature. Run `/release` after a completed
@@ -601,7 +624,8 @@ features.
 | **/release** | after a completed feature or milestone | Prepares Render or Vercel deployment readiness, local config, env var review, and smoke-test steps. Never deploys or changes remote services without a separate yes. |
 | **/prototype** | before the build loop | Creates throwaway static mockups to explore the look and feel. |
 | **/status** | any time | Shows build-plan progress, current work, overview freshness, git state, workflow drift warnings, and the suggested next action. |
-| **/autopilot** | explicit opt-in only | Runs one bounded spec/build/check pass, audits the changed code, repairs confirmed high-severity findings within scope, reruns affected checks, then stops with a review packet before `/complete`. |
+| **/autopilot** | explicit opt-in only | Runs one bounded spec/build pass, applies the configured regular quality gates, then stops with a review packet before `/complete`. |
+| **/continuous** | explicit opt-in only | Repeats the complete local lifecycle for planned features through the configured limit or end of the build plan, with one branch and one local main commit per feature. Never pushes. |
 
 These commands are the structured path, not a cage. You can describe a feature,
 fix, or change directly in chat at any time. Use the skills when you want the
@@ -612,10 +636,10 @@ repeatable loop, review gates, and history.
 `/autopilot` or `$autopilot` is an explicit opt-in mode for one bounded pass. It
 can pick or resume a feature, write the spec when needed, implement small steps,
 run build/tests/checks, create checkpoint commits on the feature branch, and
-self-review the diff. It then runs a targeted audit of the active feature and
-affected code, repairs confirmed P0/P1 findings that remain within scope, reruns
-the affected checks, and stops with a review packet. Broader project cleanup
-remains a separate `/audit` followed by planned `/fix` work.
+self-review the diff. It applies `qualityGates.regular`, repairs confirmed P0/P1
+findings when its audit gate runs and the repair remains within scope, reruns
+affected checks, and stops with a review packet. Broader project cleanup remains
+a separate `/audit` followed by planned `/fix` work.
 
 Autopilot does not replace the normal workflow. `/feature`, `/implement`,
 `/check`, and `/complete` remain the conservative default.
@@ -623,6 +647,27 @@ Autopilot does not replace the normal workflow. `/feature`, `/implement`,
 Autopilot always stops before `/complete`, merge, push, deploy, publish, send,
 destructive actions, or any action that needs a product decision not covered by
 the docs.
+
+## Continuous Mode
+
+`/continuous` or `$continuous` is the explicit multi-feature loop. With no
+argument it resumes active feature work or selects the next unchecked build-plan
+leaf, then continues in plan order. No feature list is required.
+
+For each feature it writes or resumes the spec, creates the configured feature
+branch, implements small verified steps, applies `qualityGates.continuous`,
+archives the completed work, creates one squash commit on local main, deletes the
+feature branch, and selects the next item. Configured checkpoint commits may
+exist on the feature branch, but main receives one clean commit per feature.
+
+The explicit invocation authorizes that local Git lifecycle for the run. It does
+not authorize push, deploy, publication, messages, remote service changes,
+destructive actions, finding waivers, or product decisions. A blocked run keeps
+the active branch and file-backed progress intact for `/continuous resume`.
+
+The run stops when the build plan is complete, `continuous.maxFeatures` is
+reached, or a real blocker appears. `continuous.finalIntegrationAudit` can add a
+cross-feature review at the end. Nothing is pushed automatically.
 
 ## Automatic GitHub checks
 
@@ -711,10 +756,12 @@ that level of verification.
 `/check` proves the app does what the spec promised. `/audit` reviews the code
 itself.
 
-Autopilot applies the targeted `/audit current` behavior before producing its
-review packet. It validates findings, repairs confirmed P0/P1 issues within the
-approved feature scope, and reruns the affected checks. It does not turn a
-feature pass into a repository-wide cleanup.
+Autopilot applies the targeted `/audit current` behavior when
+`qualityGates.regular.audit` selects the feature. Continuous Mode uses the
+corresponding Continuous audit policy for each feature. When either audit runs,
+it validates findings, repairs confirmed P0/P1 issues within the approved scope,
+and reruns affected checks. It does not turn a feature pass into a
+repository-wide cleanup.
 
 Run `/audit` directly when you want a separate read-only review, a broader
 project audit, or a focused quality, security, performance, or tests pass. A
@@ -856,7 +903,8 @@ step in `current-feature.md`.
 │       ├── release/           ($release: Render or Vercel readiness)
 │       ├── prototype/         ($prototype: static mockups)
 │       ├── status/            ($status: where things stand)
-│       └── autopilot/         ($autopilot: bounded pass)
+│       ├── autopilot/         ($autopilot: bounded pass)
+│       └── continuous/        ($continuous: multi-feature local loop)
 ├── .claude/
 │   └── skills/                (Claude Code skills and slash commands)
 │       ├── adopt/             (/adopt: bootstrap from an existing codebase)
@@ -878,7 +926,8 @@ step in `current-feature.md`.
 │       ├── release/           (/release: Render or Vercel readiness)
 │       ├── prototype/         (/prototype: static mockups)
 │       ├── status/            (/status: where things stand)
-│       └── autopilot/         (/autopilot: bounded pass)
+│       ├── autopilot/         (/autopilot: bounded pass)
+│       └── continuous/        (/continuous: multi-feature local loop)
 └── blueprint/
     ├── .state/
     │   └── manifest.json     (installed version and managed-file hashes)
@@ -983,10 +1032,11 @@ Use the native invocation style for your tool:
 - Codex: `$onboard`, `$discovery`, `$doctor`, `$adopt`, `$overview`, `$brief`, `$feature`,
   `$debug`, `$fix`, `$tests`, `$ci`, `$implement`, `$check`, `$try`, `$audit`, `$rollback`, `$complete`,
   `$release`, `$prototype`, `$status`, or plain language like "run the overview."
-  Autopilot: `$autopilot`.
+  Explicit modes: `$autopilot`, `$continuous`.
 - Claude Code: `/onboard`, `/discovery`, `/doctor`, `/adopt`, `/overview`, `/brief`,
   `/feature`, `/debug`, `/fix`, `/tests`, `/ci`, `/implement`, `/check`, `/try`, `/audit`, `/rollback`,
-  `/complete`, `/release`, `/prototype`, `/status`. Autopilot: `/autopilot`.
+  `/complete`, `/release`, `/prototype`, `/status`. Explicit modes:
+  `/autopilot`, `/continuous`.
 - GitHub Copilot: ask Copilot to run the matching skill or follow the local
   `.agents/skills/<skill>/SKILL.md` file.
 - OpenCode: ask OpenCode to run the matching skill. It loads the compatible
