@@ -31,26 +31,32 @@ None. `/status` takes no argument.
 Gather these, then summarize. Don't dump file contents; report the distilled
 state.
 
-1. **Build plan** - `blueprint/build-plan.md`. Count checked vs unchecked leaf
+1. **Project configuration** - read `blueprint/config.json` when present. Report
+   `project settings`, `built-in defaults`, or `invalid, using defaults`. A
+   missing file is healthy and means defaults. Invalid JSON, schema versions,
+   keys, values, non-file paths, or symbolic links are a warning and make
+   `/doctor` the next action before any mutating workflow command. Report the
+   effective regular and Continuous audit, check, and try-guide policies.
+2. **Build plan** - `blueprint/build-plan.md`. Count checked vs unchecked leaf
    items. Name the next unchecked leaf, the same target `/feature` would pick,
    and note if a parent item was split into sub-items (`4a`, `4b`, ...).
-2. **Current work** - `blueprint/context/current-feature.md`. Is something in
+3. **Current work** - `blueprint/context/current-feature.md`. Is something in
    progress, or is it the reset stub? If a feature, fix, or rollback spec is
    present, report its type and name, which build steps are checked, and the
    first unchecked step where `/implement` resumes.
-3. **Findings** - `blueprint/context/findings.md`. Count findings by status and
+4. **Findings** - `blueprint/context/findings.md`. Count findings by status and
    report open and fixed counts next to build-plan progress. Call out any P0 or
    P1 still `open` or `fixed` by ID, since those block `/complete`. A missing
    file means no findings.
-4. **Overview freshness** - if `blueprint/context/project-overview.md` is missing,
+5. **Overview freshness** - if `blueprint/context/project-overview.md` is missing,
    or if `project-plan.md` or `build-plan.md` appears newer than it by filesystem
    time, mention that `/overview` should run before new feature work.
-5. **Git** - current branch, whether the working tree is clean or has uncommitted
+6. **Git** - current branch, whether the working tree is clean or has uncommitted
    changes, roughly how many files changed, last commit subject, and whether the
    branch is ahead of its remote. If the directory is not a git repo, say so and
    skip this part rather than failing.
-6. **Progress drift** - flag active spec on `main`, a spec in progress but no
-   matching `feature/`, `fix/`, or `rollback/` branch, all spec steps checked but
+7. **Progress drift** - flag active spec on `main`, a spec in progress but no
+   branch matching the configured feature, fix, or rollback prefix, all spec steps checked but
    not completed, or disagreement between `build-plan.md` and
    `current-feature.md`. A rollback legitimately targets a checked build-plan
    item until `/complete` unchecks it, so do not compare it to the next unchecked
@@ -61,6 +67,9 @@ state.
 A short, scannable summary, not a wall of text. Aim for something like:
 
     Status: Building feature 4 - PDF export
+    Config: Project settings.
+    Gates: regular audit manual, check when-behavioral, try guide manual;
+           Continuous audit always, check always, try guide when-user-facing.
     Plans: Overview current. Build plan 3 of 9 complete.
     Current work: Step 2 of 3 done. Next step: Download PDF button.
     Findings: 1 open P2 (F-04), 1 fixed P1 awaiting re-review (F-02).
@@ -71,6 +80,7 @@ A short, scannable summary, not a wall of text. Aim for something like:
 
 End with a single suggested next action, chosen in this order:
 
+- The project configuration is invalid -> `/doctor`.
 - The overview is missing or stale and no feature is in progress -> `/overview`.
 - A spec is in progress with unchecked steps -> `/implement` and name the step.
 - A spec is in progress and all implementation steps are checked -> `/check` if

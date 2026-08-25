@@ -32,6 +32,9 @@ test("dashboard serves live read-only project status on loopback", async (t) => 
   assert.match(page, /class="brand-mark"[^>]+aria-hidden="true"/);
   assert.match(page, /<div class="status-stack">/);
   assert.match(page, /<h2 class="label">Project health<\/h2>/);
+  assert.match(page, /<div class="fact"><span>Config<\/span><span id="config">-<\/span><\/div>/);
+  assert.match(page, /id="regular-gates">-<\/span>/);
+  assert.match(page, /id="continuous-gates">-<\/span>/);
   assert.match(page, /id="health-list" aria-live="polite"/);
   assert.match(page, /id="build-list" tabindex="0" aria-label="Build plan items"/);
   assert.match(page, /id="build-progressbar" role="progressbar"/);
@@ -51,6 +54,7 @@ test("dashboard serves live read-only project status on loopback", async (t) => 
 
   const firstStatus = await readStatus(dashboard.url);
   assert.equal(firstStatus.project.name, "dashboard-project");
+  assert.equal(firstStatus.configuration.state, "defaults");
   assert.deepEqual(firstStatus.plans.build, {
     completed: 1,
     remaining: 1,
@@ -147,6 +151,15 @@ test("dashboard closes its server cleanly", async (t) => {
 
 interface DashboardStatus {
   project: { name: string };
+  configuration: {
+    state: string;
+    values: {
+      qualityGates: {
+        regular: { audit: string; check: string; tryGuide: string };
+        continuous: { audit: string; check: string; tryGuide: string };
+      };
+    };
+  };
   plans: {
     build: {
       completed: number;

@@ -30,6 +30,13 @@ verify the whole current feature against every "done when" in
 
 ## Step 1 - build the checklist
 
+Read `blueprint/config.json` first. A missing file means the built-in defaults
+apply. If the file exists but is invalid, stop and point the user to `/doctor`.
+Configuration never grants permission to start a server or take any other action
+that the project instructions or user have not authorized.
+The quality-gate config controls automatic invocation only. An explicit `/check`
+or `$check` request always runs.
+
 Read `blueprint/context/current-feature.md`. Pull the observable "done when"
 criteria from the build steps (and any acceptance notes in the Testing section).
 Turn them into a concrete checklist of claims to prove - each one a specific,
@@ -65,6 +72,12 @@ Drive the app to each checklist item and capture evidence as you go:
 - Capture **screenshots** for visual/UI claims, **output** for CLI/API claims.
 - Watch for **console errors and failed network requests**; a clean-looking screen
   with errors in the console is not a pass.
+
+With `verification.uiEvidence: "required"`, every UI claim needs direct browser
+evidence, including a screenshot and the relevant console and network check. If
+that evidence path is unavailable, mark the claim unverifiable instead of
+passing it from build output. With `when-available`, use the strongest available
+evidence and report any gap plainly.
 
 ## Step 4 - report
 

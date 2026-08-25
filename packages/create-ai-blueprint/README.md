@@ -28,6 +28,7 @@ The installer copies the Blueprint workflow files into the current directory:
 
 - `AGENTS.md`
 - `CLAUDE.md`
+- `blueprint/config.json`
 - `blueprint/.state/manifest.json`
 - `.agents/`
 - `.claude/`
@@ -111,11 +112,20 @@ The updater detects the installed adapters and manages only these paths:
 - `.agents/skills/`
 - `.claude/skills/`
 
-It preserves `AGENTS.md`, `CLAUDE.md`, project and build plans, context, history,
-references, and prototypes. An unchanged `blueprint/README.md` installed by an
+It preserves `AGENTS.md`, `CLAUDE.md`, project configuration, project and build
+plans, context, history, references, and prototypes. An unchanged `blueprint/README.md` installed by an
 older version is removed during update; a locally modified copy keeps the normal
 conflict protection. The `blueprint/.state/manifest.json` file records the
 installed version and hashes of managed files.
+
+`blueprint/config.json` is user-owned project policy. It controls review cadence,
+checkpoint availability, branch prefixes, verification strictness, regular and
+Continuous quality gates, and future Continuous Mode limits. Audit, check, and
+try-guide gates all default to manual. A missing file uses built-in defaults;
+an invalid file is reported by status and blocks mutating workflow skills until
+`/doctor` identifies the repair. Configuration never grants permission to
+commit, merge, push, deploy, publish, or take destructive action. Continuous
+settings are validated now but do not run multiple features in this release.
 
 Locally modified managed files are reported as conflicts. Interactive updates
 ask before replacing them. Non-interactive updates exit unless you pass
@@ -135,7 +145,7 @@ inside it:
 npx create-ai-blueprint@latest status
 ```
 
-It reports build-plan progress, active work, findings, Git state, drift
+It reports configuration state, build-plan progress, active work, findings, Git state, drift
 warnings, completion blockers, and one suggested next action. For scripts and
 integrations, request the versioned JSON object:
 

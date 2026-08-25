@@ -18,26 +18,61 @@ passes.
 
 ## Before you start
 
+Read `blueprint/config.json`. A missing file means the built-in defaults apply.
+If the file exists but is invalid, stop and point the user to `/doctor`.
+Configuration can strengthen or shape the completion gates, but it never grants
+permission to commit, merge, push, deploy, publish, or take destructive action.
+
 Confirm the work is actually finished: `blueprint/context/current-feature.md`
 holds a real spec, its steps are built on a branch, and `Verify`, or the fallback
-build and tests, passes. If any of the
-spec's done-whens are behavioral, `/check` should have proven them against the
-running app first - don't merge on an unverified claim. Uncommitted step work is
-expected (per-step checkpoints are optional); this skill commits it. Don't require
-the steps to be pre-committed.
+build and tests, passes. Apply the configured regular quality gates below before
+logging or committing. Uncommitted step work is expected because per-step
+checkpoints are optional; this skill commits it. Don't require the steps to be
+pre-committed.
+
+## Configured regular quality gates
+
+Use `qualityGates.regular` for this work item:
+
+- **Audit:** `manual` runs only when the user explicitly requests `/audit`;
+  `when-sensitive` runs for authentication, authorization, payments, secrets,
+  personal or user data, migrations, destructive operations, external side
+  effects, security boundaries, or unusually broad changes; `always` runs for
+  every work item.
+- **Check:** `manual` runs only when explicitly requested; `when-behavioral` runs
+  when a done-when needs observed runtime behavior such as a click, request, CLI
+  command, download, background job, or multi-screen flow; `always` runs for
+  every work item.
+- **Try guide:** `manual` runs only when explicitly requested;
+  `when-user-facing` generates a guide when the change affects UI, navigation,
+  copy, a public API or CLI, output, or another workflow a person directly uses;
+  `always` generates one for every work item.
+
+Apply automatic gates in this order: `/check`, `/audit current`, then `/try`.
+Reuse adequate evidence produced during the current work item instead of
+repeating it. A required gate that cannot run is a blocker. `/try` only generates
+instructions for human review; never claim the user performed them. P0 and P1
+finding blockers remain enforced regardless of these settings.
 
 ## Step 0 - final safety pass
 
 Before logging or committing, run a short safety pass and report blockers only:
 
 - active spec exists and the work is not being completed from `main` or `master`
+- the branch name uses the configured feature, fix, or rollback prefix
 - changed files are tied to the active spec, with no unrelated dirty work mixed
   in (a dirty `blueprint/context/findings.md` is expected, since `/audit` writes it)
 - the exact `Verify` command from `AGENTS.md` passed in this session, when one is
   declared; otherwise the build passed, and tests passed when the project has a
   declared test command and the change touched logic
-- behavioral done-whens have `/check` evidence or equivalent proof, and there is
-  a clear manual try path
+- any check required by `qualityGates.regular` has evidence, and there is a clear
+  manual try path
+- with `verification.logicTests: "required"`, logic changes have a configured
+  runner and passing focused tests; otherwise completion is blocked and `/tests`
+  is the next setup step
+- with `verification.uiEvidence: "required"`, UI done-whens have direct browser
+  evidence, including screenshots and relevant console and network checks
+- any audit or try guide required by `qualityGates.regular` ran before completion
 - if workflow files changed, `.agents` and `.claude` stayed in sync where both
   adapters exist
 - no P0 or P1 finding in `blueprint/context/findings.md` is `open` or `fixed`.

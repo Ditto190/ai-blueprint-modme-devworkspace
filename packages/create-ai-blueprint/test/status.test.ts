@@ -39,6 +39,11 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
 
   assert.equal(status.schemaVersion, 1);
   assert.equal(status.health, "ok");
+  assert.equal(status.configuration.state, "defaults");
+  assert.deepEqual(status.configuration.values.qualityGates, {
+    regular: { audit: "manual", check: "manual", tryGuide: "manual" },
+    continuous: { audit: "manual", check: "manual", tryGuide: "manual" }
+  });
   assert.deepEqual(status.plans.build, {
     completed: 1,
     remaining: 1,
@@ -105,6 +110,96 @@ test("readProjectStatus reports OpenCode from the manifest", async (t) => {
 
   assert.deepEqual(status.blueprint.adapters, ["opencode"]);
   assert.match(formatHumanStatus(status), /Adapters\s+opencode/);
+});
+
+test("readProjectStatus exposes valid project config", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "chore/setup"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      qualityGates: {
+        continuous: { audit: "always" }
+      },
+      continuous: { maxFeatures: 3 }
+    }, null, 2)}\n`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.configuration.state, "project");
+  assert.equal(
+    status.configuration.values.qualityGates.continuous.audit,
+    "always"
+  );
+  assert.equal(status.configuration.values.continuous.maxFeatures, 3);
+  assert.doesNotMatch(formatHumanStatus(status), /invalid, using defaults/);
+});
+
+test("readProjectStatus uses configured branch prefixes", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: `# Feature: Status command
+
+**From build-plan:** feature 2
+**Status:** in progress
+
+## Build steps
+
+- [ ] **Step 1 - Print status** - format the result.
+`,
+    findings: emptyFindings(),
+    branch: "feat/status-command"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      git: { featureBranchPrefix: "feat/" }
+    }, null, 2)}\n`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.configuration.values.git.featureBranchPrefix, "feat/");
+  assert.ok(
+    status.warnings.every((warning) => warning.code !== "work_branch_mismatch")
+  );
+  assert.ok(
+    status.completion.blockers.every(
+      (blocker) => blocker !== "branch does not match feature work"
+    )
+  );
+});
+
+test("readProjectStatus warns when project config is invalid", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "chore/setup"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    "not json\n"
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.health, "warning");
+  assert.equal(status.configuration.state, "invalid");
+  assert.equal(status.configuration.values.qualityGates.regular.audit, "manual");
+  assert.deepEqual(status.nextAction, {
+    command: "/doctor",
+    reason: "Repair blueprint/config.json before running a mutating workflow."
+  });
+  assert.ok(
+    status.completion.blockers.includes("project configuration is invalid")
+  );
+  assert.ok(status.warnings.some((warning) => warning.code === "invalid_config"));
+  assert.match(formatHumanStatus(status), /Config\s+invalid, using defaults/);
 });
 
 test("readProjectStatus selects overview before new feature work", async (t) => {
@@ -222,6 +317,15 @@ test("formatHumanStatus prints a scannable orientation", async (t) => {
   assert.match(output, /^Project$/m);
   assert.match(output, /^  Build plan    1\/2 complete$/m);
   assert.match(output, /^  Work          none$/m);
+  assert.match(output, /^  Config        built-in defaults$/m);
+  assert.match(
+    output,
+    /^  Regular gates audit manual, check manual, try guide manual$/m
+  );
+  assert.match(
+    output,
+    /^  Cont\. gates   audit manual, check manual, try guide manual$/m
+  );
   assert.match(output, /^  Findings      none$/m);
   assert.match(output, /^Git$/m);
   assert.match(output, /^  Branch        chore\/setup$/m);

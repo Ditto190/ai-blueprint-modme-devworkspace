@@ -48,6 +48,14 @@ Gather these, then summarize. Do not dump file contents.
    - If `.gitignore` marks Blueprint workflow files as local-only, still require
      the files to exist on disk. Ignored but present is healthy; ignored and
      missing means the local workflow needs to be restored.
+   - Read `blueprint/config.json` when present. Missing is healthy and means
+     built-in defaults. When present, require a regular non-symbolic-link JSON
+     file with `schemaVersion: 1`. Reject unknown keys and unsupported values.
+     Report the effective workflow, git, verification, regular quality-gate,
+     Continuous quality-gate, and Continuous Mode settings. Confirm each audit,
+     check, and try-guide gate uses its supported values and defaults to `manual`.
+     An invalid config is a setup blocker for mutating workflow skills because
+     they must not guess which policy to follow.
 2. **Tool adapters**
    - Read `blueprint/.state/manifest.json` when present and report its exact
      logical adapters: Codex, Claude Code, GitHub Copilot, and OpenCode.
@@ -127,9 +135,9 @@ Gather these, then summarize. Do not dump file contents.
    - If `current-feature.md` is the reset stub but git has source or workflow
      changes, warn that work is happening without an active spec.
    - Flag active spec on `main`, all spec steps checked but no completion, or a
-     branch that does not match `feature/`, `fix/`, or `rollback/` for the spec
-     type. For a feature, also flag a mismatch with the next unchecked
-     build-plan item. For a rollback, confirm its target is a checked item and do
+     branch that does not match the configured feature, fix, or rollback prefix
+     for the spec type. For a feature, also flag a mismatch with the next
+     unchecked build-plan item. For a rollback, confirm its target is a checked item and do
      not compare it to the next unchecked item.
 8. **Git**
    - Report current branch, clean vs dirty working tree, rough changed-file count,
@@ -143,6 +151,7 @@ Print a compact health report with these labels:
 
     Health: Pass | Needs attention | Blocked
     Setup: ...
+    Configuration: ...
     Verification: ...
     Adapters: ...
     Visibility: ...
@@ -159,6 +168,8 @@ Choose the repair order in this priority:
 
 - Required Blueprint files missing -> overlay the Blueprint again, or use
   `/adopt` for a brownfield app.
+- Invalid `blueprint/config.json` -> fix the named key or value, then rerun
+  `/doctor`. Do not mutate project work while configuration is ambiguous.
 - No git repo -> initialize git before using the build loop.
 - No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the
   selected tool. OpenCode can use either compatible tree.

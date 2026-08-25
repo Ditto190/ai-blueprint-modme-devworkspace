@@ -21,6 +21,12 @@ import { readGitStatus } from "./git-status.js";
 import type { GitStatusSummary } from "./git-status.js";
 import { readHistory } from "./history.js";
 import type { HistoryItem, HistorySummary } from "./history.js";
+import { readProjectConfig } from "./project-config.js";
+import type {
+  ProjectConfig,
+  ProjectConfigState,
+  QualityGatePolicy
+} from "./project-config.js";
 import { readProjectMetadata } from "./project-metadata.js";
 import type { ProjectAdapter } from "./project-metadata.js";
 
@@ -81,6 +87,12 @@ interface StatusCompletion {
   blockers: string[];
 }
 
+interface StatusConfiguration {
+  path: string;
+  state: ProjectConfigState;
+  values: ProjectConfig;
+}
+
 interface HumanStatusOptions {
   color?: boolean;
 }
@@ -106,6 +118,7 @@ interface ProjectStatus {
     version: string | null;
     adapters: ProjectAdapter[];
   };
+  configuration: StatusConfiguration;
   plans: {
     overview: StatusOverview;
     build: StatusBuildPlan;
@@ -131,28 +144,38 @@ async function readProjectStatus(
   startPath: string = process.cwd()
 ): Promise<ProjectStatus> {
   const metadata = await readProjectMetadata(startPath);
-  const [buildPlan, currentWork, findings, history, git, overviewResult] = await Promise.all([
-    readBuildPlan(metadata.project.root),
-    readCurrentWork(metadata.project.root),
-    readFindings(metadata.project.root),
-    readHistory(metadata.project.root),
-    readGitStatus(metadata.project.root),
-    readOverviewStatus(metadata.project.root)
-  ]);
+  const [buildPlan, currentWork, findings, history, git, overviewResult, config] =
+    await Promise.all([
+      readBuildPlan(metadata.project.root),
+      readCurrentWork(metadata.project.root),
+      readFindings(metadata.project.root),
+      readHistory(metadata.project.root),
+      readGitStatus(metadata.project.root),
+      readOverviewStatus(metadata.project.root),
+      readProjectConfig(metadata.project.root)
+    ]);
   const warnings: StatusWarning[] = [
     ...metadata.warnings,
+    ...config.warnings,
     ...buildPlan.warnings,
     ...currentWork.warnings,
     ...findings.warnings,
     ...overviewResult.warnings,
-    ...findDrift(buildPlan, currentWork, git)
+    ...findDrift(buildPlan, currentWork, git, config.values)
   ];
-  const completion = selectCompletion(currentWork, findings, git);
+  const completion = selectCompletion(
+    currentWork,
+    findings,
+    git,
+    config.values,
+    config.state
+  );
   const nextAction = selectNextAction(
     overviewResult.overview,
     buildPlan,
     currentWork,
-    findings
+    findings,
+    config.state
   );
 
   return {
@@ -162,6 +185,11 @@ async function readProjectStatus(
       : "ok",
     project: metadata.project,
     blueprint: metadata.blueprint,
+    configuration: {
+      path: config.path,
+      state: config.state,
+      values: config.values
+    },
     plans: {
       overview: overviewResult.overview,
       build: formatBuildPlan(buildPlan)
@@ -191,6 +219,17 @@ function formatHumanStatus(
     formatRow("Path", status.project.root, style),
     formatRow("Version", status.blueprint.version || "unknown", style),
     formatRow("Adapters", adapters, style),
+    formatRow("Config", formatConfigValue(status.configuration.state), style),
+    formatRow(
+      "Regular gates",
+      formatQualityGates(status.configuration.values.qualityGates.regular),
+      style
+    ),
+    formatRow(
+      "Cont. gates",
+      formatQualityGates(status.configuration.values.qualityGates.continuous),
+      style
+    ),
     "",
     formatSection("Progress", style),
     formatRow("Overview", formatOverviewValue(status.plans.overview, style), style),
@@ -237,6 +276,22 @@ function formatHumanStatus(
 
   lines.push(`  ${status.nextAction.reason}`);
   return lines.join("\n");
+}
+
+function formatConfigValue(state: ProjectConfigState): string {
+  if (state === "project") {
+    return "project settings";
+  }
+
+  if (state === "invalid") {
+    return "invalid, using defaults";
+  }
+
+  return "built-in defaults";
+}
+
+function formatQualityGates(gates: QualityGatePolicy): string {
+  return `audit ${gates.audit}, check ${gates.check}, try guide ${gates.tryGuide}`;
 }
 
 function shouldUseColor(
@@ -465,9 +520,15 @@ function selectBuildPlanItem(
 function selectCompletion(
   currentWork: CurrentWorkSummary,
   findings: FindingsSummary,
-  git: GitStatusSummary
+  git: GitStatusSummary,
+  config: ProjectConfig,
+  configState: ProjectConfigState
 ): StatusCompletion {
   const blockers: string[] = [];
+
+  if (configState === "invalid") {
+    blockers.push("project configuration is invalid");
+  }
 
   if (currentWork.state !== "active") {
     blockers.push("no valid work spec is active");
@@ -485,7 +546,7 @@ function selectCompletion(
     blockers.push("Git repository is unavailable");
   } else if (
     currentWork.type &&
-    !isMatchingWorkBranch(git.branch, currentWork.type)
+    !isMatchingWorkBranch(git.branch, currentWork.type, config)
   ) {
     blockers.push(`branch does not match ${currentWork.type} work`);
   }
@@ -504,8 +565,16 @@ function selectNextAction(
   overview: StatusOverview,
   buildPlan: BuildPlanSummary,
   currentWork: CurrentWorkSummary,
-  findings: FindingsSummary
+  findings: FindingsSummary,
+  configState: ProjectConfigState
 ): StatusNextAction {
+  if (configState === "invalid") {
+    return {
+      command: "/doctor",
+      reason: "Repair blueprint/config.json before running a mutating workflow."
+    };
+  }
+
   if (currentWork.state === "malformed") {
     return {
       command: "/doctor",
@@ -599,7 +668,8 @@ function selectNextAction(
 function findDrift(
   buildPlan: BuildPlanSummary,
   currentWork: CurrentWorkSummary,
-  git: GitStatusSummary
+  git: GitStatusSummary,
+  config: ProjectConfig
 ): StatusWarning[] {
   if (currentWork.state !== "active") {
     return [];
@@ -615,7 +685,7 @@ function findDrift(
   } else if (
     git.available &&
     currentWork.type &&
-    !isMatchingWorkBranch(git.branch, currentWork.type)
+    !isMatchingWorkBranch(git.branch, currentWork.type, config)
   ) {
     warnings.push({
       code: "work_branch_mismatch",
@@ -661,9 +731,15 @@ function findDrift(
 
 function isMatchingWorkBranch(
   branch: string | null,
-  type: CurrentWorkType
+  type: CurrentWorkType,
+  config: ProjectConfig
 ): boolean {
-  return branch?.startsWith(`${type}/`) === true;
+  const prefix = type === "feature"
+    ? config.git.featureBranchPrefix
+    : type === "fix"
+      ? config.git.fixBranchPrefix
+      : config.git.rollbackBranchPrefix;
+  return branch?.startsWith(prefix) === true;
 }
 
 async function readOverviewStatus(
@@ -785,6 +861,7 @@ export type {
   HumanStatusOptions,
   OverviewState,
   ProjectStatus,
+  StatusConfiguration,
   StatusBuildPlan,
   StatusCompletion,
   StatusCurrentWork,

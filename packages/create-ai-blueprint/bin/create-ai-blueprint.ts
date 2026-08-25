@@ -542,7 +542,7 @@ function printUpdatePlan(prepared: PreparedUpdate): void {
   }
 
   console.log(
-    "Preserved: AGENTS.md, CLAUDE.md, project and build plans, context, history, references, and prototypes."
+    "Preserved: AGENTS.md, CLAUDE.md, project configuration, plans, context, history, references, and prototypes."
   );
 }
 

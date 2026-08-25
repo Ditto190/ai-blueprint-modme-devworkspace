@@ -20,6 +20,12 @@ dependencies, commits, merges, pushes, or starts product work. Its one write is
 the findings ledger at `blueprint/context/findings.md` (Step 4), the durable
 record of findings and their status.
 
+The quality-gate config controls when another workflow invokes this skill
+automatically. An explicit `/audit` or `$audit` request always selects the audit
+regardless of whether the applicable gate is `manual`, conditional, or `always`.
+A missing config means built-in defaults. If it exists but is invalid, stop and
+point to `/doctor` before writing the findings ledger.
+
 ## Input
 
 Treat scope and lens as separate controls. Arguments may appear in either order,
@@ -63,6 +69,7 @@ If the lens is unclear, use all lenses and state that choice.
 Read:
 
 - `AGENTS.md`
+- `blueprint/config.json`
 - `blueprint/context/project-overview.md`
 - `blueprint/context/coding-standards.md`
 - `blueprint/context/current-feature.md`

@@ -54,6 +54,7 @@ Read only enough to identify the setup:
 - which selected tools need `.agents/`, `.claude/`, or both
 - whether Blueprint workflow paths are already tracked by git
 - existing verification commands and `.github/workflows/`
+- `blueprint/config.json`, when present, and whether it parses cleanly
 - project name, from `package.json`, the folder name, existing docs, or the user
 
 Do not infer more than the files support. Mark uncertain items as `> TODO` in the
@@ -115,7 +116,20 @@ Cover the practical conventions the build loop needs:
 If the project is too new to reveal a convention, leave a concise `> TODO` rather
 than pretending a pattern exists.
 
-## Step 4 - check AI interaction rules
+## Step 4 - check project configuration and AI interaction rules
+
+Read `blueprint/config.json`. A missing file means built-in defaults and is not
+an error. If the file exists but is invalid, stop and show the exact invalid key
+or value before changing other setup files.
+
+Keep project configuration deterministic. Ask before changing preferences and
+edit only values the user actually chose, such as branch prefixes, UI evidence,
+logic-test strictness, regular or Continuous quality gates, or Continuous Mode
+limits. Audit, check, and try-guide gates default to `manual`; do not enable
+automatic gates unless the user chooses them. Never put
+commands, product requirements, communication prose, secrets, or permission for
+commits, merges, pushes, deployments, publication, destructive actions, failed
+checks, or finding waivers into config.
 
 Read `blueprint/context/ai-interaction.md` and update only obvious mismatches.
 Usually the default review loop should stay intact. Flag preferences for the user
@@ -124,6 +138,8 @@ instead of guessing, such as:
 - whether commits should be offered after every step
 - whether branches should use a different naming pattern
 - whether `/check` should require browser evidence for UI work
+- whether audit, check, or try guides should stay manual, run only for their
+  documented conditional case, or run for every regular or Continuous work item
 
 If no changes are needed, say so.
 
@@ -216,6 +232,7 @@ Stop with a concise onboarding report:
 - Blueprint visibility choice
 - tracked-file warning if local-only mode was chosen after files were already tracked
 - files changed
+- project configuration state and any user-selected overrides
 - commands now available
 - testing gate status
 - verification command and GitHub checks status

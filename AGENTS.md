@@ -20,10 +20,31 @@ The workflow is defined by the local skills and context files below.
 
 ## Read these for full context
 
+- `blueprint/config.json` - deterministic project workflow settings
 - `blueprint/context/project-overview.md` - the project's source of truth
 - `blueprint/context/coding-standards.md` - conventions to follow
 - `blueprint/context/ai-interaction.md` - how to work with the user on this project
 - `blueprint/context/current-feature.md` - the one feature, fix, or rollback being built right now
+
+## Project configuration
+
+`blueprint/config.json` is the user-owned, machine-readable workflow policy for
+this project. Workflow skills read the relevant settings before acting. A
+missing file means built-in defaults. An invalid file falls back to defaults for
+read-only status reporting, but mutating workflow commands stop and point to
+`/doctor` instead of guessing.
+
+Configuration can make review or verification stricter and can tune local
+branch names and automated-mode limits. It never grants permission to commit,
+merge, push, deploy, publish, send, delete data, waive a failing check, or accept
+a finding. Those approval and safety boundaries are not configurable.
+
+`qualityGates.regular` controls automatic audit, check, and try-guide behavior
+for the normal workflow and Autopilot. `qualityGates.continuous` controls the
+same per-feature gates for Continuous Mode. Every gate defaults to `manual`, so
+the named skill runs only when explicitly requested. The conditional modes are
+`when-sensitive` for audit, `when-behavioral` for check, and `when-user-facing`
+for try guides. `always` runs the gate for every work item in that workflow.
 
 ## Workflow
 
@@ -80,11 +101,11 @@ conventions in `blueprint/context/` apply however a step is invoked. `/discovery
 is never required: users may write detailed plans directly or develop them
 through any conversation before running `/overview`.
 
-Optional explicit-only skill: `autopilot` can run one bounded spec/build/check
-and targeted-audit pass when directly invoked. It may create checkpoint commits
-on the feature or fix branch after passing steps, repair confirmed P0/P1 findings
-within scope, and rerun affected checks. It stops before `/complete`, merge, push,
-deploy, or destructive actions.
+Optional explicit-only skill: `autopilot` can run one bounded spec/build pass
+when directly invoked, including the configured regular quality gates. It may
+create checkpoint commits on the feature or fix branch after passing steps and
+repair confirmed P0/P1 findings when its audit gate runs. It stops before
+`/complete`, merge, push, deploy, or destructive actions.
 
 Deployment is also explicit. `/release` can prepare local Render or Vercel config
 and run readiness checks, but it must stop before deploy, remote service changes,

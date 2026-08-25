@@ -389,6 +389,7 @@ test("update replaces unchanged managed files and preserves project files", asyn
   await writeFiles(targetDir, {
     "AGENTS.md": "Custom project instructions\n",
     "blueprint/build-plan.md": "Custom roadmap\n",
+    "blueprint/config.json": "{\"schemaVersion\":1}\n",
     "blueprint/context/decisions.md": "Keep this decision\n"
   });
   await writeInstallManifest({
@@ -444,6 +445,10 @@ test("update replaces unchanged managed files and preserves project files", asyn
   assert.equal(
     await fs.readFile(path.join(targetDir, "blueprint/build-plan.md"), "utf8"),
     "Custom roadmap\n"
+  );
+  assert.equal(
+    await fs.readFile(path.join(targetDir, "blueprint/config.json"), "utf8"),
+    "{\"schemaVersion\":1}\n"
   );
   assert.equal(
     await fs.readFile(path.join(targetDir, "blueprint/context/decisions.md"), "utf8"),

@@ -141,8 +141,8 @@ the Blueprint workflow files your app needs.
 **3. Run onboard before anything else.** This detects the stack and may edit the
 setup files that ship with the overlay: `AGENTS.md` commands, the `CLAUDE.md`
 project title when present, `blueprint/context/coding-standards.md`,
-`blueprint/context/ai-interaction.md`, `.gitignore`, adapter recommendations, and
-README placement. It also asks whether Blueprint workflow files should be
+`blueprint/context/ai-interaction.md`, `blueprint/config.json`, `.gitignore`,
+adapter recommendations, and README placement. It also asks whether Blueprint workflow files should be
 committed or kept local-only through `.gitignore`:
 
 ```text
@@ -153,6 +153,7 @@ In Codex, invoke it as `$onboard`. In Claude Code, invoke it as `/onboard`. In
 OpenCode, ask it to run the onboard skill.
 
 **4. Review the setup.** Skim
+[blueprint/config.json](blueprint/config.json),
 [blueprint/context/coding-standards.md](blueprint/context/coding-standards.md) and
 [blueprint/context/ai-interaction.md](blueprint/context/ai-interaction.md). Adjust
 anything `/onboard` flagged or anything that does not match how you want to work.
@@ -160,6 +161,54 @@ If something feels off, run `/doctor`; it is a read-only health check for the
 Blueprint setup. If the app has logic worth testing but no unit test runner, run
 `/tests` now. It is a one-time setup step; future implementation work uses the
 configured test command automatically.
+
+### Project configuration
+
+`blueprint/config.json` holds deterministic workflow settings shared by every
+installed adapter. It is user-owned project policy: fresh installs include the
+defaults, and updates preserve local changes. A missing file uses the same
+defaults. Invalid JSON, unknown keys, unsupported values, and symbolic links are
+reported by status and `/doctor`; mutating workflow skills stop instead of
+guessing.
+
+| Setting | Allowed values | Default |
+| --- | --- | --- |
+| `workflow.stepReview` | `every`, `feature` | `every` |
+| `workflow.checkpointCommits` | `enabled`, `disabled` | `enabled` |
+| `git.featureBranchPrefix` | lowercase branch prefix ending in `/` | `feature/` |
+| `git.fixBranchPrefix` | lowercase branch prefix ending in `/` | `fix/` |
+| `git.rollbackBranchPrefix` | lowercase branch prefix ending in `/` | `rollback/` |
+| `verification.logicTests` | `when-configured`, `required` | `when-configured` |
+| `verification.uiEvidence` | `when-available`, `required` | `when-available` |
+| `qualityGates.regular.audit` | `manual`, `when-sensitive`, `always` | `manual` |
+| `qualityGates.regular.check` | `manual`, `when-behavioral`, `always` | `manual` |
+| `qualityGates.regular.tryGuide` | `manual`, `when-user-facing`, `always` | `manual` |
+| `qualityGates.continuous.audit` | `manual`, `when-sensitive`, `always` | `manual` |
+| `qualityGates.continuous.check` | `manual`, `when-behavioral`, `always` | `manual` |
+| `qualityGates.continuous.tryGuide` | `manual`, `when-user-facing`, `always` | `manual` |
+| `continuous.maxFeatures` | positive integer or `null` for no limit | `null` |
+| `continuous.maxRepairAttempts` | integer from `0` through `10` | `2` |
+| `continuous.finalIntegrationAudit` | `true`, `false` | `false` |
+
+Regular quality gates apply to the normal workflow and Autopilot. `manual` means
+the skill remains available but never runs automatically. `when-sensitive`
+audits auth, payments, secrets, user data, migrations, destructive operations,
+external side effects, security boundaries, and unusually broad changes.
+`when-behavioral` checks done-whens that need observed runtime behavior.
+`when-user-facing` creates a try guide for UI, public API or CLI, output, and
+other workflows a person directly uses. `always` applies the gate to every work
+item. A try guide is instructions for a human, not evidence that the review was
+performed.
+
+The `continuous` section is installed and validated now so projects can settle
+their policy before Continuous Mode is added. The Continuous gate policies and
+limits do not change Autopilot or run multiple features in this release.
+
+Config values never authorize commits, merges, pushes, deployments,
+publication, destructive actions, check waivers, or finding acceptance. Commands
+stay in `AGENTS.md`, communication preferences stay in
+`blueprint/context/ai-interaction.md`, and installer metadata stays in
+`blueprint/.state/manifest.json`.
 
 **5. Plan the app.** Fill in the two files you own:
 
@@ -833,6 +882,7 @@ step in `current-feature.md`.
 └── blueprint/
     ├── .state/
     │   └── manifest.json     (installed version and managed-file hashes)
+    ├── config.json            (user-owned deterministic workflow settings)
     ├── project-plan.md        (you write: what and why)
     ├── build-plan.md          (you write: ordered feature list)
     ├── context/

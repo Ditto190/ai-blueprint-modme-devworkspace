@@ -18,6 +18,10 @@ expect this result, and watch for these failure signs.
 It is always read-only. It does not edit files, install dependencies, commit,
 merge, push, or run destructive commands.
 
+The quality-gate config controls when another workflow generates this guide
+automatically. An explicit `/try` or `$try` request always runs. A generated guide
+never counts as evidence that the user performed the walkthrough.
+
 ## Input
 
 Optional scope:
@@ -37,6 +41,7 @@ wants to try instead of guessing.
 Read:
 
 - `AGENTS.md`
+- `blueprint/config.json`
 - `blueprint/context/current-feature.md`
 - `blueprint/context/project-overview.md`
 - `blueprint/context/coding-standards.md`

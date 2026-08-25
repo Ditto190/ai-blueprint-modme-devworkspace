@@ -2,6 +2,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  createDefaultProjectConfig,
+  parseProjectConfig
+} from "../packages/create-ai-blueprint/lib/project-config.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const codexSkillsRoot = path.join(repoRoot, ".agents", "skills");
@@ -29,6 +34,7 @@ const requiredPaths = [
   "assets/social-preview.png",
   "assets/social-preview.svg",
   "blueprint/build-plan.md",
+  "blueprint/config.json",
   "blueprint/project-plan.md",
   "blueprint/context/ai-interaction.md",
   "blueprint/context/coding-standards.md",
@@ -66,6 +72,7 @@ function stringArray(value: unknown): string[] {
 
 async function main(): Promise<void> {
   await validateRequiredPaths();
+  await validateProjectConfig();
 
   const codexFiles = await listFiles(codexSkillsRoot);
   const claudeFiles = await listFiles(claudeSkillsRoot);
@@ -96,6 +103,17 @@ async function main(): Promise<void> {
   console.log(
     `Static contract passed: ${skills.length} skills, ${codexFiles.length} adapter files, ${importCount} Claude imports, ${referenceCount} skill references.`
   );
+}
+
+async function validateProjectConfig(): Promise<void> {
+  const configPath = path.join(repoRoot, "blueprint", "config.json");
+  const config = parseProjectConfig(
+    JSON.parse(await fs.readFile(configPath, "utf8"))
+  );
+
+  if (JSON.stringify(config) !== JSON.stringify(createDefaultProjectConfig())) {
+    throw new Error("blueprint/config.json must contain the complete default config");
+  }
 }
 
 async function validateRequiredPaths(): Promise<void> {

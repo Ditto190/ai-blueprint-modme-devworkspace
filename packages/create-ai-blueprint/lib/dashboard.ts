@@ -386,6 +386,9 @@ const DASHBOARD_HTML: string = `<!doctype html>
           <div class="facts">
             <div class="fact"><span>Version</span><span id="version">-</span></div>
             <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
+            <div class="fact"><span>Config</span><span id="config">-</span></div>
+            <div class="fact"><span>Regular gates</span><span id="regular-gates">-</span></div>
+            <div class="fact"><span>Continuous gates</span><span id="continuous-gates">-</span></div>
             <div class="fact"><span>Overview</span><span id="overview">-</span></div>
           </div>
           <div class="health-summary" id="health-summary">
@@ -556,6 +559,11 @@ const DASHBOARD_HTML: string = `<!doctype html>
       }
     }
 
+    function formatGates(gates) {
+      return "audit " + gates.audit + ", check " + gates.check +
+        ", try guide " + gates.tryGuide;
+    }
+
     function render(status) {
       byId("project-name").textContent = status.project.name;
       byId("project-path").textContent = status.project.root;
@@ -573,6 +581,17 @@ const DASHBOARD_HTML: string = `<!doctype html>
       setList("health-list", healthIssues, "No workflow warnings.");
       byId("version").textContent = status.blueprint.version || "unknown";
       byId("adapters").textContent = status.blueprint.adapters.join(", ") || "none detected";
+      byId("config").textContent = status.configuration.state === "project"
+        ? "project settings"
+        : status.configuration.state === "invalid"
+          ? "invalid, using defaults"
+          : "built-in defaults";
+      byId("regular-gates").textContent = formatGates(
+        status.configuration.values.qualityGates.regular
+      );
+      byId("continuous-gates").textContent = formatGates(
+        status.configuration.values.qualityGates.continuous
+      );
       byId("overview").textContent = status.plans.overview.state;
 
       const build = status.plans.build;
