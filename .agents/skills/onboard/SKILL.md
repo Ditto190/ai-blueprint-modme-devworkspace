@@ -208,6 +208,13 @@ Recommend option 1 by default. If the user chooses option 2:
 
 Then report which adapter folders are needed:
 
+- Treat Codex, GitHub Copilot, and OpenCode as separate tool selections that
+  share the same `.agents/` adapter tree. Claude Code uses `.claude/`.
+- If asking whether to remove unused adapters when all four tools are installed,
+  use these choices: `Keep all adapters`, `Claude Code only`, and
+  `Codex, GitHub Copilot, and OpenCode only`. Never call the first choice
+  `Keep both`, and never label the shared `.agents/` choice as only Codex or
+  Copilot.
 - Codex only: keep `AGENTS.md`, `.agents/`, and `blueprint/`; `CLAUDE.md` and
   `.claude/` can be deleted.
 - Claude Code only: keep `AGENTS.md`, `CLAUDE.md`, `.claude/`, and `blueprint/`;
