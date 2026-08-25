@@ -10,8 +10,12 @@
     "check:static": "tsx scripts/validate-blueprint.ts",
     "test": "npm --prefix packages/create-ai-blueprint test",
     "test:routing": "tsx --test scripts/evals/routing.test.ts && tsx scripts/evals/routing.ts --min-rank1 90",
+    "test:sandbox": "tsx --test scripts/scaffold-sandbox.test.ts scripts/clear-sandbox.test.ts",
     "test:package": "tsx scripts/smoke-package.ts",
     "test:e2e": "tsx scripts/e2e/run.ts",
+    "sandbox": "tsx scripts/scaffold-sandbox.ts",
+    "sandbox:clear": "tsx scripts/clear-sandbox.ts",
+    "sandbox:demo": "tsx scripts/scaffold-sandbox.ts --demo-plan",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

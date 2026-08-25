@@ -20,6 +20,10 @@ const checks: CheckCommand[] = [
     ...npmInvocation(["run", "test:routing"])
   },
   {
+    name: "Sandbox runner unit tests",
+    ...npmInvocation(["run", "test:sandbox"])
+  },
+  {
     name: "Installer unit tests",
     ...npmInvocation(["--prefix", "packages/create-ai-blueprint", "test"])
   },

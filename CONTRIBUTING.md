@@ -35,13 +35,57 @@ framework abstractions do not belong in this repository.
 | `npm run check:static` | Check adapter parity, command inventories, imports, references, and package metadata. |
 | `npm test` | Run the installer unit tests. |
 | `npm run test:routing` | Run deterministic skill selection cases without invoking an AI agent. |
+| `npm run test:sandbox` | Run deterministic tests for the inspectable scaffold runner. |
 | `npm run test:package` | Pack the npm artifact and smoke-test individual, combined, default, and legacy adapter installs. |
+| `npm run sandbox` | Scaffold a minimal app, run the local packed Blueprint through its real prompts, verify it, and start its server. |
+| `npm run sandbox:clear` | List every saved sandbox run, ask for confirmation, then delete those runs. |
+| `npm run sandbox:demo` | Run the interactive sandbox with example project and build plans ready for workflow testing. |
 | `E2E_ACCEPT_RISK=1 npm run test:e2e` | Run all live-agent behavior scenarios in scratch repositories. |
 
 Run `npm run check` before opening or merging a pull request. The package smoke
 test builds the installer template, packs it into a temporary directory, installs
 that artifact locally, verifies every supported adapter mode, and removes its temporary
 files.
+
+## Inspectable scaffold sandbox
+
+`npm run sandbox` automates the maintainer's real manual acceptance path. It
+creates a dependency-free Node app under `.sandbox/`, creates the initial Git
+commit, packs the current local Blueprint, installs that artifact through `npx`,
+then runs the app's test and build scripts. The Blueprint installer stays
+interactive by default so maintainers see
+the same adapter and optional global CLI prompts as a normal user. Internal pack,
+Git, config, and file-list details stay hidden.
+
+After Blueprint installation and verification pass, the command starts the
+minimal app's development server for live review. Press Ctrl+C to stop the server
+and finish the command.
+
+The completed app is preserved by default, and the final output prints its
+absolute path. `npm run sandbox:demo` replaces the starter placeholders with a
+small task-tracker project and three ordered features, ready for `/overview`,
+`/feature`, Autopilot, or Continuous Mode. Other options support a named run or
+a fixed adapter choice:
+
+```bash
+npm run sandbox -- --name manual-proof
+npm run sandbox:demo
+npm run sandbox -- --adapter all --no-server --clean
+```
+
+This command is intentionally separate from `npm run check` and CI because its
+default installer flow is interactive. `--clean` removes the sandbox only after
+a successful run and after the server stops. Use `--adapter` and `--no-server`
+together for unattended proof. Failed runs are preserved for diagnosis.
+
+Clear all preserved sandbox runs with:
+
+```bash
+npm run sandbox:clear
+```
+
+The command lists the exact folders and asks before permanently deleting them.
+Use `npm run sandbox:clear -- --yes` only when confirmation must be skipped.
 
 ## Workflow changes
 
