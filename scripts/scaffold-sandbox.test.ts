@@ -127,7 +127,7 @@ test("adds realistic plans that are ready for overview", async () => {
 test("adds sandbox commands pinned to the locally packed CLI", async () => {
   const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "blueprint-local-cli-"));
   const projectRoot = path.join(workspace, "project");
-  const tarball = path.join(workspace, "artifacts", "create-ai-blueprint-0.14.0.tgz");
+  const tarball = path.join(workspace, "artifacts", "create-ai-blueprint-local.tgz");
 
   try {
     await scaffoldProject(projectRoot);
@@ -138,11 +138,11 @@ test("adds sandbox commands pinned to the locally packed CLI", async () => {
 
     assert.equal(
       packageJson.scripts["blueprint:status"],
-      "npx --yes --package ../artifacts/create-ai-blueprint-0.14.0.tgz create-ai-blueprint status"
+      "npx --yes --package ../artifacts/create-ai-blueprint-local.tgz create-ai-blueprint status"
     );
     assert.equal(
       packageJson.scripts["blueprint:dashboard"],
-      "npx --yes --package ../artifacts/create-ai-blueprint-0.14.0.tgz create-ai-blueprint dashboard"
+      "npx --yes --package ../artifacts/create-ai-blueprint-local.tgz create-ai-blueprint dashboard"
     );
   } finally {
     await fs.rm(workspace, { recursive: true, force: true });

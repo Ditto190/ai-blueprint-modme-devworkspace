@@ -5,8 +5,15 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.0.0] - 2026-08-26
+
+AI Blueprint 1.0 establishes the installer, shared workflow, project
+configuration, and local status dashboard as the stable public baseline.
+
 ### Changed
 
+- Redesigned the local dashboard around the next action, current work, roadmap,
+  project state, findings, completion readiness, and completed history.
 - Required `/rollback` to record full 40-character commit and parent SHA values
   for single-parent targets, and to stop before writing a spec when the target
   is a merge commit.
@@ -19,6 +26,9 @@ published `create-ai-blueprint` package.
 
 ### Added
 
+- Added live command activity to the dashboard and status output, including the
+  active command, mode, gates, progress, resume command, and recovery state.
+- Added immediate dashboard refreshes when Blueprint or project files change.
 - Added `npm run link:local` and `npm run unlink:local` for building, preparing,
   and globally linking the installer from a local checkout, so `create-ai-blueprint`
   and `blueprint` run from local files with no network access.
