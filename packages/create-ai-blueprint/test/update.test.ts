@@ -7,6 +7,8 @@ import test, { type TestContext } from "node:test";
 
 import {
   ADAPTER_PROMPT,
+  findPackageRoot,
+  formatMissingTemplateMessage,
   getTemplateEntries,
   getGlobalCliInstallCommand,
   getGlobalCliPrompt,
@@ -808,6 +810,42 @@ test("update refuses to write through a symbolic-link directory", async (t) => {
     prepareUpdate({ targetDir, templateRoot, version: "1.1.0" }),
     /Refusing to write through symbolic-link directory/
   );
+});
+
+test("findPackageRoot walks up to the nearest package.json", async (t: TestContext) => {
+  const workspace = await createWorkspace(t);
+  const nested = path.join(workspace, "pkg", "dist", "bin");
+  await fs.mkdir(nested, { recursive: true });
+  await writeFiles(workspace, {
+    "package.json": '{ "name": "outer-workspace" }\n',
+    "pkg/package.json": '{ "name": "nested-package" }\n'
+  });
+
+  const packageRoot = path.join(workspace, "pkg");
+  assert.equal(findPackageRoot(nested), packageRoot);
+  assert.equal(findPackageRoot(path.join(packageRoot, "bin")), packageRoot);
+  assert.equal(findPackageRoot(packageRoot), packageRoot);
+});
+
+test("findPackageRoot resolves this checkout to the installer package", () => {
+  const packageRoot = path.resolve(import.meta.dirname, "..");
+
+  assert.equal(findPackageRoot(path.join(packageRoot, "bin")), packageRoot);
+  assert.equal(
+    findPackageRoot(path.join(packageRoot, "dist", "bin")),
+    packageRoot
+  );
+  assert.notEqual(findPackageRoot(path.join(packageRoot, "bin")), path.dirname(packageRoot));
+});
+
+test("formatMissingTemplateMessage names the directory it searched", () => {
+  const searched = path.join("some", "where", "template");
+  const message = formatMissingTemplateMessage(searched);
+
+  assert.match(message, /Installer template is missing/);
+  assert.ok(message.includes(searched));
+  assert.match(message, /npm run link:local/);
+  assert.match(message, /npm run prepare-template/);
 });
 
 async function createWorkspace(t: TestContext): Promise<string> {
