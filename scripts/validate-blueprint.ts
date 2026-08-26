@@ -339,8 +339,11 @@ async function validateVerificationContract(): Promise<void> {
       ".agents/skills/rollback/SKILL.md",
       [
         "target commit and parent commit as full 40-character SHA values",
-        "name the merge target as an implementation blocker",
-        "`/implement` stops before applying a merge target"
+        "stop before Step 2 and before",
+        "writing or changing `blueprint/context/current-feature.md`",
+        "Publish `blocked` to",
+        "Do not record a target parent or choose a mainline",
+        "retains its merge-target stop as defense in depth"
       ]
     ],
     [

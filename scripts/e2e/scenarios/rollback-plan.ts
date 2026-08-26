@@ -98,7 +98,7 @@ async function run(t: Runner) {
     changedPaths.length === 1 && changedPaths[0] === "blueprint/context/current-feature.md"
   );
 
-  t.phase("rollback plans a merge target for implementation review");
+  t.phase("rollback blocks a merge target during planning");
   t.git("restore", "blueprint/context/current-feature.md");
   t.write(
     "blueprint/build-plan.md",
@@ -122,46 +122,39 @@ async function run(t: Runner) {
   const mergeTarget = t.git("rev-parse", "HEAD");
   const mergeHeadBefore = t.git("rev-parse", "HEAD");
   const mergeParents = t.git("show", "-s", "--format=%P", mergeTarget).split(" ").filter(Boolean);
+  const currentFeatureBefore = t.read("blueprint/context/current-feature.md") || "";
+  const mergeArchiveBefore = t.read("blueprint/history/features/02-merge-target.md") || "";
   const plannedMerge = t.agent(
     "Run /rollback 2 because the merge target breaks a downstream consumer. Plan it and stop for review."
   );
-  const mergeSpec = t.read("blueprint/context/current-feature.md") || "";
 
   t.check("merge target fixture has two parents", mergeParents.length === 2);
   t.check("merge target planning invocation succeeded", plannedMerge.status === 0);
   t.check("merge target planning creates no rollback commit", t.git("rev-parse", "HEAD") === mergeHeadBefore);
   t.check(
-    "merge target planning writes a rollback spec",
-    /^\*\*Type:\*\*\s*Rollback\s*$/im.test(mergeSpec)
+    "merge target planning leaves the current feature unchanged",
+    (t.read("blueprint/context/current-feature.md") || "") === currentFeatureBefore
   );
   t.check(
-    "merge target spec records the exact commit",
-    mergeSpec.includes(mergeTarget)
+    "merge target planning leaves the archive unchanged",
+    (t.read("blueprint/history/features/02-merge-target.md") || "") === mergeArchiveBefore
   );
-
-  t.phase("implementation stops before reversing a merge target");
-  const implementation = t.agent(
-    "Run /implement for the current rollback spec. Stop if any rollback safeguard blocks the reverse patch; do not work around it."
-  );
-
-  t.check("merge target implementation invocation succeeded", implementation.status === 0);
-  t.check("merge target implementation creates no rollback commit", t.git("rev-parse", "HEAD") === mergeHeadBefore);
   t.check(
-    "merge target implementation leaves the product code unchanged",
+    "merge target planning leaves the product code unchanged",
     (t.read("src/merge-greeting.js") ?? "").includes("Hello from the merge target")
   );
   t.check(
-    "merge target implementation stages no reverse patch",
+    "merge target planning stages no changes",
     t.git("diff", "--cached", "--name-only").trim() === ""
   );
   t.check(
-    "implementation names the merge-parent blocker",
-    /merge target|merge commit|exactly one parent|single parent/i.test(implementation.resultText)
+    "planning names the merge-parent blocker",
+    /merge target|merge commit|merge parent|mainline/i.test(plannedMerge.resultText)
   );
 }
 
 export default {
   name: "rollback-plan",
-  description: "Rollback preserves history and product code while preparing a guarded spec",
+  description: "Rollback preserves history and blocks ambiguous merge targets during planning",
   run
 };

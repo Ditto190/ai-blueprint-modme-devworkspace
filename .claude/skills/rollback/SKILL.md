@@ -64,11 +64,15 @@ Use the archive path to locate the commit that added it:
 
 Use the newest matching commit reachable from the current branch. Confirm the
 archive was added by that commit and its subject and diff are consistent with the
-requested feature. If the target is a merge commit, record its first parent as
-the traceable `Target parent` in the rollback spec and name the merge target as
-an implementation blocker. Do not choose a mainline or attempt a product reversal:
-`/implement` stops before applying a merge target. If the archive was never
-committed, explain that git cannot reconstruct a safe rollback from it.
+requested feature. If the target is a merge commit, stop before Step 2 and before
+writing or changing `blueprint/context/current-feature.md`. Do not record a
+target parent or choose a mainline. Publish `blocked` to
+`blueprint/.state/run.json`, explain that Blueprint cannot safely infer which
+merge parent represents the pre-feature state, and include the exact `/rollback`
+command the user can rerun after choosing a safe remediation or mainline
+strategy. `/implement` retains its merge-target stop as defense in depth. If the
+archive was never committed, explain that git cannot reconstruct a safe rollback
+from it.
 
 ## Step 2 - separate product changes from Blueprint history
 

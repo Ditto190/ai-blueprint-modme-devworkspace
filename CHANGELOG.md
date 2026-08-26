@@ -7,9 +7,9 @@ published `create-ai-blueprint` package.
 
 ### Changed
 
-- Required `/rollback` to record the target commit and its parent as full
-  40-character SHA values, and to treat a merge target as an implementation
-  blocker instead of selecting a mainline.
+- Required `/rollback` to record full 40-character commit and parent SHA values
+  for single-parent targets, and to stop before writing a spec when the target
+  is a merge commit.
 - Required `/implement` to validate both recorded SHAs, confirm a single parent,
   confirm the target is an ancestor of `HEAD`, and require a clean tree before
   reverse-applying a rollback patch.
