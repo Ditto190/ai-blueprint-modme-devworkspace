@@ -5,6 +5,18 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Changed
+
+- Required `/rollback` to record the target commit and its parent as full
+  40-character SHA values, and to treat a merge target as an implementation
+  blocker instead of selecting a mainline.
+- Required `/implement` to validate both recorded SHAs, confirm a single parent,
+  confirm the target is an ancestor of `HEAD`, and require a clean tree before
+  reverse-applying a rollback patch.
+- Stopped `/complete` from archiving or removing a `fixed` finding at any
+  severity, so repaired findings remain in the ledger for a later `/audit`
+  re-review.
+
 ### Added
 
 - Added `npm run link:local` and `npm run unlink:local` for building, preparing,
@@ -13,6 +25,8 @@ published `create-ai-blueprint` package.
 
 ### Fixed
 
+- Pinned the canonical `current-feature.md` and `findings.md` stubs so
+  `/complete` can no longer reset them to paraphrased content.
 - Fixed installer package root resolution so a source checkout finds its own
   `template/` directory. The documented local testing path failed because the
   installer looked one directory above the package.
