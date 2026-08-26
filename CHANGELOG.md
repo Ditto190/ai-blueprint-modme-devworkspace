@@ -5,6 +5,23 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Changed
+
+- Required `/rollback` to record the target commit and its parent as full
+  40-character SHA values, and to treat a merge target as an implementation
+  blocker instead of selecting a mainline.
+- Required `/implement` to validate both recorded SHAs, confirm a single parent,
+  confirm the target is an ancestor of `HEAD`, and require a clean tree before
+  reverse-applying a rollback patch.
+- Stopped `/complete` from archiving or removing a `fixed` finding at any
+  severity, so repaired findings remain in the ledger for a later `/audit`
+  re-review.
+
+### Fixed
+
+- Pinned the canonical `current-feature.md` and `findings.md` stubs so
+  `/complete` can no longer reset them to paraphrased content.
+
 ## [0.14.0] - 2026-08-25
 
 ### Added
