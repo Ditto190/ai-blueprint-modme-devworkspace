@@ -5,6 +5,11 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Fixed
+
+- Reported the Blueprint config path as `blueprint/config.json` in warnings and
+  status output on every platform, instead of leaking the Windows separator.
+
 ## [0.14.0] - 2026-08-25
 
 ### Added
