@@ -5,6 +5,10 @@ description: "Build the feature, fix, or rollback spec'd in blueprint/context/cu
 
 # implement - build the current spec, one reviewed step at a time
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /feature, /fix, or /rollback  ->  [implement]  ->  /complete  ->  next
@@ -96,6 +100,10 @@ spec or abandon the attempt. A cascade into another completed feature needs a
 new rollback plan.
 
 ## Step 2 - build one step, review, iterate, checkpoint
+
+Before the first product edit in this run, set the spec's `**Status:**` to `in
+progress`. This invalidates any older verification state. Do the same whenever
+implementation resumes after a passing check and changes product code again.
 
 Work through the spec's build steps in order, one at a time. For each step:
 
@@ -201,6 +209,11 @@ the loop now:
 
 When every step is built and `Verify`, or the fallback build and tests, passes
 (committed as checkpoints or not), stop with a compact review packet:
+
+Set the spec's `**Status:**` to `verified` immediately before that packet. This
+is durable workflow evidence for `/status` and the dashboard. Do not set it when
+a required command, observable done-when, or configured gate failed or could not
+run.
 
 - branch name
 - what changed, grouped by file or area

@@ -62,10 +62,13 @@ minimal app's development server for live review. Press Ctrl+C to stop the serve
 and finish the command.
 
 The completed app is preserved by default, and the final output prints its
-absolute path. `npm run sandbox:demo` replaces the starter placeholders with a
-small task-tracker project and three ordered features, ready for `/overview`,
-`/feature`, Autopilot, or Continuous Mode. Other options support a named run or
-a fixed adapter choice:
+absolute path. It also adds `npm run blueprint:status` and `npm run
+blueprint:dashboard` inside that app. Those commands are pinned to the tarball
+packed from the current branch, so an older global npm release cannot be
+mistaken for the code under review. `npm run sandbox:demo` replaces the starter
+placeholders with a small task-tracker project and three ordered features,
+ready for `/overview`, `/feature`, Autopilot, or Continuous Mode. Other options
+support a named run or a fixed adapter choice:
 
 ```bash
 npm run sandbox -- --name manual-proof

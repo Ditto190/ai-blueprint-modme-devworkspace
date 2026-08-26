@@ -5,6 +5,10 @@ description: Prove the current work actually does what its spec says by running 
 
 # check - prove it works against the spec, with evidence
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /implement  ->  [check]  ->  /complete
@@ -90,15 +94,22 @@ Give a short, honest verdict, one line per checklist item:
 
 Then state the bottom line: are all the feature's done-whens proven, or not yet.
 
-- All proven -> say it's ready for `/complete`.
-- Anything failed -> hand back to `/implement` to fix; name what to fix. Don't fix
-  it here.
-- Anything unverifiable -> say so plainly and why; never report it as a pass.
+- All proven -> update only the `**Status:**` line in
+  `blueprint/context/current-feature.md` to `verified`, then say it is ready for
+  `/complete`.
+- Anything failed -> update only that status line to `verification failed`, then
+  hand back to `/implement`; name what to fix. Do not fix it here.
+- Anything unverifiable -> update only that status line to `verification
+  incomplete`, then say why; never report it as a pass.
+
+The status-line update is generated workflow state, not a product-source edit.
+Do not change the spec, checkboxes, findings, or product files from `/check`.
 
 ## Rules
 
-- **Observe, don't change.** `/check` runs the app and reports. It never edits
-  source, never commits, never merges. Fixing is `/implement`'s job.
+- **Observe product behavior, don't repair it.** `/check` changes only the
+  current spec's status line as described above. It never edits product source,
+  commits, or merges. Fixing is `/implement`'s job.
 - **Evidence or it didn't happen.** Every `pass` is backed by something observed -
   a screenshot, output, a response. No assumed passes from reading the code.
 - **Honest over green.** "Couldn't verify" and "failed" are valid, useful results.

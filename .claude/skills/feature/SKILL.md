@@ -5,6 +5,10 @@ description: Turn a feature from build-plan.md into a buildable spec. With no ar
 
 # feature - turn a build-plan feature into a buildable spec
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     project-overview.md  +  build-plan.md  ->  [this skill]  ->  build

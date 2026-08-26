@@ -94,6 +94,7 @@ async function main(): Promise<void> {
   const skills = await getSkillNames(codexSkillsRoot);
   await validateSkillMetadata(skills);
   await validateCommandInventories(skills);
+  await validateDashboardActivityContract(skills);
   await validateVerificationContract();
   await validateRepositoryPolish();
   const importCount = await validateClaudeImports();
@@ -221,6 +222,34 @@ async function validateCommandInventories(skills: readonly string[]): Promise<vo
 
   assertEqualLists(skills, [...agentSkills, ...optionalSkills].sort(), "AGENTS.md commands");
   assertEqualLists(skills, readmeSkills.sort(), "README command table");
+}
+
+async function validateDashboardActivityContract(skills: readonly string[]): Promise<void> {
+  const agents = await fs.readFile(path.join(repoRoot, "AGENTS.md"), "utf8");
+  const trackedBlock = agents.match(
+    /Commands with meaningful progress or a durable handoff should write it when the\s+state directory exists:([\s\S]*?)\. Short/
+  );
+
+  if (!trackedBlock) {
+    throw new Error("Could not find the dashboard activity command inventory in AGENTS.md");
+  }
+
+  const trackedSkills = [...trackedBlock[1].matchAll(/`([a-z0-9-]+)`/g)].map(
+    (match) => match[1]
+  );
+  const knownSkills = new Set(skills);
+  const directive = "**First action:** Before project inspection, preflight, or any other tool call,";
+
+  for (const skill of trackedSkills) {
+    if (!knownSkills.has(skill)) {
+      throw new Error(`Dashboard activity references an unknown skill: ${skill}`);
+    }
+
+    const content = await fs.readFile(path.join(codexSkillsRoot, skill, "SKILL.md"), "utf8");
+    if (!content.includes(directive)) {
+      throw new Error(`Tracked skill does not publish immediate dashboard activity: ${skill}`);
+    }
+  }
 }
 
 async function validateVerificationContract(): Promise<void> {

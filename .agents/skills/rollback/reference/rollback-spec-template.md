@@ -1,6 +1,7 @@
 # Rollback: Feature NN - Name
 
 **Type:** Rollback
+**Status:** not started
 **Target feature:** NN - Name
 **Target archive:** `blueprint/history/features/NN-name.md`
 **Target commit:** `<full commit SHA>`

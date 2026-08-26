@@ -5,6 +5,10 @@ description: Explicit multi-feature Blueprint mode that builds every remaining p
 
 # continuous - complete the build plan one local feature at a time
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /status  ->  [continuous]  ->  final review packet
@@ -86,6 +90,17 @@ default branch is a stop, not permission to pull.
 
 Record the starting default-branch commit. This bounds the optional final
 integration audit and the final report.
+
+The initial `blueprint/.state/run.json` record required by `AGENTS.md` must
+already show command `continuous` and status `running` before preflight begins.
+After preflight passes, enrich it with boundary `local-only`, the current
+feature, and completed-feature progress against the smaller of the remaining
+queue or configured limit. Update it when
+a feature starts, after every passing build step, after each quality gate, and
+after each local main commit. On a stop, set status `blocked` with
+`/continuous resume` when resuming is safe. At the end of the queue or limit,
+set status `completed` and retain the final progress. Activity reporting must
+never weaken or block the workflow itself.
 
 ## Step 2 - run one feature lifecycle
 
@@ -192,19 +207,21 @@ already authorized those local actions.
 For the finished feature:
 
 1. Run the final documented verification in the current session.
-2. Confirm all steps are checked, configured gates ran, no unrelated files are
+2. Set the current spec's `**Status:**` to `verified` only after that
+   verification and every configured gate pass.
+3. Confirm all steps are checked, configured gates ran, no unrelated files are
    mixed in, adapters remain aligned, and no P0/P1 blocker remains.
-3. Archive the spec under `blueprint/history/features/`, archive resolved
+4. Archive the spec under `blueprint/history/features/`, archive resolved
    findings, update the exact build-plan item and parent, and reset
    `current-feature.md`.
-4. If a try guide was generated, add a concise `## Manual try guide` section to
+5. If a try guide was generated, add a concise `## Manual try guide` section to
    that feature archive so the opt-in work survives the loop.
-5. Commit remaining branch work with one conventional feature-level message.
-6. Switch to the local default branch, squash-merge the feature branch, and
+6. Commit remaining branch work with one conventional feature-level message.
+7. Switch to the local default branch, squash-merge the feature branch, and
    create one conventional commit containing product work, tests, and Blueprint
    history.
-7. Delete the merged local feature branch.
-8. Confirm the default branch is clean before selecting the next feature.
+8. Delete the merged local feature branch.
+9. Confirm the default branch is clean before selecting the next feature.
 
 Never merge a partial or failing feature. Never push the default branch.
 

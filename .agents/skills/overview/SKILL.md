@@ -5,6 +5,10 @@ description: "Validate and, when needed, normalize the two planning docs before 
 
 # overview - turn the two plans into the AI-facing source of truth
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     project-plan.md  +  build-plan.md  ->  [this skill]  ->  project-overview.md  ->  /feature  ->  build
@@ -97,6 +101,18 @@ under Open questions or gaps in the final report.
 Write `blueprint/context/project-overview.md` (create `blueprint/context/` if needed), following
 `reference/project-overview-template.md`. The overview is a consolidation, not a
 copy:
+
+After the title, write a plan fingerprint in this exact form:
+
+```text
+<!-- blueprint:source-hash <sha256> -->
+```
+
+Compute `<sha256>` from the exact UTF-8 bytes of `project-plan.md`, one zero
+byte, then the exact UTF-8 bytes of `build-plan.md`. This lets `/status` detect
+real plan changes after cloning, copying, or updating without relying on file
+timestamps. Replace the previous marker every time this skill regenerates the
+overview.
 
 - **One source of truth.** Merge both plans into one coherent document. After
   this runs, the AI reads the overview, not the raw plans.

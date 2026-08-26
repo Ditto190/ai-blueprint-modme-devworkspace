@@ -5,6 +5,10 @@ description: Diagnose a failing test, broken build, crash, error, regression, or
 
 # debug - find the cause before changing the code
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     reported failure  ->  [debug]  ->  /fix or /implement

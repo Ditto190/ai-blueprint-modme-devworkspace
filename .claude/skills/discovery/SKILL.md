@@ -5,6 +5,10 @@ description: "Optional deep, multi-turn project discovery that helps the user de
 
 # discovery - develop the plans through a deep conversation
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this can sit in the workflow:
 
     /onboard  ->  write the plans directly  ->  /overview

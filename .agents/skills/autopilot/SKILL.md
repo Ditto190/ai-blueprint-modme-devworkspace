@@ -5,6 +5,10 @@ description: Optional explicit Blueprint mode for one bounded spec and build pas
 
 # autopilot - optional Blueprint loop
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /status  ->  [autopilot]  ->  review packet  ->  /complete
@@ -80,6 +84,15 @@ Stop before changing files when:
 If the only issue is that `project-overview.md` is stale and the plans are clear,
 regenerate it using the `/overview` behavior and continue. Include that in the
 final packet.
+
+The initial `blueprint/.state/run.json` record required by `AGENTS.md` must
+already show command `autopilot` and status `running` before preflight begins.
+After preflight passes, enrich it with boundary `reviewed`, the target feature
+or fix, and build-step progress when known. Update it after the spec, each
+passing build step, and each configured gate. On a hard
+stop, set status `blocked` with `/autopilot resume` when resuming is safe. At the
+final review packet, set status `ready` because Autopilot stops before
+`/complete`. Activity reporting must never weaken or block the workflow itself.
 
 ## Step 2 - choose or write the spec
 
@@ -165,6 +178,10 @@ After all implementation steps are checked, apply
   behavior such as a click, request, CLI command, download, background job, or
   multi-screen flow.
 - `always` - run `/check` for every work item.
+
+After the required verification and configured gates pass, set the current
+spec's `**Status:**` to `verified`. Leave it `in progress`, `verification
+failed`, or `verification incomplete` on any stop that lacks complete evidence.
 
 For pure library or CLI work, build plus tests and representative command output
 may be enough. Be explicit about the evidence used.

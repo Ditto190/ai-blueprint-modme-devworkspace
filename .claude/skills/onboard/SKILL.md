@@ -5,6 +5,10 @@ description: Set up the Blueprint after overlaying it onto a freshly scaffolded 
 
 # onboard - finish the Blueprint overlay setup
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     scaffold app  ->  overlay Blueprint  ->  [onboard]  ->  project-plan + build-plan  ->  /overview
@@ -79,6 +83,10 @@ If the root `README.md` already looks like a real project README, leave it alone
 Never replace a project README with Blueprint documentation.
 
 Update the Commands section of `AGENTS.md` to match real scripts and commands.
+Remove the shipped `<!-- blueprint:onboarding-required -->` marker and the `For
+a standard Next.js project` instruction when replacing the placeholder
+commands. Status uses the dedicated marker, with the old sentence retained only
+as a migration fallback, to distinguish a fresh overlay from a tuned project.
 Include only commands that exist or are intentionally available:
 
 - dev server

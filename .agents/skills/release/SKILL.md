@@ -5,6 +5,10 @@ description: Prepare a Blueprint project for deployment to Render or Vercel. Rea
 
 # release - deployment readiness for Render and Vercel
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /complete  ->  [release]  ->  deploy with explicit approval

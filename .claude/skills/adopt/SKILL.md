@@ -5,6 +5,10 @@ description: Bring the blueprint into an existing (brownfield) codebase. Surveys
 
 # adopt - bootstrap the blueprint from an existing codebase
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     existing codebase  ->  [adopt]  ->  project-plan + build-plan + coding-standards  ->  /overview  ->  normal loop

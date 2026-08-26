@@ -321,8 +321,12 @@ npx create-ai-blueprint@latest status
 ```
 
 It reports plan progress, active work, findings, Git state, drift warnings,
-completion blockers, and one exact next action. Use JSON when another local tool
-needs the same versioned state:
+completion blockers, and one exact next action. Onboarding uses a dedicated
+setup marker, overview freshness uses a fingerprint of both plans, and a
+verified current-work status makes the completion gate ready. Running command
+activity overrides contradictory next-action advice, and an activity record
+that stops updating is shown as interrupted instead of running forever. Use
+JSON when another local tool needs the same versioned state:
 
 ```bash
 npx create-ai-blueprint@latest status --json
@@ -340,8 +344,8 @@ The prompt defaults to no and never runs during non-interactive or `--yes`
 installs or updates. Matching versions continue without a prompt. Accepting the
 prompt installs or refreshes the CLI at the same version used by the npx
 command. Global installation exposes `blueprint status`, `blueprint status
---json`, and `blueprint dashboard`. Both read-only views use Markdown and Git
-state without editing either one.
+--json`, and `blueprint dashboard`. Both read-only views use Markdown, generated
+command activity, and Git state without editing project work.
 
 ### Open the local dashboard
 
@@ -353,14 +357,17 @@ blueprint dashboard
 ```
 
 The command binds to `127.0.0.1` on an available port, opens the dashboard in
-your browser, and refreshes the existing status contract every second. It does
+your browser, and refreshes immediately when project or Blueprint files change,
+with a ten-second fallback check. It does
 not edit project files, run workflow commands, start the application, or make
-the dashboard available outside the local machine. The dashboard shows the full
-build-plan roadmap, the active work and build steps, archived completed work,
-findings, Git state, completion blockers, and the suggested next action. Press
-Ctrl+C to stop it. Use `blueprint dashboard --no-open` when you want the URL
-without opening a browser. The older `blueprint ui` form remains as a deprecated
-alias.
+the dashboard available outside the local machine. The dashboard leads with the
+suggested next action, then shows recorded command activity, active work and
+build steps, the build-plan roadmap, project and Git state, findings, completion
+blockers, and archived work. Autopilot and Continuous runs include their mode,
+progress, configured gates, local boundary, and safe resume command when one is
+available. Press Ctrl+C to stop it. Use `blueprint dashboard --no-open` when you
+want the URL without opening a browser. The older `blueprint ui` form remains as
+a deprecated alias.
 
 The optional global `blueprint` command is limited to read-only project status
 and this local dashboard. Continue to use `npx create-ai-blueprint@latest` for

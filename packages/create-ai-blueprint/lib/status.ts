@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { readBuildPlan } from "./build-plan.js";
@@ -29,8 +30,11 @@ import type {
 } from "./project-config.js";
 import { readProjectMetadata } from "./project-metadata.js";
 import type { ProjectAdapter } from "./project-metadata.js";
+import { readRunState } from "./run-state.js";
+import type { RunStateSummary } from "./run-state.js";
 
 type OverviewState = "current" | "missing" | "stale" | "unknown";
+type OnboardingState = "complete" | "needed" | "unknown";
 type CompletionState = "blocked" | "needs_verification" | "ready";
 
 interface StatusWarning {
@@ -77,6 +81,11 @@ interface StatusOverview {
   reason: string | null;
 }
 
+interface StatusOnboarding {
+  state: OnboardingState;
+  reason: string | null;
+}
+
 interface StatusNextAction {
   command: string | null;
   reason: string;
@@ -92,6 +101,8 @@ interface StatusConfiguration {
   state: ProjectConfigState;
   values: ProjectConfig;
 }
+
+type StatusActivity = Omit<RunStateSummary, "warnings">;
 
 interface HumanStatusOptions {
   color?: boolean;
@@ -119,6 +130,8 @@ interface ProjectStatus {
     adapters: ProjectAdapter[];
   };
   configuration: StatusConfiguration;
+  onboarding: StatusOnboarding;
+  activity: StatusActivity;
   plans: {
     overview: StatusOverview;
     build: StatusBuildPlan;
@@ -134,17 +147,23 @@ interface ProjectStatus {
 
 const PROJECT_PLAN_PATH = path.join("blueprint", "project-plan.md");
 const BUILD_PLAN_PATH = path.join("blueprint", "build-plan.md");
+const AGENTS_PATH = "AGENTS.md";
+const ONBOARDING_SENTINEL = "<!-- blueprint:onboarding-required -->";
+const LEGACY_ONBOARDING_MARKER =
+  "For a standard Next.js project. Change or remove if you're using something else.";
 const OVERVIEW_PATH = path.join(
   "blueprint",
   "context",
   "project-overview.md"
 );
+const OVERVIEW_SOURCE_HASH_PATTERN =
+  /<!--\s*blueprint:source-hash\s+([a-f0-9]{64})\s*-->/i;
 
 async function readProjectStatus(
   startPath: string = process.cwd()
 ): Promise<ProjectStatus> {
   const metadata = await readProjectMetadata(startPath);
-  const [buildPlan, currentWork, findings, history, git, overviewResult, config] =
+  const [buildPlan, currentWork, findings, history, git, overviewResult, config, runState, onboardingResult] =
     await Promise.all([
       readBuildPlan(metadata.project.root),
       readCurrentWork(metadata.project.root),
@@ -152,7 +171,9 @@ async function readProjectStatus(
       readHistory(metadata.project.root),
       readGitStatus(metadata.project.root),
       readOverviewStatus(metadata.project.root),
-      readProjectConfig(metadata.project.root)
+      readProjectConfig(metadata.project.root),
+      readRunState(metadata.project.root),
+      readOnboardingStatus(metadata.project.root)
     ]);
   const warnings: StatusWarning[] = [
     ...metadata.warnings,
@@ -160,6 +181,8 @@ async function readProjectStatus(
     ...buildPlan.warnings,
     ...currentWork.warnings,
     ...findings.warnings,
+    ...runState.warnings,
+    ...onboardingResult.warnings,
     ...overviewResult.warnings,
     ...findDrift(buildPlan, currentWork, git, config.values)
   ];
@@ -171,6 +194,8 @@ async function readProjectStatus(
     config.state
   );
   const nextAction = selectNextAction(
+    formatRunState(runState),
+    onboardingResult.onboarding,
     overviewResult.overview,
     buildPlan,
     currentWork,
@@ -190,6 +215,8 @@ async function readProjectStatus(
       state: config.state,
       values: config.values
     },
+    onboarding: onboardingResult.onboarding,
+    activity: formatRunState(runState),
     plans: {
       overview: overviewResult.overview,
       build: formatBuildPlan(buildPlan)
@@ -220,6 +247,7 @@ function formatHumanStatus(
     formatRow("Version", status.blueprint.version || "unknown", style),
     formatRow("Adapters", adapters, style),
     formatRow("Config", formatConfigValue(status.configuration.state), style),
+    formatRow("Onboarding", status.onboarding.state, style),
     formatRow(
       "Regular gates",
       formatQualityGates(status.configuration.values.qualityGates.regular),
@@ -236,6 +264,10 @@ function formatHumanStatus(
     formatRow("Build plan", formatBuildPlanValue(status.plans.build, style), style),
     formatRow("Work", formatWorkValue(status.currentWork, style), style)
   ];
+
+  if (status.activity.state === "recorded") {
+    lines.push(formatRow("Activity", formatActivityValue(status.activity), style));
+  }
 
   if (status.currentWork.state === "active") {
     lines.push(
@@ -344,6 +376,15 @@ function formatWorkValue(work: StatusCurrentWork, style: TextStyle): string {
     ? `${work.buildPlanItem} - ${work.title || "untitled"}`
     : work.title || "untitled";
   return style.brightCyan(`${type} ${identity}`);
+}
+
+function formatActivityValue(activity: StatusActivity): string {
+  const command = activity.command ? `/${activity.command}` : "unknown";
+  const progress = activity.progress
+    ? `, ${activity.progress.current}/${activity.progress.total} ${activity.progress.label}`
+    : "";
+  const freshness = activity.freshness === "stale" ? ", possibly interrupted" : "";
+  return `${command} ${activity.status || "unknown"}${progress}${freshness}`;
 }
 
 function formatFindingsValue(
@@ -475,6 +516,11 @@ function formatCurrentWork(currentWork: CurrentWorkSummary): StatusCurrentWork {
   };
 }
 
+function formatRunState(runState: RunStateSummary): StatusActivity {
+  const { warnings: _warnings, ...activity } = runState;
+  return activity;
+}
+
 function formatHistory(history: HistorySummary): StatusHistory {
   return {
     total: history.total,
@@ -555,6 +601,10 @@ function selectCompletion(
     return { state: "blocked", blockers };
   }
 
+  if (isVerifiedWork(currentWork)) {
+    return { state: "ready", blockers: [] };
+  }
+
   return {
     state: "needs_verification",
     blockers: ["verification evidence is not persisted"]
@@ -562,6 +612,8 @@ function selectCompletion(
 }
 
 function selectNextAction(
+  activity: StatusActivity,
+  onboarding: StatusOnboarding,
   overview: StatusOverview,
   buildPlan: BuildPlanSummary,
   currentWork: CurrentWorkSummary,
@@ -572,6 +624,25 @@ function selectNextAction(
     return {
       command: "/doctor",
       reason: "Repair blueprint/config.json before running a mutating workflow."
+    };
+  }
+
+  const activityAction = selectActivityNextAction(activity);
+  if (activityAction) {
+    return activityAction;
+  }
+
+  if (onboarding.state === "unknown") {
+    return {
+      command: "/doctor",
+      reason: onboarding.reason || "Confirm Blueprint onboarding state before continuing."
+    };
+  }
+
+  if (onboarding.state === "needed") {
+    return {
+      command: "/onboard",
+      reason: "Tune Blueprint for this project before generating project context."
     };
   }
 
@@ -607,6 +678,13 @@ function selectNextAction(
       return {
         command: "/audit",
         reason: `Re-review fixed finding ${fixedBlocker.id}.`
+      };
+    }
+
+    if (isVerifiedWork(currentWork)) {
+      return {
+        command: "/complete",
+        reason: "The current work is verified and ready for its final safety pass."
       };
     }
 
@@ -663,6 +741,57 @@ function selectNextAction(
     command: "/doctor",
     reason: "The build plan is not ready for feature work."
   };
+}
+
+function selectActivityNextAction(
+  activity: StatusActivity
+): StatusNextAction | null {
+  if (activity.state !== "recorded" || !activity.command || !activity.status) {
+    return null;
+  }
+
+  const command = `/${activity.command}`;
+
+  if (activity.status === "running") {
+    if (activity.freshness === "stale") {
+      return {
+        command: activity.resumeCommand || `${command} resume`,
+        reason: `Recorded ${command} activity appears interrupted. Confirm the project state before resuming.`
+      };
+    }
+
+    return {
+      command: null,
+      reason: `${command} is currently running.`
+    };
+  }
+
+  if (activity.status === "blocked") {
+    return {
+      command: activity.resumeCommand || `${command} resume`,
+      reason: activity.detail || `Resume the blocked ${command} workflow.`
+    };
+  }
+
+  if (activity.status === "ready" && activity.resumeCommand) {
+    return {
+      command: activity.resumeCommand,
+      reason: activity.detail || activity.summary || `${command} is ready for review.`
+    };
+  }
+
+  if (activity.status === "ready" && activity.command === "autopilot") {
+    return {
+      command: "/complete",
+      reason: activity.detail || "Review the Autopilot result before completing the current work."
+    };
+  }
+
+  return null;
+}
+
+function isVerifiedWork(currentWork: CurrentWorkSummary): boolean {
+  return currentWork.status?.trim().toLowerCase() === "verified";
 }
 
 function findDrift(
@@ -742,6 +871,52 @@ function isMatchingWorkBranch(
   return branch?.startsWith(prefix) === true;
 }
 
+async function readOnboardingStatus(projectRoot: string): Promise<{
+  onboarding: StatusOnboarding;
+  warnings: StatusWarning[];
+}> {
+  const agentsPath = path.join(projectRoot, AGENTS_PATH);
+
+  try {
+    const stats = await fs.lstat(agentsPath);
+
+    if (stats.isSymbolicLink() || !stats.isFile()) {
+      const reason = "AGENTS.md is not a regular project file.";
+      return {
+        onboarding: { state: "unknown", reason },
+        warnings: [{ code: "invalid_agents_file", message: reason }]
+      };
+    }
+
+    const content = await fs.readFile(agentsPath, "utf8");
+    if (
+      content.includes(ONBOARDING_SENTINEL) ||
+      content.includes(LEGACY_ONBOARDING_MARKER)
+    ) {
+      const reason = "Blueprint onboarding has not tuned the project commands yet.";
+      return {
+        onboarding: { state: "needed", reason },
+        warnings: [{ code: "onboarding_incomplete", message: reason }]
+      };
+    }
+
+    return {
+      onboarding: { state: "complete", reason: null },
+      warnings: []
+    };
+  } catch (error: unknown) {
+    if (getErrorCode(error) === "ENOENT") {
+      const reason = "AGENTS.md is missing, so onboarding state cannot be confirmed.";
+      return {
+        onboarding: { state: "unknown", reason },
+        warnings: [{ code: "missing_agents_file", message: reason }]
+      };
+    }
+
+    throw error;
+  }
+}
+
 async function readOverviewStatus(
   projectRoot: string
 ): Promise<{ overview: StatusOverview; warnings: StatusWarning[] }> {
@@ -774,19 +949,6 @@ async function readOverviewStatus(
     }
   }
 
-  const newerPlan = [projectPlan, buildPlan].some(
-    (result) => result.kind === "file" && result.mtimeMs > overview.mtimeMs
-  );
-
-  if (newerPlan) {
-    const message = "Project overview is older than the project or build plan.";
-    warnings.push({ code: "stale_overview", message });
-    return {
-      overview: { state: "stale", reason: message },
-      warnings
-    };
-  }
-
   if (projectPlan.kind !== "file" || buildPlan.kind !== "file") {
     return {
       overview: {
@@ -797,10 +959,53 @@ async function readOverviewStatus(
     };
   }
 
+  const [overviewContent, projectPlanContent, buildPlanContent] =
+    await Promise.all([
+      fs.readFile(path.join(projectRoot, OVERVIEW_PATH), "utf8"),
+      fs.readFile(path.join(projectRoot, PROJECT_PLAN_PATH), "utf8"),
+      fs.readFile(path.join(projectRoot, BUILD_PLAN_PATH), "utf8")
+    ]);
+  const recordedHash = overviewContent.match(OVERVIEW_SOURCE_HASH_PATTERN)?.[1]
+    ?.toLowerCase() || null;
+
+  if (!recordedHash) {
+    const message = "Project overview has no plan fingerprint. Run /overview once to establish reliable freshness.";
+    warnings.push({ code: "unfingerprinted_overview", message });
+    return {
+      overview: { state: "unknown", reason: message },
+      warnings
+    };
+  }
+
+  const currentHash = createOverviewSourceHash(
+    projectPlanContent,
+    buildPlanContent
+  );
+
+  if (recordedHash !== currentHash) {
+    const message = "Project overview does not match the current project and build plans.";
+    warnings.push({ code: "stale_overview", message });
+    return {
+      overview: { state: "stale", reason: message },
+      warnings
+    };
+  }
+
   return {
     overview: { state: "current", reason: null },
     warnings
   };
+}
+
+function createOverviewSourceHash(
+  projectPlan: string,
+  buildPlan: string
+): string {
+  return createHash("sha256")
+    .update(projectPlan, "utf8")
+    .update(Buffer.from([0]))
+    .update(buildPlan, "utf8")
+    .digest("hex");
 }
 
 type FileMtimeResult =
@@ -854,20 +1059,28 @@ function getErrorCode(error: unknown): string | undefined {
     : undefined;
 }
 
-export { formatHumanStatus, readProjectStatus, shouldUseColor };
+export {
+  createOverviewSourceHash,
+  formatHumanStatus,
+  readProjectStatus,
+  shouldUseColor
+};
 
 export type {
   CompletionState,
   HumanStatusOptions,
+  OnboardingState,
   OverviewState,
   ProjectStatus,
   StatusConfiguration,
   StatusBuildPlan,
+  StatusActivity,
   StatusCompletion,
   StatusCurrentWork,
   StatusFindings,
   StatusHistory,
   StatusNextAction,
+  StatusOnboarding,
   StatusOverview,
   StatusWarning
 };

@@ -10,6 +10,7 @@ import {
   DASHBOARD_HOST,
   startDashboardServer
 } from "../lib/dashboard.js";
+import { createOverviewSourceHash } from "../lib/status.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -30,31 +31,66 @@ test("dashboard serves live read-only project status on loopback", async (t) => 
   assert.match(page, /--paper: #f5f6f3/);
   assert.match(page, /--blue: #155eef/);
   assert.match(page, /class="brand-mark"[^>]+aria-hidden="true"/);
-  assert.match(page, /<div class="status-stack">/);
-  assert.match(page, /<h2 class="label">Project health<\/h2>/);
+  assert.match(page, /<section class="code-panel next-action"/);
+  assert.match(page, /id="activity-panel"[^>]+hidden/);
+  assert.match(page, /<section class="dashboard-grid"/);
+  assert.match(page, /<h2 class="section-title">Project state<\/h2>/);
   assert.match(page, /<div class="fact"><span>Config<\/span><span id="config">-<\/span><\/div>/);
+  assert.match(page, /id="onboarding">-<\/span>/);
   assert.match(page, /id="regular-gates">-<\/span>/);
   assert.match(page, /id="continuous-gates">-<\/span>/);
   assert.match(page, /id="health-list" aria-live="polite"/);
   assert.match(page, /id="build-list" tabindex="0" aria-label="Build plan items"/);
   assert.match(page, /id="build-progressbar" role="progressbar"/);
   assert.match(page, /id="work-list" tabindex="0" aria-label="Current build steps"/);
-  assert.match(page, /<article class="card full">\s*<div class="card-head"><h2 class="label">Current work<\/h2>/);
+  assert.match(page, /<article class="card current-work" id="current-work-card">/);
   assert.match(page, /id="history-list" tabindex="0" aria-label="Completed Blueprint work"/);
-  assert.match(page, /class="card half"/);
+  assert.match(page, /class="status-rail"/);
   assert.doesNotMatch(page, /https:\/\//);
   assert.doesNotMatch(page, />Attention</);
-  assert.match(page, /setInterval\(refresh, 1000\)/);
+  assert.match(page, /new EventSource\("\/api\/events"\)/);
+  assert.match(page, /events\.addEventListener\("refresh", refresh\)/);
+  assert.match(page, /setInterval\(refresh, 10000\)/);
   assert.match(page, /requestAnimationFrame\(\(\) => document\.body\.classList\.add\("hydrated"\)\)/);
   assert.match(page, /prefers-reduced-motion: reduce/);
   assert.match(page, /byId\("live-label"\)\.textContent = "Connected"/);
   assert.match(page, /healthCount === 1 \? " issue" : " issues"/);
   assert.match(page, /git\.changedFiles \+ " changed"/);
   assert.match(page, /buildSummary = "Current: " \+ currentBuildItem\.id/);
+  assert.match(page, /activity\.mode === "continuous"/);
+  assert.match(page, /activity\.status === "running"/);
+  assert.match(page, /\? "Current run"/);
+  assert.match(page, /: "Last run"/);
+
+  const elementIds = new Set(
+    [...page.matchAll(/id="([^"]+)"/g)].map((match) => match[1])
+  );
+  const referencedIds = new Set(
+    [...page.matchAll(/byId\("([^"]+)"\)/g)].map((match) => match[1])
+  );
+  for (const id of referencedIds) {
+    assert.ok(elementIds.has(id), `Dashboard script references missing element #${id}`);
+  }
 
   const firstStatus = await readStatus(dashboard.url);
   assert.equal(firstStatus.project.name, "dashboard-project");
   assert.equal(firstStatus.configuration.state, "defaults");
+  assert.equal(firstStatus.onboarding.state, "complete");
+  assert.deepEqual(firstStatus.activity, {
+    state: "recorded",
+    mode: "autopilot",
+    command: "autopilot",
+    status: "ready",
+    freshness: "current",
+    summary: "Feature ready for review",
+    detail: "Review the diff before completion.",
+    boundary: "reviewed",
+    startedAt: "2026-08-26T12:00:00.000Z",
+    updatedAt: "2026-08-26T12:05:00.000Z",
+    resumeCommand: null,
+    progress: { current: 2, total: 2, label: "build steps" },
+    feature: { id: "2", title: "Dashboard" }
+  });
   assert.deepEqual(firstStatus.plans.build, {
     completed: 1,
     remaining: 1,
@@ -149,8 +185,61 @@ test("dashboard closes its server cleanly", async (t) => {
   await assert.rejects(fetch(`${dashboard.url}/api/status`));
 });
 
+test("dashboard emits an immediate refresh event when project state changes", async (t) => {
+  const projectRoot = await createProject(t);
+  const dashboard = await startDashboardServer(projectRoot);
+  t.after(() => dashboard.close());
+  const controller = new AbortController();
+  t.after(() => controller.abort());
+  const response = await fetch(`${dashboard.url}/api/events`, {
+    signal: controller.signal
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") || "", /^text\/event-stream/);
+  const reader = response.body?.getReader();
+  assert.ok(reader);
+  await reader.read();
+
+  await fs.appendFile(
+    path.join(projectRoot, "blueprint", ".state", "run.json"),
+    "\n"
+  );
+
+  let timeout: NodeJS.Timeout | undefined;
+  const event = await Promise.race([
+    reader.read(),
+    new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(
+        () => reject(new Error("Dashboard refresh event timed out.")),
+        1500
+      );
+    })
+  ]).finally(() => clearTimeout(timeout));
+  const payload = new TextDecoder().decode(event.value);
+
+  assert.match(payload, /event: refresh/);
+  await reader.cancel();
+});
+
 interface DashboardStatus {
   project: { name: string };
+  onboarding: { state: string; reason: string | null };
+  activity: {
+    state: string;
+    mode: string;
+    command: string | null;
+    status: string | null;
+    freshness: string | null;
+    summary: string | null;
+    detail: string | null;
+    boundary: string | null;
+    startedAt: string | null;
+    updatedAt: string | null;
+    resumeCommand: string | null;
+    progress: { current: number; total: number; label: string } | null;
+    feature: { id: string | null; title: string } | null;
+  };
   configuration: {
     state: string;
     values: {
@@ -213,17 +302,19 @@ async function createProject(t: TestContext): Promise<string> {
   await fs.mkdir(stateRoot, { recursive: true });
   await fs.mkdir(historyRoot, { recursive: true });
   await fs.writeFile(path.join(projectRoot, "AGENTS.md"), "# Dashboard project\n");
-  await fs.writeFile(
-    path.join(projectRoot, "blueprint", "project-plan.md"),
-    "# Project Plan\n"
-  );
-  await fs.writeFile(
-    path.join(projectRoot, "blueprint", "build-plan.md"),
-    `# Build Plan
+  const projectPlan = "# Project Plan\n";
+  const buildPlan = `# Build Plan
 
 - [x] 1. **Foundation** - establish the project
 - [ ] 2. **Dashboard** - show live project state
-`
+`;
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "project-plan.md"),
+    projectPlan
+  );
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "build-plan.md"),
+    buildPlan
   );
   await fs.writeFile(
     path.join(contextRoot, "current-feature.md"),
@@ -252,6 +343,21 @@ async function createProject(t: TestContext): Promise<string> {
     }, null, 2)}\n`
   );
   await fs.writeFile(
+    path.join(stateRoot, "run.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      command: "autopilot",
+      status: "ready",
+      summary: "Feature ready for review",
+      detail: "Review the diff before completion.",
+      boundary: "reviewed",
+      startedAt: "2026-08-26T12:00:00.000Z",
+      updatedAt: "2026-08-26T12:05:00.000Z",
+      progress: { current: 2, total: 2, label: "build steps" },
+      feature: { id: "2", title: "Dashboard" }
+    }, null, 2)}\n`
+  );
+  await fs.writeFile(
     path.join(historyRoot, "01-foundation.md"),
     "# Feature: Foundation\n\n**From build-plan:** feature 1\n**Status:** complete\n"
   );
@@ -270,7 +376,10 @@ async function createProject(t: TestContext): Promise<string> {
   );
   await fs.writeFile(
     path.join(contextRoot, "project-overview.md"),
-    "# Project Overview\n"
+    `# Project Overview
+
+<!-- blueprint:source-hash ${createOverviewSourceHash(projectPlan, buildPlan)} -->
+`
   );
   await fs.utimes(
     path.join(contextRoot, "project-overview.md"),

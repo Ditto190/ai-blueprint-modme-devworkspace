@@ -5,6 +5,10 @@ description: Document an ad-hoc bug fix or small change (one not in the build pl
 
 # fix - document an ad-hoc fix, then build it like anything else
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /fix  ->  /implement  ->  /complete  ->  back to your features
@@ -34,6 +38,8 @@ is being built now, feature or fix). Keep it lighter than a feature spec:
 
 - **Title** - the bug or change in a few words.
 - **Type:** Fix  (so `/complete` logs it to `blueprint/history/fixes/`, not `blueprint/history/features/`).
+- **Status:** not started - `/implement` updates this durable workflow state as
+  work and verification progress.
 - **Fixes:** `<finding id>` - only when the fix targets a ledger finding. The
   stamp makes the repair traceable: `/implement` marks that finding `fixed`
   when the repairing step lands, and `/audit` re-reviews it before it closes.

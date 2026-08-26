@@ -5,6 +5,10 @@ description: Interactively prototype the look of a project. Asks about the desir
 
 # prototype - lock the look before you build
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     plan  ->  /overview  ->  [prototype]  ->  /feature  ->  build

@@ -5,6 +5,10 @@ description: Wrap up a finished feature, fix, or rollback. Runs a final safety p
 
 # complete - log the finished work, make the work commit, and merge
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     /feature, /fix, or /rollback  ->  /implement  ->  [complete]  ->  next
@@ -86,6 +90,10 @@ Before logging or committing, run a short safety pass and report blockers only:
 Do not claim "passed", "verified", or "working" without naming the command,
 route, screenshot, or output that proves it. Stop before Step 1 if required
 evidence is missing.
+
+After this safety pass succeeds, set the active spec's `**Status:**` to
+`verified` before archiving it. If the status was already `verified`, rerun the
+required final checks anyway because `/complete` owns the final safety pass.
 
 ## Step 1 - log the work
 

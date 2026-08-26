@@ -199,6 +199,7 @@ async function main(): Promise<void> {
       projectRoot
     );
     await verifyBlueprintInstall(projectRoot);
+    await addLocalBlueprintScripts(projectRoot, tarball);
 
     if (options.demoPlan) {
       await writeDemoPlans(projectRoot);
@@ -218,6 +219,10 @@ async function main(): Promise<void> {
 
     console.log("\n✓ Sandbox setup and verification passed");
     console.log(`  ${projectRoot}`);
+    console.log("\nLocal Blueprint proof");
+    console.log("These commands use the package packed from this branch, not a global npm release.");
+    console.log("$ npm run blueprint:status");
+    console.log("$ npm run blueprint:dashboard");
 
     if (options.server) {
       console.log("\nStart development server");
@@ -421,6 +426,29 @@ plus \`npm run build\` for verification. External deployment is out of scope.
 - [ ] 2. **Task actions** - mark tasks complete, delete tasks, and show remaining task count
 - [ ] 3. **Persistence and filters** - save tasks in localStorage and filter all, active, or completed tasks
 `
+  );
+}
+
+export async function addLocalBlueprintScripts(
+  projectRoot: string,
+  tarball: string
+): Promise<void> {
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  const packageJson = JSON.parse(
+    await fs.readFile(packageJsonPath, "utf8")
+  ) as PackageJson & Record<string, unknown>;
+  const packageSpec = path.relative(projectRoot, tarball).split(path.sep).join("/");
+  const localCommand = `npx --yes --package ${packageSpec} create-ai-blueprint`;
+
+  packageJson.scripts = {
+    ...(packageJson.scripts || {}),
+    "blueprint:status": `${localCommand} status`,
+    "blueprint:dashboard": `${localCommand} dashboard`
+  };
+
+  await fs.writeFile(
+    packageJsonPath,
+    `${JSON.stringify(packageJson, null, 2)}\n`
   );
 }
 

@@ -7,6 +7,7 @@ import test, { type TestContext } from "node:test";
 import { promisify } from "node:util";
 
 import {
+  createOverviewSourceHash,
   formatHumanStatus,
   readProjectStatus,
   shouldUseColor
@@ -44,6 +45,7 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
     regular: { audit: "manual", check: "manual", tryGuide: "manual" },
     continuous: { audit: "manual", check: "manual", tryGuide: "manual" }
   });
+  assert.equal(status.activity.state, "idle");
   assert.deepEqual(status.plans.build, {
     completed: 1,
     remaining: 1,
@@ -208,17 +210,9 @@ test("readProjectStatus selects overview before new feature work", async (t) => 
     findings: emptyFindings(),
     branch: "chore/setup"
   });
-  const older = new Date("2026-01-01T00:00:00Z");
-  const newer = new Date("2026-01-02T00:00:00Z");
-  await fs.utimes(
-    path.join(projectRoot, "blueprint", "context", "project-overview.md"),
-    older,
-    older
-  );
-  await fs.utimes(
+  await fs.appendFile(
     path.join(projectRoot, "blueprint", "build-plan.md"),
-    newer,
-    newer
+    "- [ ] 3. **Export status** - save a report\n"
   );
 
   const status = await readProjectStatus(projectRoot);
@@ -226,6 +220,71 @@ test("readProjectStatus selects overview before new feature work", async (t) => 
   assert.equal(status.plans.overview.state, "stale");
   assert.equal(status.nextAction.command, "/overview");
   assert.ok(status.warnings.some((warning) => warning.code === "stale_overview"));
+});
+
+test("readProjectStatus requires a one-time fingerprint for legacy overviews", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "chore/setup"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "context", "project-overview.md"),
+    "# Legacy Project Overview\n"
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.plans.overview.state, "unknown");
+  assert.equal(status.nextAction.command, "/overview");
+  assert.ok(
+    status.warnings.some((warning) => warning.code === "unfingerprinted_overview")
+  );
+});
+
+test("readProjectStatus selects onboarding before overview for a fresh install", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main",
+    agents: `# Project instructions
+
+## Commands
+
+<!-- blueprint:onboarding-required -->
+For a standard Next.js project. Change or remove if you're using something else.
+`
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.onboarding.state, "needed");
+  assert.deepEqual(status.nextAction, {
+    command: "/onboard",
+    reason: "Tune Blueprint for this project before generating project context."
+  });
+  assert.ok(
+    status.warnings.some((warning) => warning.code === "onboarding_incomplete")
+  );
+});
+
+test("readProjectStatus recognizes the legacy onboarding marker", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main",
+    agents: `# Project instructions
+
+## Commands
+
+For a standard Next.js project. Change or remove if you're using something else.
+`
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.onboarding.state, "needed");
+  assert.equal(status.nextAction.command, "/onboard");
 });
 
 test("readProjectStatus sends fixed P1 findings back to audit", async (t) => {
@@ -288,6 +347,31 @@ test("readProjectStatus requires verification after all build steps pass", async
   });
 });
 
+test("readProjectStatus marks verified work ready for completion", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: `# Feature: Status command
+
+**From build-plan:** feature 2
+**Status:** verified
+
+## Build steps
+
+- [x] **Step 1 - Read plans** - parse project files.
+- [x] **Step 2 - Print status** - format the result.
+`,
+    findings: emptyFindings(),
+    branch: "feature/status-command"
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.completion.state, "ready");
+  assert.deepEqual(status.nextAction, {
+    command: "/complete",
+    reason: "The current work is verified and ready for its final safety pass."
+  });
+});
+
 test("readProjectStatus selects the next build-plan feature when idle", async (t) => {
   const projectRoot = await createProject(t, {
     currentWork: resetCurrentWork(),
@@ -302,6 +386,71 @@ test("readProjectStatus selects the next build-plan feature when idle", async (t
     command: "/feature 2",
     reason: "Spec the next build-plan item, Status command."
   });
+});
+
+test("readProjectStatus exposes recorded dashboard activity", async (t) => {
+  const now = new Date();
+  const startedAt = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const updatedAt = new Date(now.getTime() - 60 * 1000).toISOString();
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main",
+    runState: {
+      schemaVersion: 1,
+      command: "continuous",
+      status: "running",
+      summary: "Completing the remaining build plan",
+      boundary: "local-only",
+      startedAt,
+      updatedAt,
+      resumeCommand: "/continuous resume",
+      progress: { current: 2, total: 5, label: "features" }
+    }
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.activity.state, "recorded");
+  assert.equal(status.activity.mode, "continuous");
+  assert.equal(status.activity.command, "continuous");
+  assert.equal(status.activity.freshness, "current");
+  assert.deepEqual(status.activity.progress, {
+    current: 2,
+    total: 5,
+    label: "features"
+  });
+  assert.match(formatHumanStatus(status), /Activity\s+\/continuous running, 2\/5 features/);
+  assert.deepEqual(status.nextAction, {
+    command: null,
+    reason: "/continuous is currently running."
+  });
+});
+
+test("readProjectStatus offers the recovery command for interrupted activity", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main",
+    runState: {
+      schemaVersion: 1,
+      command: "continuous",
+      status: "running",
+      summary: "Completing the remaining build plan",
+      startedAt: "2026-08-25T10:00:00.000Z",
+      updatedAt: "2026-08-25T10:05:00.000Z",
+      resumeCommand: "/continuous resume"
+    }
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.activity.freshness, "stale");
+  assert.deepEqual(status.nextAction, {
+    command: "/continuous resume",
+    reason: "Recorded /continuous activity appears interrupted. Confirm the project state before resuming."
+  });
+  assert.ok(status.warnings.some((warning) => warning.code === "stale_run_state"));
 });
 
 test("formatHumanStatus prints a scannable orientation", async (t) => {
@@ -358,9 +507,11 @@ test("shouldUseColor requires a TTY and respects NO_COLOR", () => {
 
 interface ProjectOptions {
   adapters?: readonly ("claude" | "codex" | "copilot" | "opencode")[];
+  agents?: string;
   currentWork: string;
   findings: string;
   branch: string;
+  runState?: Record<string, unknown>;
 }
 
 async function createProject(
@@ -375,19 +526,30 @@ async function createProject(
 
   await fs.mkdir(contextRoot, { recursive: true });
   await fs.mkdir(stateRoot, { recursive: true });
-  await fs.writeFile(path.join(projectRoot, "AGENTS.md"), "# Test project\n");
-  await fs.writeFile(path.join(projectRoot, "src.ts"), "export {};\n");
   await fs.writeFile(
-    path.join(projectRoot, "blueprint", "project-plan.md"),
-    "# Project Plan\n"
+    path.join(projectRoot, "AGENTS.md"),
+    options.agents || "# Test project\n"
   );
-  await fs.writeFile(
-    path.join(projectRoot, "blueprint", "build-plan.md"),
-    `# Build Plan
+  await fs.writeFile(path.join(projectRoot, "src.ts"), "export {};\n");
+  const projectPlan = "# Project Plan\n";
+  const buildPlan = `# Build Plan
 
 - [x] 1. **Foundation** - establish the project
 - [ ] 2. **Status command** - show project state
-`
+`;
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "project-plan.md"),
+    projectPlan
+  );
+  if (options.runState) {
+    await fs.writeFile(
+      path.join(stateRoot, "run.json"),
+      `${JSON.stringify(options.runState, null, 2)}\n`
+    );
+  }
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "build-plan.md"),
+    buildPlan
   );
   await fs.writeFile(
     path.join(contextRoot, "current-feature.md"),
@@ -418,7 +580,10 @@ async function createProject(
   );
   await fs.writeFile(
     path.join(contextRoot, "project-overview.md"),
-    "# Project Overview\n"
+    `# Project Overview
+
+<!-- blueprint:source-hash ${createOverviewSourceHash(projectPlan, buildPlan)} -->
+`
   );
   await fs.utimes(
     path.join(contextRoot, "project-overview.md"),

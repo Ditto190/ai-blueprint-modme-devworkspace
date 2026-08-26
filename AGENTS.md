@@ -118,6 +118,53 @@ Deployment is also explicit. `/release` can prepare local Render or Vercel confi
 and run readiness checks, but it must stop before deploy, remote service changes,
 push, or publish unless the user gives a separate yes in the current chat.
 
+## Dashboard activity
+
+The dashboard can show the active or most recent substantial Blueprint command
+from `blueprint/.state/run.json`. This file is generated local state, ignored by
+Git, and never part of a feature commit.
+
+Commands with meaningful progress or a durable handoff should write it when the
+state directory exists: `onboard`, `adopt`, `discovery`, `overview`, `feature`,
+`fix`, `rollback`, `implement`, `debug`, `check`, `audit`, `tests`, `ci`,
+`prototype`, `autopilot`, `continuous`, `complete`, and `release`. Short
+read-only orientation commands such as `brief`, `try`, `status`, and `doctor`
+do not need activity state.
+
+Writing the initial activity record is the first action of a tracked command,
+before project inspection, preflight, or other tool calls. This one generated
+state write does not authorize product changes or bypass any safety check. Set
+status to `running`, use the command name and a truthful initial summary, then
+replace the record at meaningful milestones. On a preflight stop or another
+blocker, set it to `blocked` with the exact recovery command. Leave the final
+state in place for the next session; the next tracked command replaces it. Use
+this schema:
+
+```json
+{
+  "schemaVersion": 1,
+  "command": "continuous",
+  "status": "running",
+  "summary": "Completing the remaining build plan",
+  "detail": "Implementing feature 3.",
+  "boundary": "local-only",
+  "startedAt": "<ISO-8601 timestamp>",
+  "updatedAt": "<ISO-8601 timestamp>",
+  "resumeCommand": "/continuous resume",
+  "progress": { "current": 2, "total": 5, "label": "features" },
+  "feature": { "id": "3", "title": "Export reports" }
+}
+```
+
+`status` must be `running`, `blocked`, `ready`, or `completed`. Use `ready` when
+the command reached its intended review handoff, such as Autopilot waiting for
+review before `/complete`. Use `blocked` with the exact recovery command when
+work can resume. `boundary` must be `read-only`, `reviewed`, or `local-only`.
+The progress, feature, detail, boundary, and resume fields are optional. Never
+put secrets, raw logs, prompts, or user content in this file. Activity tracking
+must not change a command's approval boundaries or turn a reporting failure into
+a workflow failure.
+
 ## Automatic verification
 
 Automatic GitHub checks are a separate explicit setup. `/onboard` and `/adopt`
@@ -142,6 +189,7 @@ checks do not make the Blueprint unusable.
 
 ## Commands
 
+<!-- blueprint:onboarding-required -->
 For a standard Next.js project. Change or remove if you're using something else.
 
 - Dev server: `npm run dev` (http://localhost:3000)

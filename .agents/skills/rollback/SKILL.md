@@ -5,6 +5,10 @@ description: "Plan a safe reversal of a completed Blueprint feature using its ar
 
 # rollback - safely reverse a completed feature
 
+**First action:** Before project inspection, preflight, or any other tool call,
+publish `running` to `blueprint/.state/run.json` using the dashboard activity
+contract in `AGENTS.md`.
+
 Where this sits in the workflow:
 
     completed feature + git history  ->  [rollback]  ->  /implement  ->  /check  ->  /complete

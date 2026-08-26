@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  addLocalBlueprintScripts,
   createBlueprintNpxArguments,
   parseSandboxArgs,
   sandboxChildEnvironment,
@@ -118,6 +119,31 @@ test("adds realistic plans that are ready for overview", async () => {
     assert.match(projectPlan, /personal task tracker/);
     assert.equal(buildPlan.match(/^- \[ \]/gm)?.length, 3);
     assert.doesNotMatch(buildPlan, /Feature one|Feature two|description/);
+  } finally {
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("adds sandbox commands pinned to the locally packed CLI", async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "blueprint-local-cli-"));
+  const projectRoot = path.join(workspace, "project");
+  const tarball = path.join(workspace, "artifacts", "create-ai-blueprint-0.14.0.tgz");
+
+  try {
+    await scaffoldProject(projectRoot);
+    await addLocalBlueprintScripts(projectRoot, tarball);
+    const packageJson = JSON.parse(
+      await fs.readFile(path.join(projectRoot, "package.json"), "utf8")
+    ) as { scripts: Record<string, string> };
+
+    assert.equal(
+      packageJson.scripts["blueprint:status"],
+      "npx --yes --package ../artifacts/create-ai-blueprint-0.14.0.tgz create-ai-blueprint status"
+    );
+    assert.equal(
+      packageJson.scripts["blueprint:dashboard"],
+      "npx --yes --package ../artifacts/create-ai-blueprint-0.14.0.tgz create-ai-blueprint dashboard"
+    );
   } finally {
     await fs.rm(workspace, { recursive: true, force: true });
   }

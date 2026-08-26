@@ -37,6 +37,9 @@ state.
    keys, values, non-file paths, or symbolic links are a warning and make
    `/doctor` the next action before any mutating workflow command. Report the
    effective regular and Continuous audit, check, and try-guide policies.
+   Before recommending `/overview`, check whether `AGENTS.md` still contains
+   the shipped `For a standard Next.js project` command marker. When it does,
+   onboarding is incomplete and `/onboard` is the next action.
 2. **Build plan** - `blueprint/build-plan.md`. Count checked vs unchecked leaf
    items. Name the next unchecked leaf, the same target `/feature` would pick,
    and note if a parent item was split into sub-items (`4a`, `4b`, ...).
@@ -61,6 +64,10 @@ state.
    `current-feature.md`. A rollback legitimately targets a checked build-plan
    item until `/complete` unchecks it, so do not compare it to the next unchecked
    feature.
+8. **Dashboard activity** - read `blueprint/.state/run.json` when it exists.
+   Report the command, mode, status, progress, boundary, and safe resume command.
+   A missing file simply means no activity has been recorded. Invalid activity
+   state is a warning, not a blocker for the underlying workflow.
 
 ## Output
 
@@ -72,6 +79,7 @@ A short, scannable summary, not a wall of text. Aim for something like:
            Continuous audit always, check always, try guide when-user-facing.
     Plans: Overview current. Build plan 3 of 9 complete.
     Current work: Step 2 of 3 done. Next step: Download PDF button.
+    Activity: /autopilot ready, 3/3 build steps, reviewed boundary.
     Findings: 1 open P2 (F-04), 1 fixed P1 awaiting re-review (F-02).
     Git: branch feature/pdf-export, 3 uncommitted files, last commit "feat: widen export helper".
     Watch: F-02 is fixed but not re-reviewed; it blocks /complete until /audit closes it.

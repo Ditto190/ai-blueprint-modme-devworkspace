@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { watch, type FSWatcher } from "node:fs";
 import http from "node:http";
 
 import { readProjectStatus } from "./status.js";
@@ -12,6 +13,10 @@ interface DashboardServerOptions {
   port?: number;
 }
 
+interface DashboardEvents {
+  clients: Set<http.ServerResponse>;
+}
+
 const DASHBOARD_HOST = "127.0.0.1";
 
 async function startDashboardServer(
@@ -20,8 +25,20 @@ async function startDashboardServer(
 ): Promise<DashboardServer> {
   const initialStatus = await readProjectStatus(startPath);
   const projectRoot = initialStatus.project.root;
+  const events: DashboardEvents = { clients: new Set() };
   const server = http.createServer((request, response) => {
-    void handleRequest(projectRoot, request, response);
+    void handleRequest(projectRoot, events, request, response);
+  });
+  let refreshTimer: NodeJS.Timeout | null = null;
+  const watcher = createProjectWatcher(projectRoot, () => {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      broadcastRefresh(events);
+    }, 60);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -47,12 +64,23 @@ async function startDashboardServer(
 
   return {
     url: `http://${DASHBOARD_HOST}:${address.port}`,
-    close: () => closeServer(server)
+    close: async () => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
+      watcher?.close();
+      for (const client of events.clients) {
+        client.end();
+      }
+      events.clients.clear();
+      await closeServer(server);
+    }
   };
 }
 
 async function handleRequest(
   projectRoot: string,
+  events: DashboardEvents,
   request: http.IncomingMessage,
   response: http.ServerResponse
 ): Promise<void> {
@@ -98,12 +126,70 @@ async function handleRequest(
     return;
   }
 
+  if (pathname === "/api/events") {
+    response.statusCode = 200;
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    response.setHeader("Connection", "keep-alive");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+
+    if (method === "HEAD") {
+      response.end();
+      return;
+    }
+
+    events.clients.add(response);
+    response.write(": connected\n\n");
+    request.once("close", () => {
+      events.clients.delete(response);
+    });
+    return;
+  }
+
   if (pathname === "/favicon.ico") {
     sendResponse(response, method, 204, "text/plain; charset=utf-8", "");
     return;
   }
 
   sendResponse(response, method, 404, "text/plain; charset=utf-8", "Not found.\n");
+}
+
+function createProjectWatcher(
+  projectRoot: string,
+  onChange: () => void
+): FSWatcher | null {
+  try {
+    const watcher = watch(
+      projectRoot,
+      { recursive: true },
+      (_eventType, filename) => {
+        const relativePath = filename?.toString().replaceAll("\\", "/") || "";
+        if (
+          relativePath.startsWith("node_modules/") ||
+          relativePath.startsWith(".git/objects/")
+        ) {
+          return;
+        }
+
+        onChange();
+      }
+    );
+    watcher.on("error", () => watcher.close());
+    return watcher;
+  } catch {
+    return null;
+  }
+}
+
+function broadcastRefresh(events: DashboardEvents): void {
+  for (const client of events.clients) {
+    if (client.destroyed || client.writableEnded) {
+      events.clients.delete(client);
+      continue;
+    }
+
+    client.write("event: refresh\ndata: changed\n\n");
+  }
 }
 
 function sendResponse(
@@ -278,13 +364,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(11, 122, 83, .1); }
     .live.offline .live-dot { background: var(--red); box-shadow: 0 0 0 4px rgba(165, 51, 63, .1); }
 
-    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-    .status-stack { grid-column: span 4; display: grid; gap: 16px; align-content: start; }
-    .status-stack .card { grid-column: 1 / -1; }
-    .card { grid-column: span 4; min-width: 0; padding: 22px; border: 1px solid rgba(189, 199, 193, .78); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(18, 24, 23, .05), 0 10px 30px rgba(18, 24, 23, .04); backdrop-filter: blur(14px); }
-    .card.wide { grid-column: span 8; }
-    .card.half { grid-column: span 6; }
-    .card.full { grid-column: 1 / -1; }
+    .card { min-width: 0; padding: 22px; border: 1px solid rgba(189, 199, 193, .78); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(18, 24, 23, .05), 0 10px 30px rgba(18, 24, 23, .04); backdrop-filter: blur(14px); }
 
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
     .label { margin: 0; color: var(--blue-dark); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -341,22 +421,105 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .empty { color: var(--ink-muted); }
     .error { color: var(--red); }
 
-    footer { margin-top: 18px; color: var(--ink-muted); font: 11px/1.6 var(--font-mono); }
+    .next-action {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 16px;
+      border: 1px solid var(--code-line);
+      border-radius: 15px;
+    }
 
-    @media (max-width: 860px) {
-      .status-stack, .card, .card.wide, .card.half { grid-column: span 6; }
-      .card.full { grid-column: 1 / -1; }
+    .next-action-main { min-width: 0; }
+    .next-action-state { display: grid; min-width: 180px; align-content: center; padding-left: 24px; border-left: 1px solid var(--code-line); }
+    .next-action-state span { color: var(--code-muted); font: 600 9px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+    .next-action-state strong { margin-top: 8px; color: var(--code-green); font: 600 11px/1.3 var(--font-mono); text-transform: uppercase; }
+    .next-action-state strong.blocked { color: #ef9aa4; }
+    .next-action-state strong.needs_verification { color: #e8bd72; }
+
+    .run-context {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(330px, .72fr);
+      gap: 24px;
+      margin-bottom: 16px;
+      padding: 19px 22px;
+      border: 1px solid #9bb8f4;
+      border-radius: 14px;
+      background: rgba(233, 240, 255, .88);
+      box-shadow: 0 1px 2px rgba(18, 24, 23, .04);
+    }
+
+    .run-context[hidden] { display: none; }
+    .run-command { margin: 8px 0 5px; color: var(--blue-dark); font: 700 21px/1.2 var(--font-mono); }
+    .run-summary { color: var(--ink); font-size: 13px; font-weight: 650; line-height: 1.45; }
+    .run-main .muted { margin-top: 4px; }
+    .run-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; align-content: center; }
+    .run-meta .pill { width: fit-content; }
+    .run-meta div { display: grid; gap: 4px; }
+    .run-meta div span { color: var(--ink-muted); font: 600 8px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+    .run-meta div strong { overflow-wrap: anywhere; color: var(--ink-soft); font: 600 10px/1.4 var(--font-mono); }
+    .pill.running, .pill.completed { border-color: #b9dfce; background: var(--green-soft); color: var(--green); }
+
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(285px, .75fr); gap: 16px; align-items: start; }
+    .main-column, .status-rail { display: grid; gap: 16px; }
+    .dashboard-grid .card { grid-column: auto; }
+    .section-title { margin-top: 8px; color: var(--ink); font-size: 18px; font-weight: 700; letter-spacing: -.025em; }
+
+    .work-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .work-kicker { color: var(--blue); font: 600 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+    .work-title { margin: 7px 0 6px; color: var(--ink); font-size: clamp(23px, 3vw, 31px); font-weight: 700; line-height: 1.08; letter-spacing: -.04em; }
+    .work-count { padding: 6px 9px; border-radius: 7px; background: var(--blue-soft); color: var(--blue-dark); font: 600 10px/1 var(--font-mono); white-space: nowrap; }
+    .work-progress { height: 7px; margin: 18px 0 14px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
+    .work-progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); }
+    body.hydrated .work-progress span { transition: width .25s ease; }
+    .work-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .work-steps li { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .68); }
+    .work-steps .timeline-item { grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 8px; }
+    .work-steps .timeline-meta { grid-column: 2; margin-top: 2px; }
+    .work-steps .timeline-item.done { border-color: #b9dfce; background: var(--green-soft); }
+    .work-steps .timeline-item.current { border-color: #9bb8f4; background: var(--blue-soft); box-shadow: inset 3px 0 0 var(--blue); }
+    .current-work.idle .work-title { font-size: 22px; }
+    .current-work.idle .work-progress { display: none; }
+    .current-work.idle .work-steps { grid-template-columns: 1fr; margin-top: 12px; }
+
+    .build-plan-card .timeline { max-height: 250px; }
+    .build-plan-card .timeline-item.done { opacity: .58; }
+    .build-plan-card .timeline-item.current { opacity: 1; }
+    .history-card .timeline { max-height: 190px; }
+
+    .project-state-card .card-head, .findings-card .card-head, .completion-card .card-head { margin-bottom: 14px; }
+    .fact-group { margin-top: 17px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .fact-group-label { margin-bottom: 10px; color: var(--ink-muted); font: 600 9px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+    .fact-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .fact-group-heading .fact-group-label { margin-bottom: 0; }
+    .fact.stacked { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .fact.stacked span:last-child { max-width: 100%; text-align: left; }
+    .status-rail .health-summary { margin-top: 0; }
+    .status-rail .value { font-size: 15px; }
+    .findings-card li, .completion-card li { font-size: 11px; }
+
+    footer { margin-top: 18px; color: var(--ink-muted); font: 11px/1.6 var(--font-mono); text-align: center; }
+
+    @media (max-width: 900px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .status-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .project-state-card { grid-row: span 2; }
+      .run-context { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 620px) {
       .shell { width: min(100% - 24px, 1180px); padding-top: 24px; }
       header { flex-direction: column; }
       .brand { margin-bottom: 22px; }
-      .status-stack, .card, .card.wide, .card.half, .card.full { grid-column: 1 / -1; }
+      .next-action { flex-direction: column; }
+      .next-action-state { min-width: 0; padding: 14px 0 0; border-top: 1px solid var(--code-line); border-left: 0; }
+      .run-meta, .status-rail, .work-steps { grid-template-columns: 1fr; }
+      .work-title-row { flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      body.hydrated .progress span { transition: none; }
+      body.hydrated .progress span, body.hydrated .work-progress span { transition: none; }
     }
   </style>
 </head>
@@ -379,72 +542,111 @@ const DASHBOARD_HTML: string = `<!doctype html>
       <div class="live" id="live-state" aria-live="polite"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
     </header>
 
-    <section class="grid" aria-label="Blueprint project status">
-      <div class="status-stack">
-        <article class="card">
-          <div class="card-head"><h2 class="label">Project health</h2><span class="pill" id="health">Loading</span></div>
-          <div class="facts">
-            <div class="fact"><span>Version</span><span id="version">-</span></div>
-            <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
-            <div class="fact"><span>Config</span><span id="config">-</span></div>
-            <div class="fact"><span>Regular gates</span><span id="regular-gates">-</span></div>
-            <div class="fact"><span>Continuous gates</span><span id="continuous-gates">-</span></div>
-            <div class="fact"><span>Overview</span><span id="overview">-</span></div>
+    <section class="code-panel next-action" aria-labelledby="next-action-label">
+      <div class="next-action-main">
+        <h2 class="label" id="next-action-label">Next action</h2>
+        <div class="command" id="next-command" aria-live="polite">Loading...</div>
+        <div class="muted" id="next-reason"></div>
+      </div>
+      <div class="next-action-state">
+        <span>Completion gate</span>
+        <strong id="next-state-label">Checking</strong>
+      </div>
+    </section>
+
+    <section class="run-context" id="activity-panel" aria-labelledby="activity-label" hidden>
+      <div class="run-main">
+        <div class="label" id="activity-label">Run context</div>
+        <div class="run-command" id="activity-command">-</div>
+        <div class="run-summary" id="activity-summary"></div>
+        <div class="muted" id="activity-detail"></div>
+      </div>
+      <div class="run-meta">
+        <span class="pill" id="activity-status">-</span>
+        <div><span>Mode</span><strong id="activity-mode">-</strong></div>
+        <div><span>Boundary</span><strong id="activity-boundary">-</strong></div>
+        <div><span>Gates</span><strong id="activity-gates">-</strong></div>
+        <div id="activity-progress-row" hidden><span>Progress</span><strong id="activity-progress">-</strong></div>
+        <div id="activity-resume-row" hidden><span>Resume</span><strong id="activity-resume">-</strong></div>
+      </div>
+    </section>
+
+    <section class="dashboard-grid" aria-label="Blueprint project status">
+      <div class="main-column">
+        <article class="card current-work" id="current-work-card">
+          <div class="card-head"><h2 class="label">Current work</h2><span class="pill" id="work-state">Loading</span></div>
+          <div class="work-title-row">
+            <div>
+              <div class="work-kicker" id="work-kicker">ACTIVE WORK</div>
+              <div class="work-title" id="work-title">-</div>
+            </div>
+            <div class="work-count" id="work-count">-</div>
           </div>
+          <div class="muted" id="work-meta"></div>
+          <div class="work-progress" id="work-progressbar" role="progressbar" aria-label="Current work completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="work-progress"></span></div>
+          <ul class="work-steps" id="work-list" tabindex="0" aria-label="Current build steps"><li class="empty">Loading build steps...</li></ul>
+        </article>
+
+        <article class="card build-plan-card">
+          <div class="card-head"><div><h2 class="label">Build plan</h2><div class="section-title">Roadmap</div></div><span class="value" id="build-count">-</span></div>
+          <div class="progress" id="build-progressbar" role="progressbar" aria-label="Build plan completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="build-progress"></span></div>
+          <div class="muted" id="build-next">Reading the plan...</div>
+          <ul class="timeline" id="build-list" tabindex="0" aria-label="Build plan items"><li class="empty">Loading the roadmap...</li></ul>
+        </article>
+
+        <article class="card history-card">
+          <div class="card-head"><div><h2 class="label">Completed work</h2><div class="muted">Archived features, fixes, and rollbacks</div></div><span class="value" id="history-count">-</span></div>
+          <ul class="timeline" id="history-list" tabindex="0" aria-label="Completed Blueprint work"><li class="empty">Loading completed work...</li></ul>
+        </article>
+      </div>
+
+      <aside class="status-rail" aria-label="Project state">
+        <article class="card project-state-card">
+          <div class="card-head"><h2 class="section-title">Project state</h2><span class="pill" id="health">Loading</span></div>
           <div class="health-summary" id="health-summary">
             <span class="summary-label" id="health-summary-label">Checking</span>
             <ul id="health-list" aria-live="polite"><li class="empty">Reading workflow state...</li></ul>
           </div>
-        </article>
-
-        <article class="card">
-          <div class="card-head"><h2 class="label">Git</h2><span class="pill" id="git-state">Loading</span></div>
-          <div class="facts">
-            <div class="fact"><span>Branch</span><span id="git-branch">-</span></div>
-            <div class="fact"><span>Changed</span><span id="git-changed">-</span></div>
-            <div class="fact"><span>Upstream</span><span id="git-upstream">-</span></div>
+          <div class="fact-group">
+            <div class="fact-group-label">Blueprint</div>
+            <div class="facts">
+              <div class="fact"><span>Version</span><span id="version">-</span></div>
+              <div class="fact"><span>Adapters</span><span id="adapters">-</span></div>
+              <div class="fact"><span>Config</span><span id="config">-</span></div>
+              <div class="fact"><span>Onboarding</span><span id="onboarding">-</span></div>
+              <div class="fact"><span>Overview</span><span id="overview">-</span></div>
+            </div>
+          </div>
+          <div class="fact-group">
+            <div class="fact-group-heading"><div class="fact-group-label">Git</div><span class="pill" id="git-state">Loading</span></div>
+            <div class="facts">
+              <div class="fact"><span>Branch</span><span id="git-branch">-</span></div>
+              <div class="fact"><span>Changed</span><span id="git-changed">-</span></div>
+              <div class="fact"><span>Upstream</span><span id="git-upstream">-</span></div>
+            </div>
+          </div>
+          <div class="fact-group">
+            <div class="fact-group-label">Quality gates</div>
+            <div class="facts">
+              <div class="fact stacked"><span>Regular</span><span id="regular-gates">-</span></div>
+              <div class="fact stacked"><span>Continuous</span><span id="continuous-gates">-</span></div>
+            </div>
           </div>
         </article>
-      </div>
 
-      <article class="card wide">
-        <div class="card-head"><h2 class="label">Build plan</h2><span class="value" id="build-count">-</span></div>
-        <div class="progress" id="build-progressbar" role="progressbar" aria-label="Build plan completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="build-progress"></span></div>
-        <div class="muted" id="build-next">Reading the plan...</div>
-        <ul class="timeline" id="build-list" tabindex="0" aria-label="Build plan items"><li class="empty">Loading the roadmap...</li></ul>
-      </article>
+        <article class="card findings-card">
+          <div class="card-head"><h2 class="section-title">Findings</h2><span class="value" id="findings-count">-</span></div>
+          <ul id="findings-list"><li class="empty">Loading findings...</li></ul>
+        </article>
 
-      <article class="card full">
-        <div class="card-head"><h2 class="label">Current work</h2><span class="pill" id="work-state">Loading</span></div>
-        <div class="value" id="work-title">-</div>
-        <div class="muted" id="work-meta"></div>
-        <ul class="timeline" id="work-list" tabindex="0" aria-label="Current build steps"><li class="empty">Loading build steps...</li></ul>
-      </article>
-
-      <article class="card half">
-        <div class="card-head"><h2 class="label">Findings</h2><span class="value" id="findings-count">-</span></div>
-        <ul id="findings-list"><li class="empty">Loading findings...</li></ul>
-      </article>
-
-      <article class="card half">
-        <div class="card-head"><h2 class="label">Completion</h2><span class="pill" id="completion-state">Loading</span></div>
-        <ul id="completion-list"><li class="empty">Checking readiness...</li></ul>
-      </article>
-
-      <article class="card full code-panel next-action">
-        <h2 class="label">Next action</h2>
-        <div class="command" id="next-command" aria-live="polite">Loading...</div>
-        <div class="muted" id="next-reason"></div>
-      </article>
-
-      <article class="card full">
-        <div class="card-head"><h2 class="label">Completed work</h2><span class="value" id="history-count">-</span></div>
-        <div class="muted">Archived features, fixes, and rollbacks from Blueprint history.</div>
-        <ul class="timeline" id="history-list" tabindex="0" aria-label="Completed Blueprint work"><li class="empty">Loading completed work...</li></ul>
-      </article>
+        <article class="card completion-card">
+          <div class="card-head"><h2 class="section-title">Completion</h2><span class="pill" id="completion-state">Loading</span></div>
+          <ul id="completion-list"><li class="empty">Checking readiness...</li></ul>
+        </article>
+      </aside>
     </section>
 
-    <footer>Read-only local dashboard. Refreshes every second while this Blueprint process is running.</footer>
+    <footer>Read-only local dashboard. Updates as Blueprint and project files change.</footer>
   </main>
 
   <script>
@@ -564,6 +766,54 @@ const DASHBOARD_HTML: string = `<!doctype html>
         ", try guide " + gates.tryGuide;
     }
 
+    function renderActivity(activity, configuration) {
+      const panel = byId("activity-panel");
+      if (activity.state !== "recorded") {
+        panel.hidden = true;
+        return;
+      }
+
+      panel.hidden = false;
+      byId("activity-label").textContent = activity.freshness === "stale" ||
+          activity.status === "blocked"
+        ? "Interrupted run"
+        : activity.status === "running"
+          ? "Current run"
+          : activity.status === "ready"
+            ? "Review handoff"
+            : "Last run";
+      byId("activity-command").textContent = "/" + activity.command;
+      byId("activity-summary").textContent = activity.summary;
+      byId("activity-detail").textContent = activity.detail ||
+        (activity.feature
+          ? (activity.feature.id ? activity.feature.id + " - " : "") + activity.feature.title
+          : "");
+      setPill(
+        "activity-status",
+        activity.freshness === "stale" ? "blocked" : activity.status,
+        activity.freshness === "stale" ? "interrupted" : activity.status
+      );
+      byId("activity-mode").textContent = activity.mode;
+      byId("activity-boundary").textContent = activity.boundary || "not recorded";
+      const gates = activity.mode === "continuous"
+        ? configuration.values.qualityGates.continuous
+        : configuration.values.qualityGates.regular;
+      byId("activity-gates").textContent = formatGates(gates);
+
+      const progressRow = byId("activity-progress-row");
+      progressRow.hidden = !activity.progress;
+      if (activity.progress) {
+        byId("activity-progress").textContent = activity.progress.current + "/" +
+          activity.progress.total + " " + activity.progress.label;
+      }
+
+      const resumeRow = byId("activity-resume-row");
+      resumeRow.hidden = !activity.resumeCommand;
+      if (activity.resumeCommand) {
+        byId("activity-resume").textContent = activity.resumeCommand;
+      }
+    }
+
     function render(status) {
       byId("project-name").textContent = status.project.name;
       byId("project-path").textContent = status.project.root;
@@ -593,6 +843,8 @@ const DASHBOARD_HTML: string = `<!doctype html>
         status.configuration.values.qualityGates.continuous
       );
       byId("overview").textContent = status.plans.overview.state;
+      byId("onboarding").textContent = status.onboarding.state;
+      renderActivity(status.activity, status.configuration);
 
       const build = status.plans.build;
       const work = status.currentWork;
@@ -614,10 +866,21 @@ const DASHBOARD_HTML: string = `<!doctype html>
 
       setBuildPlan(build.items, work.buildPlanItem, build.nextItem ? build.nextItem.id : null);
       setPill("work-state", work.state);
+      byId("current-work-card").className = "card current-work " + work.state;
+      byId("work-kicker").textContent = work.type
+        ? work.type + (work.buildPlanItem ? " " + work.buildPlanItem : "")
+        : "Blueprint idle";
       byId("work-title").textContent = work.title || "No active work";
+      byId("work-count").textContent = work.total > 0
+        ? work.completed + "/" + work.total + " steps"
+        : "Idle";
       byId("work-meta").textContent = work.type
         ? work.type + (work.status ? " | " + work.status : "") + (work.buildPlanItem ? " | build-plan item " + work.buildPlanItem : "")
         : "Blueprint is idle.";
+      const workPercent = work.total > 0 ? (work.completed / work.total) * 100 : 0;
+      byId("work-progress").style.width = workPercent + "%";
+      byId("work-progressbar").setAttribute("aria-valuenow", String(Math.round(workPercent)));
+      byId("work-progressbar").setAttribute("aria-valuetext", work.completed + " of " + work.total + " build steps complete");
       setWorkSteps(work);
       setHistory(status.history);
 
@@ -640,6 +903,8 @@ const DASHBOARD_HTML: string = `<!doctype html>
 
       setPill("completion-state", status.completion.state);
       setList("completion-list", status.completion.blockers, "No completion blockers.");
+      byId("next-state-label").textContent = status.completion.state.replaceAll("_", " ");
+      byId("next-state-label").className = status.completion.state;
 
       byId("next-command").textContent = status.nextAction.command || "No command required";
       byId("next-reason").textContent = status.nextAction.reason;
@@ -670,7 +935,9 @@ const DASHBOARD_HTML: string = `<!doctype html>
     }
 
     refresh();
-    setInterval(refresh, 1000);
+    const events = new EventSource("/api/events");
+    events.addEventListener("refresh", refresh);
+    setInterval(refresh, 10000);
     document.addEventListener("visibilitychange", refresh);
   </script>
 </body>
