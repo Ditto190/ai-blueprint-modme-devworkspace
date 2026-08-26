@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const PROJECT_CONFIG_PATH = path.join("blueprint", "config.json");
+// Stable repo-relative identifier for warnings and status output. path.join
+// normalizes the separator for filesystem reads, so this must not be built with
+// path.join or Windows would surface "blueprint\config.json" to users.
+const PROJECT_CONFIG_PATH = "blueprint/config.json";
 const PROJECT_CONFIG_SCHEMA_VERSION = 1 as const;
 
 type StepReviewPolicy = "every" | "feature";
