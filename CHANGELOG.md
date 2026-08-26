@@ -5,6 +5,18 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added `npm run link:local` and `npm run unlink:local` for building, preparing,
+  and globally linking the installer from a local checkout, so `create-ai-blueprint`
+  and `blueprint` run from local files with no network access.
+
+### Fixed
+
+- Fixed installer package root resolution so a source checkout finds its own
+  `template/` directory. The documented local testing path failed because the
+  installer looked one directory above the package.
+
 ## [0.14.0] - 2026-08-25
 
 ### Added

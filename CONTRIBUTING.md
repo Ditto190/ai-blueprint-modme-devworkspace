@@ -40,12 +40,41 @@ framework abstractions do not belong in this repository.
 | `npm run sandbox` | Scaffold a minimal app, run the local packed Blueprint through its real prompts, verify it, and start its server. |
 | `npm run sandbox:clear` | List every saved sandbox run, ask for confirmation, then delete those runs. |
 | `npm run sandbox:demo` | Run the interactive sandbox with example project and build plans ready for workflow testing. |
+| `npm run link:local` | Build this checkout, prepare its template, and link `create-ai-blueprint` and `blueprint` globally so they run from local files. |
+| `npm run unlink:local` | Remove the global link created by `npm run link:local`. |
 | `E2E_ACCEPT_RISK=1 npm run test:e2e` | Run all live-agent behavior scenarios in scratch repositories. |
 
 Run `npm run check` before opening or merging a pull request. The package smoke
 test builds the installer template, packs it into a temporary directory, installs
 that artifact locally, verifies every supported adapter mode, and removes its temporary
 files.
+
+## Running the installer from a local checkout
+
+`npx create-ai-blueprint` always fetches the published package. To install from
+your own checkout instead, including a fork with local modifications, link it
+once:
+
+```bash
+npm run link:local
+```
+
+That builds the installer, prepares its template, and links the `create-ai-blueprint`
+and `blueprint` commands globally. They then run entirely from local files, with no
+network access:
+
+```bash
+create-ai-blueprint --target ../my-app
+blueprint status
+```
+
+Re-run `npm run link:local` after editing the source. The linked commands run the
+compiled `dist/` output and a copied `template/`, not the source files directly, so
+edits are not picked up until both are rebuilt.
+
+`npm run unlink:local` runs `npm rm --global create-ai-blueprint`, which removes any
+global copy of the package, whether it was linked from a checkout or installed from
+the registry.
 
 ## Inspectable scaffold sandbox
 

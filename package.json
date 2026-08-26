@@ -8,6 +8,8 @@
   "scripts": {
     "check": "npm run typecheck && tsx scripts/check-blueprint.ts",
     "check:static": "tsx scripts/validate-blueprint.ts",
+    "link:local": "tsx scripts/link-local.ts",
+    "unlink:local": "tsx scripts/link-local.ts --undo",
     "test": "npm --prefix packages/create-ai-blueprint test",
     "test:routing": "tsx --test scripts/evals/routing.test.ts && tsx scripts/evals/routing.ts --min-rank1 90",
     "test:sandbox": "tsx --test scripts/scaffold-sandbox.test.ts scripts/clear-sandbox.test.ts",

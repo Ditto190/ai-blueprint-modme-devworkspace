@@ -24,7 +24,7 @@ import {
 import type { Adapter, PreparedUpdate, UpdateResult } from "../lib/update.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const packageRoot = path.resolve(__dirname, "..", "..");
+const packageRoot = findPackageRoot(__dirname);
 const templateRoot = path.join(packageRoot, "template");
 const ADAPTER_PROMPT = "Select AI tool adapters";
 const ALL_ADAPTERS = adapterListFromMode("all");
@@ -135,9 +135,7 @@ async function runCli(
   }
 
   if (!fsSync.existsSync(templateRoot)) {
-    throw new Error(
-      "Installer template is missing. Run `npm run prepare-template` before local testing."
-    );
+    throw new Error(formatMissingTemplateMessage(templateRoot));
   }
 
   const version = readPackageVersion();
@@ -900,6 +898,36 @@ Install or update Blueprint with:
   npx create-ai-blueprint@latest update`);
 }
 
+// Correct for both layouts: dist/bin/ when published, bin/ in a source checkout.
+// Relies on nothing between the entry point and the package root carrying its own
+// package.json, so a build that emits dist/package.json would break this.
+function findPackageRoot(startDir: string): string {
+  let current = startDir;
+
+  for (;;) {
+    if (fsSync.existsSync(path.join(current, "package.json"))) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+
+    if (parent === current) {
+      throw new Error(
+        `Could not locate the installer package root above ${startDir}.`
+      );
+    }
+
+    current = parent;
+  }
+}
+
+function formatMissingTemplateMessage(templateRoot: string): string {
+  return `Installer template is missing.
+Looked in: ${templateRoot}
+This looks like a source checkout, where the template is a build artifact.
+Run \`npm run link:local\` from the repository root, or \`npm run prepare-template\` inside the installer package.`;
+}
+
 function readPackageVersion(): string {
   const packageJson = fsSync.readFileSync(
     path.join(packageRoot, "package.json"),
@@ -930,6 +958,8 @@ if (
 
 export {
   ADAPTER_PROMPT,
+  findPackageRoot,
+  formatMissingTemplateMessage,
   getGlobalCliInstallCommand,
   getGlobalCliPrompt,
   getTemplateEntries,
