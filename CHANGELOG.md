@@ -5,6 +5,14 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.0.1] - 2026-08-26
+
+### Changed
+
+- Reworked the npm package README to lead with Blueprint's product purpose and
+  core feature loop, with specialized capabilities such as release readiness
+  documented later.
+
 ## [1.0.0] - 2026-08-26
 
 AI Blueprint 1.0 establishes the installer, shared workflow, project

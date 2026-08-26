@@ -1,6 +1,12 @@
 # create-ai-blueprint
 
-Install AI Blueprint into an already scaffolded app.
+AI Blueprint is a file-backed control system for AI-assisted development. It
+gives coding agents a shared workflow to plan, build, verify, and document one
+feature at a time, with human review gates before code changes and merges.
+
+It works with any stack and installs inside an app you have already scaffolded.
+Plans, specs, project context, findings, configuration, and completed-work
+history stay as readable files in your repository.
 
 [![npm version](https://img.shields.io/npm/v/create-ai-blueprint?style=flat-square&color=155eef)](https://www.npmjs.com/package/create-ai-blueprint)
 [![Validate Blueprint](https://github.com/aiblueprinthq/ai-blueprint/actions/workflows/validate.yml/badge.svg)](https://github.com/aiblueprinthq/ai-blueprint/actions/workflows/validate.yml)
@@ -36,29 +42,26 @@ The installer copies the Blueprint workflow files into the current directory:
 
 It keeps the app's root `README.md` alone.
 
-The installed workflow includes optional Render and Vercel deployment readiness
-through `/release` or `$release`; it prepares local config and checks, but does
-not deploy without explicit approval.
+## Core workflow
 
-The optional `/ci` or `$ci` skill sets up automatic GitHub checks separately
-from onboarding and adoption. It detects the real project commands, defines one
-Verify command from checks that already exist, and adds a matching pull request
-workflow without replacing existing CI. It does not invent tests or add git
-hooks, coverage, browser tests, security scans, or version matrices by default.
+Blueprint starts with your plans, then repeats one controlled loop for every
+feature or fix:
 
-It also includes `/rollback` or `$rollback` for planning a reviewed reversal of
-a completed feature from its archived spec and exact git commit. Rollbacks keep
-the original feature archive and use the normal implement, check, and complete
-gates.
+1. Run `/onboard` or `$onboard` to tune Blueprint to the real project.
+2. Write `blueprint/project-plan.md` and `blueprint/build-plan.md` directly, or
+   use the optional discovery skill to develop them through conversation.
+3. Run `/overview` or `$overview` to generate durable project context.
+4. Run `/feature` or `$feature` for the next planned feature, or use the fix
+   skill for a focused bug or small change.
+5. Review the spec, then run `/implement` or `$implement` to build it in small,
+   visible steps.
+6. Run `/check` or `$check` to prove the behavior against the real app.
+7. Run `/complete` or `$complete` to archive the work and request merge
+   approval.
 
-The explicit `/continuous` or `$continuous` mode uses the build plan as its
-queue and completes planned features serially with one local branch and one
-local main commit per feature. It honors the configured Continuous quality
-gates and limits, stops on real blockers, and never pushes.
-
-If you install `--claude` or `--all` while Claude Code is already open in the
-project, restart Claude Code in that folder so the newly added project skills
-appear.
+Plans, current work, verification evidence, findings, and completed history stay
+in the repository, so another session or supported coding tool can continue
+from the same state.
 
 ## Tool support
 
@@ -69,6 +72,10 @@ appear.
 | GitHub Copilot | `AGENTS.md` and `.agents/skills/` | Ask Copilot to run the matching skill |
 | OpenCode | `AGENTS.md` and compatible `.agents/skills/` or `.claude/skills/` | Ask OpenCode to run the matching skill |
 | Other tools | `AGENTS.md` plus readable skill files | Ask the agent to follow the matching `SKILL.md` |
+
+If you install `--claude` or `--all` while Claude Code is already open in the
+project, restart Claude Code in that folder so the newly added project skills
+appear.
 
 ## Options
 
@@ -97,6 +104,28 @@ does not manage `.github/copilot-instructions.md`. OpenCode reuses the compatibl
 Use `--force` to overwrite existing Blueprint files. Without `--force`, the
 installer asks before overwriting in an interactive terminal and exits in
 non-interactive runs.
+
+## Optional capabilities
+
+The core workflow stays focused. Use these capabilities when the project needs
+them:
+
+- `/brief` or `$brief` previews an upcoming build-plan feature before you spec
+  it.
+- `/debug` or `$debug` investigates a failure without editing code.
+- `/audit` and `/try`, or their Codex `$` forms, add code review and a human
+  walkthrough.
+- `/tests` or `$tests` establishes unit testing. The optional `/ci` or `$ci` skill
+  defines one shared local and GitHub verification command from checks the
+  project already has.
+- `/rollback` or `$rollback` plans a reviewed reversal from the archived spec
+  and exact feature commit without erasing history.
+- `/autopilot` or `$autopilot` runs one bounded feature or fix through its
+  configured gates, then stops before completion.
+- `/continuous` or `$continuous` processes the remaining reviewed build plan
+  serially with one local branch and commit per feature. It never pushes.
+- `/release` or `$release` prepares local Render or Vercel configuration and
+  release checks. It never deploys without separate approval.
 
 ## Updating an existing installation
 
