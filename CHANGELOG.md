@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.1.0] - 2026-08-28
+
 ### Added
 
 - Added the optional `/browser-tests` and `$browser-tests` setup skill for
