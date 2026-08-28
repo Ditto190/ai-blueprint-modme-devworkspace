@@ -134,14 +134,18 @@ time-dependent logic; a Python app would use pytest; a Go app `go test`.
 For UI and integration behavior, prefer real browser evidence over reading the
 code and assuming it works.
 
-- If Playwright is already installed, or the Commands section of `AGENTS.md`
-  declares a Playwright script, use Playwright for browser checks, screenshots,
-  console-error checks, and user-flow verification.
-- If Playwright is not installed, do not add it silently in the middle of an
-  unrelated feature. Use the available dev server, browser screenshots, build
-  output, API output, or manual verification evidence instead.
-- Add Playwright only when the user asks for it, or when the current spec is
-  explicitly about setting up browser automation.
+- Browser automation is separately opt-in through `/browser-tests`. That setup
+  reuses a compatible runner or prefers Playwright for supported projects, then
+  documents the exact command as `Browser tests` in `AGENTS.md`.
+- When `Browser tests` is declared, add focused coverage for stable behavioral
+  done-whens when it is proportionate, and run the documented command during
+  `/check`. Do not assume it proves visual fidelity, real authenticated-profile
+  behavior, browser chrome, or another claim the test does not observe.
+- If no Browser tests command is declared, do not add a runner silently in the
+  middle of an unrelated feature. Use the available dev server, browser
+  screenshots, build output, API output, or manual evidence instead.
+- Browser tests are not part of the default Verify command or CI unless the user
+  separately chooses that slower gate.
 - Browser evidence is especially important for flows that click, type, submit,
   navigate, download files, render complex layouts, or depend on client-side
   state.

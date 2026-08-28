@@ -17,7 +17,7 @@ Where this sits in the workflow:
 Testing is optional in the Blueprint until the project declares a real test
 command in `AGENTS.md`. This skill is the explicit setup path. It adds or
 normalizes **unit testing** only; browser automation and end-to-end testing are
-separate setup work.
+separate optional setup through `/browser-tests`.
 
 ## Input
 
@@ -113,7 +113,8 @@ Show the diff summary. Do not commit, merge, push, or start product feature work
 ## Rules
 
 - Unit testing only. Do not set up Playwright, Cypress, browser E2E, CI, or
-  coverage unless the user explicitly asks.
+  coverage here. Use `/browser-tests` for an explicitly requested browser
+  harness.
 - Reuse existing project conventions before adding new tools.
 - Preserve existing CI. This skill may update an existing verification command,
   but it never creates a GitHub workflow on its own.

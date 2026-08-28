@@ -118,6 +118,10 @@ them:
 - `/tests` or `$tests` establishes unit testing. The optional `/ci` or `$ci` skill
   defines one shared local and GitHub verification command from checks the
   project already has.
+- `/browser-tests` or `$browser-tests` explicitly adds or normalizes a repeatable
+  browser harness, preferring an existing runner and otherwise using Playwright
+  for compatible projects. Check and Continuous Mode reuse its documented
+  command; installation never adds it automatically.
 - `/rollback` or `$rollback` plans a reviewed reversal from the archived spec
   and exact feature commit without erasing history.
 - `/autopilot` or `$autopilot` runs one bounded feature or fix through its

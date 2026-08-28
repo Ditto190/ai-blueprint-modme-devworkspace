@@ -55,10 +55,14 @@ type:
 
 - **Web app** - start (or reuse) the dev/preview server, then drive a real browser
   to the relevant routes. Prefer reusing an already-running server over starting a
-  duplicate. If Playwright is already installed or declared in `AGENTS.md`, prefer
-  it for browser driving, screenshots, console errors, and failed request checks.
-  If it is not installed, do not add it from `/check`; use another real-browser
-  evidence path and report what you used.
+  duplicate. If `AGENTS.md` declares `Browser tests: <command>`, run that exact
+  command as repeatable evidence and use its harness for covered interactions.
+  Reuse runner-owned server lifecycle instead of starting a duplicate. A green
+  suite is one evidence source, not proof of claims it does not observe. If no
+  command is declared but Playwright is already installed, prefer it for browser
+  driving, screenshots, console errors, and failed request checks. Never install
+  it from `/check`; use another real-browser evidence path and report what you
+  used, or point to `/browser-tests` for later optional setup.
 - **CLI** - run the actual command(s) with representative inputs.
 - **Server/API** - start it and hit the endpoints.
 - **Library** - exercise the public API through an example or the test command.

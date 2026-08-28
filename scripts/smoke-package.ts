@@ -443,6 +443,7 @@ async function validateInstall(
 
   if (expectsSharedSkills) {
     expectedPaths.push(
+      ".agents/skills/browser-tests/SKILL.md",
       ".agents/skills/discovery/SKILL.md",
       ".agents/skills/onboard/SKILL.md",
       ".agents/skills/rollback/SKILL.md"
@@ -452,6 +453,7 @@ async function validateInstall(
   if (expectsClaude) {
     expectedPaths.push(
       "CLAUDE.md",
+      ".claude/skills/browser-tests/SKILL.md",
       ".claude/skills/discovery/SKILL.md",
       ".claude/skills/onboard/SKILL.md",
       ".claude/skills/rollback/SKILL.md"

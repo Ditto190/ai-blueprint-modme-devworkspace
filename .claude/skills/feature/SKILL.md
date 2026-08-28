@@ -121,6 +121,12 @@ the build loop, small build steps as a checklist (`- [ ]`, each with an observab
 "done when" - `/implement` ticks them off and resumes from the first unchecked
 one), files/areas, data/contracts, testing, and notes for the AI.
 
+Read the Commands section of `AGENTS.md` while defining testing. When it declares
+`Browser tests: <command>`, include focused browser-test coverage for stable
+behavioral done-whens when that coverage is proportionate. Keep visual fidelity,
+real authenticated-profile behavior, browser chrome, and other harness gaps in
+the direct Check or Try path instead of pretending automation covers them.
+
 **Visual or replication features need a reference image.** If the feature is
 "make it look like X" - recreating an existing design, matching a mockup, or
 rebuilding a Canva/Figma artifact - prose underspecifies the target and the build
@@ -169,8 +175,9 @@ code exists. Run the draft against these questions:
 - **Done-whens.** Is each one observable and checkable by `/check`, or is it a
   vague "it works"? Make it concrete.
 - **Testing.** Does the predicted coverage match the gate - in-scope logic gets a
-  test when a `test` command is declared in `AGENTS.md`, UI/integration rides on
-  screenshot + build?
+  test when a `test` command is declared in `AGENTS.md`; stable browser behavior
+  gets focused coverage when a `Browser tests` command is declared; remaining UI
+  and integration claims ride on direct browser evidence plus build?
 
 Apply the fixes to `current-feature.md`. Then stop and present the spec, leading
 with a short **"what the critique changed"** note - the splits, gaps, or scope

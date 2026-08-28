@@ -621,6 +621,7 @@ features.
 | **/debug** | when a test, build, request, or behavior is failing | Reproduces and isolates the failure without editing code or Blueprint state, then reports the evidence and hands confirmed repair work to `/fix` or `/implement`. |
 | **/fix** | for an unplanned bug or small change | Specs an ad-hoc fix into `current-feature.md`. |
 | **/tests** | when you want unit tests added | Adds or normalizes the stack-native unit test setup, adds one example test, updates an existing Verify command, and runs the resulting checks. It does not create CI by itself. |
+| **/browser-tests** | when you want repeatable browser automation | Reuses an existing browser runner or explicitly sets up a minimal Playwright harness, documents one Browser tests command, and proves it with a project-relevant smoke test. It remains optional and does not change CI by itself. |
 | **/ci** | when you want automatic GitHub checks | Detects the real stack and existing CI, defines one Verify command from configured checks, creates or carefully aligns the GitHub workflow, runs Verify locally, and stops before push or remote ruleset changes. |
 | **/implement** | after reviewing a spec | Builds the current spec one small, reviewed step at a time and uses the documented Verify command when present, then ends with a compact review packet. |
 | **/check** | before wrapping up, or any time you want proof | Runs the real app and reports pass/fail against the spec's done-whens. |
@@ -753,10 +754,23 @@ parsers, validators, server actions, formatters, and similar work should include
 a passing test in the same diff. UI and integration work can ride on screenshot,
 browser, build, or API evidence from `/implement` and `/check`.
 
-For browser-heavy work, Playwright is preferred when the project already has it
-installed or declares a Playwright command. The blueprint does not install it by
-default; adding browser automation is a normal setup task when a project wants
-that level of verification.
+Browser automation is separately opt-in. To add or normalize a repeatable
+harness, run:
+
+```text
+/browser-tests
+```
+
+The skill reuses a compatible existing runner and otherwise prefers Playwright
+for JavaScript or TypeScript web and browser-extension projects. It adds one
+project-relevant smoke test and documents the exact command as `Browser tests`
+in `AGENTS.md`. Later Feature and Implement runs can add focused coverage, Check
+runs the command as one evidence source, and Continuous Mode reuses it whenever
+its Check gate runs. Projects without a harness continue using available live
+browser evidence.
+
+Browser tests are not added to the default Verify command or GitHub workflow
+unless you separately choose that slower gate.
 
 ## Code quality audits
 

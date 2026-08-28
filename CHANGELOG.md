@@ -5,6 +5,12 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added the optional `/browser-tests` and `$browser-tests` setup skill for
+  creating or normalizing a repository-owned browser harness that Feature,
+  Implement, Check, and Continuous Mode can reuse.
+
 ## [1.0.1] - 2026-08-26
 
 ### Changed

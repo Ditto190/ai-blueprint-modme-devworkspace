@@ -140,13 +140,17 @@ Work through the spec's build steps in order, one at a time. For each step:
    `verification.uiEvidence: "required"`, a UI done-when cannot pass on build
    output alone. Run a focused
    test separately when it gives faster feedback, then use `Verify` as the final
-   automated gate. For UI or integration done-whens, prefer Playwright when it is
-   already installed or declared in `AGENTS.md`; do not add it silently for an
-   unrelated feature. Create focused test files next to the source they cover,
-   per `coding-standards.md`. Never install a runner mid-step unless the current
-   spec is explicitly the unit-testing setup itself (for example `/fix "add unit
-   testing"`). If a step surfaces non-trivial logic the spec did not foresee, add
-   a focused test then, or note why not. Apply the regular check gate from
+   automated gate. When `AGENTS.md` declares `Browser tests: <command>`, add and
+   run focused browser coverage for a stable behavioral done-when when it is
+   proportionate to the step. Use direct browser evidence for visual fidelity,
+   authenticated real-profile behavior, browser chrome, or another claim the
+   harness does not prove. If no Browser tests command is declared, do not add a
+   runner silently for an unrelated feature; point to `/browser-tests` when a
+   repeatable harness would materially improve the project. Create focused test
+   files next to the source they cover, per `coding-standards.md`. Never install
+   a runner mid-step unless the current spec explicitly sets up that runner. If a
+   step surfaces non-trivial logic the spec did not foresee, add a focused test
+   then, or note why not. Apply the regular check gate from
    `qualityGates.regular`: `manual` runs `/check` only when explicitly requested,
    `when-behavioral` runs it when a done-when needs observed runtime behavior,
    and `always` runs it for every work item. A click, download, request, CLI

@@ -313,6 +313,15 @@ async function validateVerificationContract(): Promise<void> {
       ["add the real test command", "never creates a GitHub workflow on its own"]
     ],
     [
+      ".agents/skills/browser-tests/SKILL.md",
+      [
+        "Browser tests: <command>",
+        "Do not add browser tests to the default Verify command",
+        "Continuous needs no separate browser mode",
+        "It does not replace live browser inspection"
+      ]
+    ],
+    [
       ".agents/skills/implement/SKILL.md",
       [
         "declares a `Verify` command, run that exact",

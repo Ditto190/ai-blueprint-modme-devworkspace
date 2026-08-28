@@ -55,10 +55,12 @@ something done.
    `Verify` command, run that exact command as the final automated gate. It wraps
    only the checks the project actually has. If no Verify command exists, run the
    documented build command and the test command when configured. A step that
-   adds logic must ship a passing test when the test gate is on; UI and
-   integration steps ride on browser, screenshot, API, and build evidence. Run
-   `/tests` first if the project needs a stack-native unit test runner added or
-   normalized. See the Testing section of `coding-standards.md` for the gate.
+   adds logic must ship a passing test when the test gate is on. When `AGENTS.md`
+   declares `Browser tests`, stable browser behavior can include focused harness
+   coverage, while remaining UI and integration claims ride on direct browser,
+   screenshot, API, and build evidence. Run `/tests` or `/browser-tests`
+   explicitly rather than adding a missing runner mid-feature. See the Testing
+   section of `coding-standards.md` for the gates.
    Run `/ci` separately when you want one Verify command and matching automatic
    GitHub checks; CI setup is not part of this feature loop.
 6. **Try manually (optional)** - Run `/try` when you want a human walkthrough:
