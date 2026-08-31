@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.2.0] - 2026-08-31
+
 ### Added
 
 - Added `/audit independent current` as a two-session review workflow with
