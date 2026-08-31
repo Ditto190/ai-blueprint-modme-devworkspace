@@ -2,6 +2,7 @@
   "skill": "audit",
   "positive": [
     { "prompt": "Run /audit current", "top_k": 1 },
+    { "prompt": "Run /audit independent current and prepare a fresh Claude reviewer handoff", "top_k": 1 },
     { "prompt": "Run /audit security and inspect the changed authentication code", "top_k": 1 },
     { "prompt": "Use $audit performance current to look for repeated queries and unbounded work", "top_k": 1 },
     { "prompt": "Audit tests in src/auth for weak assertions, brittle mocks, and skipped coverage", "top_k": 3 },

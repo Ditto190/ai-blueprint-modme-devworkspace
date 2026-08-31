@@ -133,7 +133,7 @@ or value before changing other setup files.
 Keep project configuration deterministic. Ask before changing preferences and
 edit only values the user actually chose, such as branch prefixes, UI evidence,
 logic-test strictness, regular or Continuous quality gates, or Continuous Mode
-limits. Audit, check, and try-guide gates default to `manual`; do not enable
+limits. Audit, independent-review, check, and try-guide gates default to `manual`; do not enable
 automatic gates unless the user chooses them. Never put
 commands, product requirements, communication prose, secrets, or permission for
 commits, merges, pushes, deployments, publication, destructive actions, failed
@@ -146,7 +146,7 @@ instead of guessing, such as:
 - whether commits should be offered after every step
 - whether branches should use a different naming pattern
 - whether `/check` should require browser evidence for UI work
-- whether audit, check, or try guides should stay manual, run only for their
+- whether audit, independent review, check, or try guides should stay manual, run only for their
   documented conditional case, or run for every regular or Continuous work item
 
 If no changes are needed, say so.

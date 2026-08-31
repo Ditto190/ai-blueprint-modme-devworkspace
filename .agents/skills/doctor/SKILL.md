@@ -45,6 +45,10 @@ Gather these, then summarize. Do not dump file contents.
      `### <id> [<severity>] <status> - <title>` and warn on a malformed ledger.
      Report any P0 or P1 finding still `open` or `fixed` by ID, since it will
      block `/complete`. Never block on the ledger yourself.
+   - Check `blueprint/context/review.md`. Missing on a legacy installation is a
+     warning, not a blocker; `/audit independent current` and `/complete` create
+     it on first use. When present, validate the required request or receipt
+     fields and report pending, changes-requested, malformed, or stale state.
    - If `.gitignore` marks Blueprint workflow files as local-only, still require
      the files to exist on disk. Ignored but present is healthy; ignored and
      missing means the local workflow needs to be restored.
@@ -53,7 +57,8 @@ Gather these, then summarize. Do not dump file contents.
      file with `schemaVersion: 1`. Reject unknown keys and unsupported values.
      Report the effective workflow, git, verification, regular quality-gate,
      Continuous quality-gate, and Continuous Mode settings. Confirm each audit,
-     check, and try-guide gate uses its supported values and defaults to `manual`.
+     independent-review, check, and try-guide gate uses its supported values and
+     defaults to `manual`.
      An invalid config is a setup blocker for mutating workflow skills because
      they must not guess which policy to follow.
 2. **Tool adapters**

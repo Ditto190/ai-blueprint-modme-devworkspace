@@ -70,7 +70,9 @@ something done.
 7. **Audit (optional)** - Run `/audit` when you want a read-only code quality pass
    before closing a feature or after a larger automated run. It checks for
    duplication, dead code, missing tests for logic, standards drift, and
-   maintainability risks. Fixes still happen through `/implement` or `/fix`.
+   maintainability risks. Run `/audit independent current` when a selected fresh
+   reviewer session should inspect an approved checkpoint and leave a
+   staleness-checked receipt. Fixes still happen through `/implement` or `/fix`.
 8. **Iterate** - If it doesn't work or needs changes, re-prompt or hand-edit and
    re-test; repeat until it works, before moving on.
 9. **Checkpoint (optional)** - after an approved step `/implement` offers a quick
@@ -85,7 +87,8 @@ something done.
    files, Verify or fallback check evidence, manual try path, and adapter sync when
    workflow files changed. Then it archives the spec to `blueprint/history/features/NN-name.md` (or
    `blueprint/history/fixes/`), checks the feature off in `blueprint/build-plan.md`, and
-   resets `blueprint/context/current-feature.md` to its stub.
+   resets `blueprint/context/current-feature.md` and
+   `blueprint/context/review.md` to their stubs.
 11. **Feature commit** - `/complete` stages everything on the branch (step work
    plus the logging changes) into one conventional feature commit.
 12. **Squash-merge** - `/complete` squash-merges the branch to main (explicit yes)

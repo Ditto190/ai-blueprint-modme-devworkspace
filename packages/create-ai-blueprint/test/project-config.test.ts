@@ -15,6 +15,7 @@ test("default config keeps every quality gate manual", () => {
   const defaults = createDefaultProjectConfig();
   const manualGates = {
     audit: "manual",
+    independentReview: "manual",
     check: "manual",
     tryGuide: "manual"
   };
@@ -45,6 +46,7 @@ test("readProjectConfig merges partial project values over defaults", async (t) 
     qualityGates: {
       regular: {
         audit: "when-sensitive",
+        independentReview: "always",
         check: "always"
       },
       continuous: {
@@ -62,6 +64,7 @@ test("readProjectConfig merges partial project values over defaults", async (t) 
   assert.equal(result.values.git.featureBranchPrefix, "feat/");
   assert.equal(result.values.git.fixBranchPrefix, "fix/");
   assert.equal(result.values.qualityGates.regular.audit, "when-sensitive");
+  assert.equal(result.values.qualityGates.regular.independentReview, "always");
   assert.equal(result.values.qualityGates.regular.check, "always");
   assert.equal(result.values.qualityGates.regular.tryGuide, "manual");
   assert.equal(
@@ -130,6 +133,15 @@ test("readProjectConfig rejects unknown and invalid values", async (t) => {
       }
     }),
     /qualityGates\.continuous\.check must be one of/
+  );
+  assert.throws(
+    () => parseProjectConfig({
+      schemaVersion: 1,
+      qualityGates: {
+        regular: { independentReview: "sometimes" }
+      }
+    }),
+    /qualityGates\.regular\.independentReview must be one of/
   );
 });
 

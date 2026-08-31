@@ -42,8 +42,18 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
   assert.equal(status.health, "ok");
   assert.equal(status.configuration.state, "defaults");
   assert.deepEqual(status.configuration.values.qualityGates, {
-    regular: { audit: "manual", check: "manual", tryGuide: "manual" },
-    continuous: { audit: "manual", check: "manual", tryGuide: "manual" }
+    regular: {
+      audit: "manual",
+      independentReview: "manual",
+      check: "manual",
+      tryGuide: "manual"
+    },
+    continuous: {
+      audit: "manual",
+      independentReview: "manual",
+      check: "manual",
+      tryGuide: "manual"
+    }
   });
   assert.equal(status.activity.state, "idle");
   assert.deepEqual(status.plans.build, {
@@ -76,6 +86,7 @@ test("readProjectStatus reports active work, findings, Git, and the next step", 
   assert.equal(status.findings.byStatus.open, 1);
   assert.deepEqual(status.findings.active.map((finding) => finding.id), ["F-01"]);
   assert.deepEqual(status.findings.blockers, []);
+  assert.equal(status.review.state, "none");
   assert.equal(status.git.branch, "feature/status-command");
   assert.equal(status.git.changedFiles, 1);
   assert.deepEqual(status.nextAction, {
@@ -372,6 +383,113 @@ test("readProjectStatus marks verified work ready for completion", async (t) => 
   });
 });
 
+test("readProjectStatus blocks completion when independent review is required", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: `# Feature: Status command
+
+**From build-plan:** feature 2
+**Status:** verified
+
+## Build steps
+
+- [x] **Step 1 - Print status** - format the result.
+`,
+    findings: emptyFindings(),
+    branch: "feature/status-command"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      qualityGates: { regular: { independentReview: "always" } }
+    }, null, 2)}\n`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.health, "warning");
+  assert.ok(status.completion.blockers.includes("independent review is required"));
+  assert.deepEqual(status.nextAction, {
+    command: "/audit independent current",
+    reason: "Prepare or refresh the required independent review."
+  });
+});
+
+test("readProjectStatus verifies work before preparing required independent review", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: `# Feature: Status command
+
+**From build-plan:** feature 2
+**Status:** in progress
+
+## Build steps
+
+- [x] **Step 1 - Print status** - format the result.
+`,
+    findings: emptyFindings(),
+    branch: "feature/status-command"
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      qualityGates: { regular: { independentReview: "always" } }
+    }, null, 2)}\n`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.deepEqual(status.nextAction, {
+    command: "/check",
+    reason: "All build steps are checked, but verification is not persisted."
+  });
+});
+
+test("readProjectStatus uses the Continuous independent review policy", async (t) => {
+  const now = new Date().toISOString();
+  const projectRoot = await createProject(t, {
+    currentWork: `# Feature: Status command
+
+**From build-plan:** feature 2
+**Status:** verified
+
+## Build steps
+
+- [x] **Step 1 - Print status** - format the result.
+`,
+    findings: emptyFindings(),
+    branch: "feature/status-command",
+    runState: {
+      schemaVersion: 1,
+      command: "continuous",
+      status: "ready",
+      summary: "Waiting for the configured review gate",
+      boundary: "local-only",
+      startedAt: now,
+      updatedAt: now
+    }
+  });
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "config.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      qualityGates: {
+        regular: { independentReview: "manual" },
+        continuous: { independentReview: "always" }
+      }
+    }, null, 2)}\n`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.health, "warning");
+  assert.ok(status.completion.blockers.includes("independent review is required"));
+  assert.deepEqual(status.nextAction, {
+    command: "/audit independent current",
+    reason: "Prepare or refresh the required independent review."
+  });
+});
+
 test("readProjectStatus selects the next build-plan feature when idle", async (t) => {
   const projectRoot = await createProject(t, {
     currentWork: resetCurrentWork(),
@@ -469,13 +587,14 @@ test("formatHumanStatus prints a scannable orientation", async (t) => {
   assert.match(output, /^  Config        built-in defaults$/m);
   assert.match(
     output,
-    /^  Regular gates audit manual, check manual, try guide manual$/m
+    /^  Regular gates audit manual, independent review manual, check manual, try guide manual$/m
   );
   assert.match(
     output,
-    /^  Cont\. gates   audit manual, check manual, try guide manual$/m
+    /^  Cont\. gates   audit manual, independent review manual, check manual, try guide manual$/m
   );
   assert.match(output, /^  Findings      none$/m);
+  assert.match(output, /^  Review        none$/m);
   assert.match(output, /^Git$/m);
   assert.match(output, /^  Branch        chore\/setup$/m);
   assert.match(output, /^  Working tree  clean$/m);

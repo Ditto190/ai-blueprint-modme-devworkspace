@@ -762,7 +762,8 @@ const DASHBOARD_HTML: string = `<!doctype html>
     }
 
     function formatGates(gates) {
-      return "audit " + gates.audit + ", check " + gates.check +
+      return "audit " + gates.audit + ", independent review " + gates.independentReview +
+        ", check " + gates.check +
         ", try guide " + gates.tryGuide;
     }
 
@@ -818,7 +819,8 @@ const DASHBOARD_HTML: string = `<!doctype html>
       byId("project-name").textContent = status.project.name;
       byId("project-path").textContent = status.project.root;
       const healthIssues = status.warnings.map((warning) => warning.message).concat(
-        status.findings.blockers.map((finding) => "Blocking finding " + finding.id + ": " + finding.title)
+        status.findings.blockers.map((finding) => "Blocking finding " + finding.id + ": " + finding.title),
+        status.completion.blockers.filter((blocker) => blocker.includes("independent review"))
       );
       const healthCount = healthIssues.length;
       setPill(

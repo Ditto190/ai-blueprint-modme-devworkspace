@@ -437,6 +437,7 @@ async function validateInstall(
     "blueprint/project-plan.md",
     "blueprint/build-plan.md",
     "blueprint/context/findings.md",
+    "blueprint/context/review.md",
     "blueprint/.state/manifest.json",
     "blueprint/.state/.gitignore"
   ];

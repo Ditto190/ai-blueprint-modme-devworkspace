@@ -244,8 +244,8 @@ interface DashboardStatus {
     state: string;
     values: {
       qualityGates: {
-        regular: { audit: string; check: string; tryGuide: string };
-        continuous: { audit: string; check: string; tryGuide: string };
+        regular: { audit: string; independentReview: string; check: string; tryGuide: string };
+        continuous: { audit: string; independentReview: string; check: string; tryGuide: string };
       };
     };
   };

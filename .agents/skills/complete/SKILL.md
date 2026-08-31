@@ -34,6 +34,11 @@ logging or committing. Uncommitted step work is expected because per-step
 checkpoints are optional; this skill commits it. Don't require the steps to be
 pre-committed.
 
+Read `blueprint/context/review.md` when present. A missing file on an older
+install means no independent review has been requested. A pending,
+changes-requested, malformed, or stale record is always a blocker because the
+user already initiated that gate, even when its configured policy is `manual`.
+
 ## Configured regular quality gates
 
 Use `qualityGates.regular` for this work item:
@@ -43,6 +48,11 @@ Use `qualityGates.regular` for this work item:
   personal or user data, migrations, destructive operations, external side
   effects, security boundaries, or unusually broad changes; `always` runs for
   every work item.
+- **Independent review:** `manual` runs only when the user explicitly requests
+  `/audit independent current`; `when-sensitive` requires it for the same
+  sensitive categories as Audit; `always` requires it for every work item. An
+  independent review includes a full current audit, so it satisfies a selected
+  Audit gate instead of repeating the audit in the builder session.
 - **Check:** `manual` runs only when explicitly requested; `when-behavioral` runs
   when a done-when needs observed runtime behavior such as a click, request, CLI
   command, download, background job, or multi-screen flow; `always` runs for
@@ -52,7 +62,10 @@ Use `qualityGates.regular` for this work item:
   copy, a public API or CLI, output, or another workflow a person directly uses;
   `always` generates one for every work item.
 
-Apply automatic gates in this order: `/check`, `/audit current`, then `/try`.
+Apply automatic gates in this order: `/check`, review, then `/try`. When
+independent review is selected, run `/audit independent current`, stop at its
+handoff, and resume Complete only after a fresh reviewer writes a current
+passing receipt. Otherwise run `/audit current` when Audit is selected.
 Reuse adequate evidence produced during the current work item instead of
 repeating it. A required gate that cannot run is a blocker. `/try` only generates
 instructions for human review; never claim the user performed them. P0 and P1
@@ -65,7 +78,8 @@ Before logging or committing, run a short safety pass and report blockers only:
 - active spec exists and the work is not being completed from `main` or `master`
 - the branch name uses the configured feature, fix, or rollback prefix
 - changed files are tied to the active spec, with no unrelated dirty work mixed
-  in (a dirty `blueprint/context/findings.md` is expected, since `/audit` writes it)
+  in (dirty `blueprint/context/findings.md` and
+  `blueprint/context/review.md` are expected review evidence)
 - the exact `Verify` command from `AGENTS.md` passed in this session, when one is
   declared; otherwise the build passed, and tests passed when the project has a
   declared test command and the change touched logic
@@ -77,6 +91,15 @@ Before logging or committing, run a short safety pass and report blockers only:
 - with `verification.uiEvidence: "required"`, UI done-whens have direct browser
   evidence, including screenshots and relevant console and network checks
 - any audit or try guide required by `qualityGates.regular` ran before completion
+- a selected independent-review gate has a `passed` receipt whose target equals
+  `HEAD`, whose base ref still produces the recorded merge base, whose exact
+  spec SHA-256 still matches, whose reviewer adapter and selected model match
+  the request, whose required Check result passed, whose receipt sections are
+  non-empty, and whose target has no later changes except the review and
+  findings files. Apply the same checks to any explicit receipt even when the
+  configured policy is `manual`. Any mismatch is stale and blocks completion.
+- when a passing independent receipt exists, the active spec is already
+  `verified` and remains byte-for-byte unchanged through archival
 - if workflow files changed, `.agents` and `.claude` stayed in sync where both
   adapters exist
 - no P0 or P1 finding in `blueprint/context/findings.md` is `open` or `fixed`.
@@ -92,8 +115,10 @@ route, screenshot, or output that proves it. Stop before Step 1 if required
 evidence is missing.
 
 After this safety pass succeeds, set the active spec's `**Status:**` to
-`verified` before archiving it. If the status was already `verified`, rerun the
-required final checks anyway because `/complete` owns the final safety pass.
+`verified` before archiving it when no independent receipt exists. With a
+passing independent receipt, it must already be `verified`; do not rewrite it
+after review. Rerun the required final checks either way because `/complete`
+owns the final safety pass.
 
 ## Step 1 - log the work
 
@@ -145,6 +170,26 @@ same way if the file is missing (an older install):
 
     _No findings recorded. `/audit` appends findings here when it finds them._
 
+**Archive independent review.** When a current `passed` receipt exists, append
+a `## Independent review` section to the archive file with the receipt fields,
+commands, safe evidence references, findings, and remaining risk from
+`blueprint/context/review.md`. Preserve the full target and base SHAs, spec
+hash, base ref, builder adapter and model, requested reviewer and model, actual
+reviewer adapter and model, Check result, fresh-session declaration, and review
+time. Do not archive a stale, pending, changes-requested, or malformed record.
+
+Then reset `blueprint/context/review.md` to exactly this stub, creating it when
+an older installation does not have it:
+
+    # Independent Review
+
+    > **Generated file.** Holds the active independent-review request or latest
+    > receipt for the current work item. `/audit independent current` prepares a
+    > handoff against an approved checkpoint, a fresh reviewer session completes it,
+    > and `/complete` refuses stale, pending, or changes-requested review state.
+
+    _No independent review requested. Run `/audit independent current` to prepare one._
+
 Keep every unresolved entry in the ledger. Do not replace it with the empty stub
 while it still contains any open, fixed, or unverified finding. After archiving
 resolved findings, replace `blueprint/context/current-feature.md` with
@@ -164,6 +209,8 @@ work" stub. Before committing, read the file and confirm it exactly matches:
 When no open, fixed, or unverified ledger entries remain, confirm
 `blueprint/context/findings.md` exactly matches the canonical Findings stub
 above. Otherwise, preserve the remaining entries without rewriting them.
+Confirm `blueprint/context/review.md` exactly matches the canonical Independent
+Review stub above.
 
 Don't commit yet; the next step makes one work commit covering the code and these
 documentation changes. The archive is the build history.
@@ -213,6 +260,10 @@ that command can read the archived feature after `current-feature.md` is reset.
   explicit decision, with their reason) or `invalid` (only from re-examination
   evidence or the user's explicit call); both travel into the archive, never a
   silent drop.
+- Never merge with a required or explicitly initiated independent review that
+  is missing, pending, changes-requested, malformed, or stale. The user may
+  explicitly cancel a manual review before completion, but the agent never
+  resets or waives it on the user's behalf.
 - Merging and pushing are the user's calls: get an explicit yes for the merge,
   then ask whether to push main. Do not treat merge approval, `/complete`, or
   "looks good" as permission to push.

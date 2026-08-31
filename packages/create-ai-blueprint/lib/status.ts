@@ -31,7 +31,13 @@ import type {
 import { readProjectMetadata } from "./project-metadata.js";
 import type { ProjectAdapter } from "./project-metadata.js";
 import { readRunState } from "./run-state.js";
-import type { RunStateSummary } from "./run-state.js";
+import type { RunMode, RunStateSummary } from "./run-state.js";
+import { readIndependentReview } from "./review.js";
+import type {
+  IndependentReviewSummary,
+  ReviewFreshness,
+  ReviewState
+} from "./review.js";
 
 type OverviewState = "current" | "missing" | "stale" | "unknown";
 type OnboardingState = "complete" | "needed" | "unknown";
@@ -74,6 +80,16 @@ interface StatusFindings {
   byStatus: Record<FindingStatus, number>;
   active: Array<Pick<Finding, "id" | "severity" | "status" | "title">>;
   blockers: Array<Pick<Finding, "id" | "severity" | "status" | "title">>;
+}
+
+interface StatusReview {
+  state: ReviewState;
+  freshness: ReviewFreshness;
+  targetCommit: string | null;
+  requestedReviewer: string | null;
+  requestedModel: string | null;
+  reviewerAdapter: string | null;
+  reviewerModel: string | null;
 }
 
 interface StatusOverview {
@@ -139,6 +155,7 @@ interface ProjectStatus {
   currentWork: StatusCurrentWork;
   history: StatusHistory;
   findings: StatusFindings;
+  review: StatusReview;
   git: GitStatusSummary;
   completion: StatusCompletion;
   nextAction: StatusNextAction;
@@ -163,11 +180,12 @@ async function readProjectStatus(
   startPath: string = process.cwd()
 ): Promise<ProjectStatus> {
   const metadata = await readProjectMetadata(startPath);
-  const [buildPlan, currentWork, findings, history, git, overviewResult, config, runState, onboardingResult] =
+  const [buildPlan, currentWork, findings, review, history, git, overviewResult, config, runState, onboardingResult] =
     await Promise.all([
       readBuildPlan(metadata.project.root),
       readCurrentWork(metadata.project.root),
       readFindings(metadata.project.root),
+      readIndependentReview(metadata.project.root),
       readHistory(metadata.project.root),
       readGitStatus(metadata.project.root),
       readOverviewStatus(metadata.project.root),
@@ -181,6 +199,7 @@ async function readProjectStatus(
     ...buildPlan.warnings,
     ...currentWork.warnings,
     ...findings.warnings,
+    ...review.warnings,
     ...runState.warnings,
     ...onboardingResult.warnings,
     ...overviewResult.warnings,
@@ -189,9 +208,11 @@ async function readProjectStatus(
   const completion = selectCompletion(
     currentWork,
     findings,
+    review,
     git,
     config.values,
-    config.state
+    config.state,
+    runState.mode
   );
   const nextAction = selectNextAction(
     formatRunState(runState),
@@ -200,12 +221,15 @@ async function readProjectStatus(
     buildPlan,
     currentWork,
     findings,
-    config.state
+    review,
+    config.values,
+    config.state,
+    runState.mode
   );
 
   return {
     schemaVersion: metadata.schemaVersion,
-    health: warnings.length > 0 || findings.blockers.length > 0
+    health: warnings.length > 0 || findings.blockers.length > 0 || isReviewBlocked(review, config.values, currentWork, runState.mode)
       ? "warning"
       : "ok",
     project: metadata.project,
@@ -224,6 +248,7 @@ async function readProjectStatus(
     currentWork: formatCurrentWork(currentWork),
     history: formatHistory(history),
     findings: formatFindings(findings),
+    review: formatReview(review),
     git,
     completion,
     nextAction,
@@ -286,6 +311,7 @@ function formatHumanStatus(
   lines.push(
     formatRow("History", `${status.history.total} archived`, style),
     formatRow("Findings", formatFindingsValue(status.findings, style), style),
+    formatRow("Review", formatReviewValue(status.review, style), style),
     formatRow("Completion", formatCompletionValue(status.completion, style), style),
     "",
     formatSection("Git", style)
@@ -323,7 +349,12 @@ function formatConfigValue(state: ProjectConfigState): string {
 }
 
 function formatQualityGates(gates: QualityGatePolicy): string {
-  return `audit ${gates.audit}, check ${gates.check}, try guide ${gates.tryGuide}`;
+  return [
+    `audit ${gates.audit}`,
+    `independent review ${gates.independentReview}`,
+    `check ${gates.check}`,
+    `try guide ${gates.tryGuide}`
+  ].join(", ");
 }
 
 function shouldUseColor(
@@ -413,6 +444,28 @@ function formatFindingsValue(
   }
 
   return findings.active.length > 0 ? style.yellow(value) : style.green(value);
+}
+
+function formatReviewValue(review: StatusReview, style: TextStyle): string {
+  if (review.state === "none") {
+    return style.dim("none");
+  }
+
+  if (review.state === "malformed") {
+    return style.red("malformed");
+  }
+
+  const freshness = review.freshness === "current" ? "current" : review.freshness;
+  const reviewer = review.reviewerAdapter || review.requestedReviewer;
+  const model = review.reviewerModel || review.requestedModel;
+  const reviewerLabel = reviewer && model ? `${reviewer}/${model}` : reviewer || model;
+  const value = reviewerLabel
+    ? `${review.state}, ${freshness}, ${reviewerLabel}`
+    : `${review.state}, ${freshness}`;
+
+  return review.state === "passed" && review.freshness === "current"
+    ? style.green(value)
+    : style.yellow(value);
 }
 
 function formatCompletionValue(
@@ -557,6 +610,18 @@ function formatFindings(findings: FindingsSummary): StatusFindings {
   };
 }
 
+function formatReview(review: IndependentReviewSummary): StatusReview {
+  return {
+    state: review.state,
+    freshness: review.freshness,
+    targetCommit: review.targetCommit,
+    requestedReviewer: review.requestedReviewer,
+    requestedModel: review.requestedModel,
+    reviewerAdapter: review.reviewerAdapter,
+    reviewerModel: review.reviewerModel
+  };
+}
+
 function selectBuildPlanItem(
   item: BuildPlanItem | null
 ): Pick<BuildPlanItem, "id" | "title"> | null {
@@ -566,9 +631,11 @@ function selectBuildPlanItem(
 function selectCompletion(
   currentWork: CurrentWorkSummary,
   findings: FindingsSummary,
+  review: IndependentReviewSummary,
   git: GitStatusSummary,
   config: ProjectConfig,
-  configState: ProjectConfigState
+  configState: ProjectConfigState,
+  runMode: RunMode
 ): StatusCompletion {
   const blockers: string[] = [];
 
@@ -586,6 +653,22 @@ function selectCompletion(
     blockers.push(
       `blocking findings ${findings.blockers.map((finding) => finding.id).join(", ")}`
     );
+  }
+
+  if (review.state === "malformed") {
+    blockers.push("independent review record is malformed");
+  } else if (review.state === "pending") {
+    blockers.push("independent review is pending");
+  } else if (review.state === "changes-requested") {
+    blockers.push("independent review requested changes");
+  } else if (review.state === "passed" && review.freshness !== "current") {
+    blockers.push("independent review receipt is stale or cannot be validated");
+  } else if (
+    review.state === "none" &&
+    currentWork.state === "active" &&
+    selectIndependentReviewPolicy(config, review, runMode) === "always"
+  ) {
+    blockers.push("independent review is required");
   }
 
   if (!git.available) {
@@ -618,7 +701,10 @@ function selectNextAction(
   buildPlan: BuildPlanSummary,
   currentWork: CurrentWorkSummary,
   findings: FindingsSummary,
-  configState: ProjectConfigState
+  review: IndependentReviewSummary,
+  config: ProjectConfig,
+  configState: ProjectConfigState,
+  runMode: RunMode
 ): StatusNextAction {
   if (configState === "invalid") {
     return {
@@ -676,21 +762,37 @@ function selectNextAction(
     );
     if (fixedBlocker) {
       return {
-        command: "/audit",
+        command: review.state === "pending" || review.state === "changes-requested"
+          ? "/audit independent current"
+          : "/audit",
         reason: `Re-review fixed finding ${fixedBlocker.id}.`
       };
     }
 
-    if (isVerifiedWork(currentWork)) {
+    if (!isVerifiedWork(currentWork)) {
       return {
-        command: "/complete",
-        reason: "The current work is verified and ready for its final safety pass."
+        command: "/check",
+        reason: "All build steps are checked, but verification is not persisted."
+      };
+    }
+
+    if (
+      review.state === "pending" ||
+      review.state === "changes-requested" ||
+      (review.state === "passed" && review.freshness !== "current") ||
+      (review.state === "none" && selectIndependentReviewPolicy(config, review, runMode) === "always")
+    ) {
+      return {
+        command: "/audit independent current",
+        reason: review.state === "pending"
+          ? "Complete the pending review from the selected fresh reviewer session."
+          : "Prepare or refresh the required independent review."
       };
     }
 
     return {
-      command: "/check",
-      reason: "All build steps are checked, but verification is not persisted."
+      command: "/complete",
+      reason: "The current work is verified and ready for its final safety pass."
     };
   }
 
@@ -741,6 +843,30 @@ function selectNextAction(
     command: "/doctor",
     reason: "The build plan is not ready for feature work."
   };
+}
+
+function isReviewBlocked(
+  review: IndependentReviewSummary,
+  config: ProjectConfig,
+  currentWork: CurrentWorkSummary,
+  runMode: RunMode
+): boolean {
+  return review.state === "malformed" ||
+    review.state === "pending" ||
+    review.state === "changes-requested" ||
+    (review.state === "passed" && review.freshness !== "current") ||
+    (review.state === "none" &&
+      currentWork.state === "active" &&
+      selectIndependentReviewPolicy(config, review, runMode) === "always");
+}
+
+function selectIndependentReviewPolicy(
+  config: ProjectConfig,
+  review: IndependentReviewSummary,
+  runMode: RunMode
+): QualityGatePolicy["independentReview"] {
+  const workflow = review.workflow || (runMode === "continuous" ? "continuous" : "regular");
+  return config.qualityGates[workflow].independentReview;
 }
 
 function selectActivityNextAction(
@@ -1082,5 +1208,6 @@ export type {
   StatusNextAction,
   StatusOnboarding,
   StatusOverview,
+  StatusReview,
   StatusWarning
 };

@@ -32,6 +32,15 @@ const findingsStub = `# Findings
 
 _No findings recorded. \`/audit\` appends findings here when it finds them._
 `;
+const reviewStub = `# Independent Review
+
+> **Generated file.** Holds the active independent-review request or latest
+> receipt for the current work item. \`/audit independent current\` prepares a
+> handoff against an approved checkpoint, a fresh reviewer session completes it,
+> and \`/complete\` refuses stale, pending, or changes-requested review state.
+
+_No independent review requested. Run \`/audit independent current\` to prepare one._
+`;
 const requiredPaths = [
   "AGENTS.md",
   "CLAUDE.md",
@@ -61,6 +70,7 @@ const requiredPaths = [
   "blueprint/context/coding-standards.md",
   "blueprint/context/current-feature.md",
   "blueprint/context/findings.md",
+  "blueprint/context/review.md",
   "blueprint/context/project-overview.md",
   "blueprint/history/features/README.md",
   "blueprint/history/fixes/README.md",
@@ -334,6 +344,24 @@ async function validateVerificationContract(): Promise<void> {
       ]
     ],
     [
+      ".agents/skills/audit/SKILL.md",
+      [
+        "`/audit independent current` is a two-session workflow",
+        "Never let a builder complete its own independent request",
+        "A stale receipt is no receipt"
+      ]
+    ],
+    [
+      ".agents/skills/audit/reference/independent-review.md",
+      [
+        "**Target commit:** <full 40-character checkpoint SHA>",
+        "**Base ref:** <local branch or remote-tracking ref used for the merge base>",
+        "**Reviewer context:** fresh session",
+        "**Check result:** <passed, failed, unavailable, or not-required>",
+        "cannot cryptographically prove"
+      ]
+    ],
+    [
       ".agents/skills/complete/SKILL.md",
       [
         "exact `Verify` command from `AGENTS.md`",
@@ -341,7 +369,8 @@ async function validateVerificationContract(): Promise<void> {
         "Keep every unresolved entry in the ledger",
         "A `fixed` entry is not resolved at any severity",
         "must remain verbatim for a later `/audit` re-review",
-        "replace `blueprint/context/current-feature.md` with the canonical stub below"
+        "replace `blueprint/context/current-feature.md` with the canonical stub below",
+        "Never merge with a required or explicitly initiated independent review"
       ]
     ],
     [
@@ -412,9 +441,10 @@ async function validateVerificationContract(): Promise<void> {
 }
 
 async function validateCanonicalStubs(): Promise<void> {
-  const [currentFeature, findings, completeSkill] = await Promise.all([
+  const [currentFeature, findings, review, completeSkill] = await Promise.all([
     fs.readFile(path.join(repoRoot, "blueprint/context/current-feature.md"), "utf8"),
     fs.readFile(path.join(repoRoot, "blueprint/context/findings.md"), "utf8"),
+    fs.readFile(path.join(repoRoot, "blueprint/context/review.md"), "utf8"),
     fs.readFile(path.join(codexSkillsRoot, "complete", "SKILL.md"), "utf8")
   ]);
 
@@ -426,12 +456,19 @@ async function validateCanonicalStubs(): Promise<void> {
     throw new Error("Findings stub must exactly match the canonical content and final newline");
   }
 
+  if (normalizeEol(review) !== reviewStub) {
+    throw new Error("Independent review stub must exactly match the canonical content and final newline");
+  }
+
   if (!normalizeEol(completeSkill).includes(indentMarkdownBlock(currentFeatureStub))) {
     throw new Error("Complete skill must embed the canonical current feature stub");
   }
 
   if (!normalizeEol(completeSkill).includes(indentMarkdownBlock(findingsStub))) {
     throw new Error("Complete skill must embed the canonical findings stub");
+  }
+  if (!normalizeEol(completeSkill).includes(indentMarkdownBlock(reviewStub))) {
+    throw new Error("Complete skill must embed the canonical independent review stub");
   }
 }
 

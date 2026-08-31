@@ -39,12 +39,13 @@ branch names and automated-mode limits. It never grants permission to commit,
 merge, push, deploy, publish, send, delete data, waive a failing check, or accept
 a finding. Those approval and safety boundaries are not configurable.
 
-`qualityGates.regular` controls automatic audit, check, and try-guide behavior
-for the normal workflow and Autopilot. `qualityGates.continuous` controls the
-same per-feature gates for Continuous Mode. Every gate defaults to `manual`, so
-the named skill runs only when explicitly requested. The conditional modes are
-`when-sensitive` for audit, `when-behavioral` for check, and `when-user-facing`
-for try guides. `always` runs the gate for every work item in that workflow.
+`qualityGates.regular` controls automatic audit, independent-review, check, and
+try-guide behavior for the normal workflow and Autopilot.
+`qualityGates.continuous` controls the same per-feature gates for Continuous
+Mode. Every gate defaults to `manual`, so the named skill runs only when
+explicitly requested. The conditional modes are `when-sensitive` for audit and
+independent review, `when-behavioral` for check, and `when-user-facing` for try
+guides. `always` runs the gate for every work item in that workflow.
 
 ## Workflow
 
@@ -86,7 +87,7 @@ Core skills:
 - `implement` - build the current spec one small, reviewed step at a time
 - `check` - prove the current spec against the running app
 - `try` - read-only manual review guide: where to go, what to click, what to expect
-- `audit` - branch-aware or full-project review across all concerns or a focused quality, security, performance, or tests lens; records findings with durable IDs and statuses in `blueprint/context/findings.md`, where open or fixed P0/P1 findings block `complete`
+- `audit` - branch-aware or full-project review across all concerns or a focused quality, security, performance, or tests lens; `audit independent current` prepares an immutable checkpoint handoff for a selected fresh reviewer session; records findings in `blueprint/context/findings.md` and independent receipts in `blueprint/context/review.md`, where blocking findings or stale review state stop `complete`
 - `rollback` - plan a safe reversal of a completed feature from its archive and exact git commit, with later-dependency review before code changes
 - `complete` - run the final safety pass, log features, fixes, or rollbacks under `blueprint/history/`, then merge with approval
 - `release` - optional Render or Vercel deployment readiness, local config, env review, and smoke-test planning

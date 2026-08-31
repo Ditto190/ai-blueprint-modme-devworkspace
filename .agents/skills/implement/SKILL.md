@@ -199,7 +199,8 @@ pass before any commit.
 
 ## Step 3 - hand off to /complete
 
-Before handing off, check `blueprint/context/findings.md`. A P0 or P1 finding
+Before handing off, check `blueprint/context/findings.md` and
+`blueprint/context/review.md`. A P0 or P1 finding
 still `open` or `fixed` there means `/complete` will refuse the merge, so close
 the loop now:
 
@@ -209,7 +210,10 @@ the loop now:
   loop as Step 2: smallest change, diff, plain-English explanation, evidence.
   Check the step off and mark the finding `fixed` together.
 - Then run `/audit` so the repairs are re-reviewed and can move to `closed`.
-  A repair this skill made never closes itself.
+  When the finding came from an independent review, obtain approval for a new
+  review checkpoint and run `/audit independent current` instead. A repair this
+  skill made never closes itself, and any product or spec change makes the old
+  independent receipt stale.
 - If the user decides a finding should not be fixed, only they can set
   `accepted` (reason recorded). A finding that looks wrong goes back to
   `/audit` to invalidate with recorded evidence; this skill never sets
@@ -228,10 +232,11 @@ run.
 - checks run, with the exact command or proof used
 - how to try it manually, or a pointer to `/try`
 - ledger state: any findings still `open` or `fixed`, by ID
+- independent-review state: none, pending, changes-requested, passed, or stale
 - known risks, skipped checks, or follow-up notes
 - next action, usually `/complete`
 
-Name the effective regular audit, check, and try-guide policies in the packet so
+Name the effective regular audit, independent-review, check, and try-guide policies in the packet so
 the user knows which gates `/complete` will run automatically.
 
 Then tell the user `/complete` makes the one work-level commit, logs it (archive,

@@ -114,7 +114,9 @@ them:
   it.
 - `/debug` or `$debug` investigates a failure without editing code.
 - `/audit` and `/try`, or their Codex `$` forms, add code review and a human
-  walkthrough.
+  walkthrough. `/audit independent current` prepares an approved checkpoint for
+  a selected fresh reviewer adapter and model, then records a staleness-checked
+  receipt.
 - `/tests` or `$tests` establishes unit testing. The optional `/ci` or `$ci` skill
   defines one shared local and GitHub verification command from checks the
   project already has.
@@ -158,8 +160,8 @@ installed version and hashes of managed files.
 
 `blueprint/config.json` is user-owned project policy. It controls review cadence,
 checkpoint availability, branch prefixes, verification strictness, regular and
-Continuous quality gates, and Continuous Mode limits. Audit, check, and
-try-guide gates all default to manual. A missing file uses built-in defaults;
+Continuous quality gates, and Continuous Mode limits. Audit, independent-review,
+check, and try-guide gates all default to manual. A missing file uses built-in defaults;
 an invalid file is reported by status and blocks mutating workflow skills until
 `/doctor` identifies the repair. Configuration never grants permission to
 commit, merge, push, deploy, publish, or take destructive action. Only an
@@ -184,7 +186,8 @@ npx create-ai-blueprint@latest status
 ```
 
 It reports configuration state, recorded command activity, build-plan progress,
-active work, findings, Git state, drift warnings, completion blockers, and one
+active work, findings, independent-review state, Git state, drift warnings,
+completion blockers, and one
 suggested next action. Onboarding uses a dedicated setup marker, overview
 freshness uses a fingerprint of both plans, and a verified current-work status
 makes the completion gate ready. Running command activity overrides

@@ -5,6 +5,15 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added `/audit independent current` as a two-session review workflow with
+  detected adapter and model selection, checkpoint-bound handoff records,
+  durable reviewer receipts, staleness detection, completion blocking, and
+  archived review evidence.
+- Added `independentReview` policies to regular and Continuous quality gates,
+  defaulting to `manual` alongside the existing gates.
+
 ## [1.1.0] - 2026-08-28
 
 ### Added

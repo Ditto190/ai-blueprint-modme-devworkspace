@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Optional explicit Blueprint mode for one bounded spec and build pass. It can pick or resume the current feature, write the spec when needed, create or reuse the branch, implement small steps, run verification, apply the configured regular check, audit, and try-guide gates, create allowed checkpoint commits, repair confirmed high-severity findings from an enabled audit, and stop with a review packet. It never completes, merges, pushes, deploys, publishes, sends, or performs destructive actions without explicit approval. Use only when the user explicitly runs /autopilot, invokes $autopilot, or directly asks for Autopilot.
+description: Optional explicit Blueprint mode for one bounded spec and build pass. It can pick or resume the current feature, write the spec when needed, create or reuse the branch, implement small steps, run verification, apply the configured regular check, audit, independent-review, and try-guide gates, create allowed checkpoint commits, repair confirmed high-severity findings from an enabled audit, and stop with a review packet or independent-review handoff. It never completes, merges, pushes, deploys, publishes, sends, or performs destructive actions without explicit approval. Use only when the user explicitly runs /autopilot, invokes $autopilot, or directly asks for Autopilot.
 ---
 
 # autopilot - optional Blueprint loop
@@ -179,14 +179,33 @@ After all implementation steps are checked, apply
   multi-screen flow.
 - `always` - run `/check` for every work item.
 
-After the required verification and configured gates pass, set the current
-spec's `**Status:**` to `verified`. Leave it `in progress`, `verification
-failed`, or `verification incomplete` on any stop that lacks complete evidence.
+After the required verification and configured Check gate pass, set the current
+spec's `**Status:**` to `verified` before any independent-review checkpoint.
+Audit findings and review state may still block completion. Leave the spec `in
+progress`, `verification failed`, or `verification incomplete` on any stop that
+lacks complete verification evidence.
 
 For pure library or CLI work, build plus tests and representative command output
 may be enough. Be explicit about the evidence used.
 
 ## Step 6 - configured quality audit and repair
+
+Apply `qualityGates.regular.independentReview` before a same-session audit:
+
+- `manual` skips automatic independent review unless a request already exists.
+- `when-sensitive` requires it for authentication, authorization, payments,
+  secrets, personal or user data, migrations, destructive operations, external
+  side effects, security boundaries, or unusually broad changes.
+- `always` requires it for every work item.
+
+When selected, do not review the builder's work in this session. Ensure all work
+is in an approved clean checkpoint, then follow Phase A of
+`/audit independent current`: detect installed adapters, ask for the reviewer
+adapter and model, write the pending request, set activity to `ready`, and stop
+with the handoff. On resume, continue only when a fresh reviewer wrote a current
+`passed` receipt. Repair `changes-requested` P0/P1 findings within the normal
+scope and attempt limit, then obtain a new checkpoint and prepare a new handoff.
+A passing independent receipt satisfies the configured Audit gate.
 
 Apply `qualityGates.regular.audit`:
 
@@ -261,6 +280,7 @@ a full audit report:
 - build/test/check commands run, with pass or fail
 - effective regular quality-gate policies and which automatic gates ran or were
   skipped
+- independent-review target, selected reviewer and model, and receipt state
 - screenshots or output paths, when relevant
 - how to try it manually, or a pointer to `/try` for the full walkthrough
 - checkpoint commits created

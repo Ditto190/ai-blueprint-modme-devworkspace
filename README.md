@@ -53,6 +53,10 @@ This blueprint gives the AI a controlled loop:
    ledger, and a serious finding blocks the merge until a fresh review confirms
    the repair - or you explicitly waive it, on the record. Nothing gets
    silently dropped when the context clears.
+5. **Independent review when it matters.** A fresh agent can review an approved
+   checkpoint without the builder conversation. Blueprint records the selected
+   adapter and model, ties the receipt to the exact code and spec, and rejects
+   it after relevant changes.
 
 The point is not to type less. It is to stay in control of a codebase the AI is
 helping you write.
@@ -65,6 +69,7 @@ helping you write.
 | Small diffs | Implementation happens one reviewed step at a time, with proof each step works. |
 | File-backed state | Plans, current work, and history live in markdown files, so context clears are survivable. |
 | Findings gate | `/audit` findings live in a ledger with durable IDs; open or unreviewed P0/P1 findings block `/complete`. |
+| Independent review | `/audit independent current` hands an immutable checkpoint to a selected fresh reviewer session and records a staleness-checked receipt. |
 | Optional continuous loop | `/continuous` completes planned features serially with local branches, commits, merges, and no push. |
 | Tool adapters | Codex, GitHub Copilot, and OpenCode can use `.agents/skills`; Claude Code uses `.claude/skills`, which OpenCode can also read. |
 | Optional visibility | Commit the workflow files for portability, or keep them local with `.gitignore`. |
@@ -183,9 +188,11 @@ guessing.
 | `verification.logicTests` | `when-configured`, `required` | `when-configured` |
 | `verification.uiEvidence` | `when-available`, `required` | `when-available` |
 | `qualityGates.regular.audit` | `manual`, `when-sensitive`, `always` | `manual` |
+| `qualityGates.regular.independentReview` | `manual`, `when-sensitive`, `always` | `manual` |
 | `qualityGates.regular.check` | `manual`, `when-behavioral`, `always` | `manual` |
 | `qualityGates.regular.tryGuide` | `manual`, `when-user-facing`, `always` | `manual` |
 | `qualityGates.continuous.audit` | `manual`, `when-sensitive`, `always` | `manual` |
+| `qualityGates.continuous.independentReview` | `manual`, `when-sensitive`, `always` | `manual` |
 | `qualityGates.continuous.check` | `manual`, `when-behavioral`, `always` | `manual` |
 | `qualityGates.continuous.tryGuide` | `manual`, `when-user-facing`, `always` | `manual` |
 | `continuous.maxFeatures` | positive integer or `null` for no limit | `null` |
@@ -194,8 +201,9 @@ guessing.
 
 Regular quality gates apply to the normal workflow and Autopilot. `manual` means
 the skill remains available but never runs automatically. `when-sensitive`
-audits auth, payments, secrets, user data, migrations, destructive operations,
-external side effects, security boundaries, and unusually broad changes.
+audits or independently reviews auth, payments, secrets, user data, migrations,
+destructive operations, external side effects, security boundaries, and
+unusually broad changes.
 `when-behavioral` checks done-whens that need observed runtime behavior.
 `when-user-facing` creates a try guide for UI, public API or CLI, output, and
 other workflows a person directly uses. `always` applies the gate to every work
@@ -523,6 +531,7 @@ change, it refreshes the overview and continues by writing the feature spec.
 | [blueprint/context/project-overview.md](blueprint/context/project-overview.md) | `/overview` | The single source of truth the AI reads every session, generated from the two planning docs. |
 | [blueprint/context/current-feature.md](blueprint/context/current-feature.md) | `/feature`, `/fix`, or `/rollback` | The spec for the one feature, fix, or rollback being built right now, including build steps and done-whens. |
 | [blueprint/context/findings.md](blueprint/context/findings.md) | `/audit` | The findings ledger: review findings with durable IDs, severity, and status. `/complete` refuses to merge while a P0 or P1 finding is `open` or `fixed`, then archives resolved findings with the work item. |
+| [blueprint/context/review.md](blueprint/context/review.md) | `/audit independent current` | The active independent-review request or latest receipt, bound to an approved checkpoint and archived by `/complete`. |
 | `blueprint/history/features/NN-name.md` | `/complete` | The archive of finished feature specs. |
 | `blueprint/history/fixes/NN-name.md` | `/complete` | The archive of finished fix specs. |
 | `blueprint/history/rollbacks/YYYY-MM-DD-NN-name.md` | `/complete` | The rollback record, including the target commit, reason, dependency risk, and proof. The original feature archive stays intact. |
@@ -626,7 +635,7 @@ features.
 | **/implement** | after reviewing a spec | Builds the current spec one small, reviewed step at a time and uses the documented Verify command when present, then ends with a compact review packet. |
 | **/check** | before wrapping up, or any time you want proof | Runs the real app and reports pass/fail against the spec's done-whens. |
 | **/try** | when you want to review manually | Gives a human walkthrough: what to start, where to go, what to click or run, what to expect, and what would count as wrong. |
-| **/audit** | before closing a feature, or when quality, security, performance, or tests feel suspect | Runs a branch-aware or full-project audit across all concerns or one focused lens, recording findings with durable IDs and statuses in `blueprint/context/findings.md`. |
+| **/audit** | before closing a feature, or when quality, security, performance, or tests feel suspect | Runs a branch-aware or full-project audit across all concerns or one focused lens. Independent mode hands a checkpoint to a selected fresh reviewer session and records a receipt. |
 | **/rollback** | when a completed feature must be removed | Finds the archived feature's exact commit, reviews later dependency risk, writes a guarded rollback spec, and stops before product changes. |
 | **/complete** | when work is built and reviewed | Runs a final safety pass, archives the spec, commits the finished work, and merges with your approval. Pushes main only after a separate yes. |
 | **/release** | after a completed feature or milestone | Prepares Render or Vercel deployment readiness, local config, env var review, and smoke-test steps. Never deploys or changes remote services without a separate yes. |
@@ -784,6 +793,10 @@ it validates findings, repairs confirmed P0/P1 issues within the approved scope,
 and reruns affected checks. It does not turn a feature pass into a
 repository-wide cleanup.
 
+The matching `independentReview` policies select the two-session handoff below.
+When both Audit and independent review are selected, the passing independent
+review satisfies the Audit gate instead of repeating it in the builder session.
+
 Run `/audit` directly when you want a separate read-only review, a broader
 project audit, or a focused quality, security, performance, or tests pass. A
 broad audit looks for duplicated logic, dead code, unused exports, overgrown
@@ -794,6 +807,7 @@ Scope and lens are separate controls, and they can appear in either order:
 
 ```text
 /audit current                  # All lenses across the active work
+/audit independent current      # Fresh-agent review of an approved checkpoint
 /audit quality changed          # Maintainability and standards in local changes
 /audit security current         # Trust boundaries across the active work
 /audit performance src/api      # Runtime risks in one subsystem
@@ -819,6 +833,32 @@ excluded paths, unavailable checks, runtime evidence, and whether full-project
 coverage was complete. Suspected secrets are always redacted and never copied
 into the report.
 
+### Independent agent review
+
+`/audit independent current` has two phases. From the builder session, it
+requires a clean approved checkpoint, detects the project adapters, asks which
+available adapter and model should review, and writes a pending handoff to
+`blueprint/context/review.md`. It recommends an equal-or-stronger coding model,
+a different model family when practical, and high reasoning for sensitive work.
+
+Open a fresh session in the selected tool without the builder conversation and
+run the same command. The reviewer checks the complete branch delta across all
+four Audit lenses, runs Check when required, updates the findings ledger, and
+writes `passed` or `changes-requested` to the receipt. A passing receipt records
+the target and base commits, spec hash, builder model, requested and actual
+reviewer adapter and model, commands, evidence, findings, remaining risk, and
+review time.
+
+Any later code, test, configuration, spec, or acceptance-criteria change makes
+the receipt stale. The builder repairs through `/implement`, creates a new
+approved checkpoint, and sends the whole updated delta through independent
+review again. `/complete` blocks a required or explicitly initiated review that
+is missing, pending, changes-requested, malformed, or stale.
+
+Adapter and model identity are declared metadata. Blueprint can prove the exact
+review target and detect later changes, but it cannot cryptographically prove
+that a separate agent or fresh context performed the review.
+
 ### The findings ledger
 
 Findings live in `blueprint/context/findings.md`, not just chat, so they
@@ -841,8 +881,9 @@ re-review; an agent never waives its own findings. Resolved findings archive wit
 under `blueprint/history/`. The ledger reports status; it never becomes the
 checklist a review scopes to.
 
-Beyond the ledger, `/audit` does not edit files, install tools, commit, merge,
-or push. Full lifecycle details live in the
+Beyond the ledger and an explicitly requested independent-review record,
+`/audit` does not edit files, install tools, commit, merge, or push. Full
+lifecycle details live in the
 [findings ledger docs](https://ai-blueprint.dev/docs/findings-ledger/).
 
 ## Manual try guides
@@ -960,7 +1001,8 @@ step in `current-feature.md`.
     │   ├── coding-standards.md  (your conventions)
     │   ├── ai-interaction.md    (how the AI works with you)
     │   ├── current-feature.md   (generated by /feature, /fix, or /rollback)
-    │   └── findings.md          (findings ledger, written by /audit)
+    │   ├── findings.md          (findings ledger, written by /audit)
+    │   └── review.md            (independent-review request and receipt)
     └── history/
         ├── features/          (completed feature specs)
         ├── fixes/             (completed fix specs)
