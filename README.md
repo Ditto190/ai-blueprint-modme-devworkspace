@@ -33,9 +33,7 @@ instead of disappearing with the chat that created them.
 It works with any application stack and supports Codex, Claude Code, GitHub
 Copilot, OpenCode, and other file-aware coding agents.
 
-```bash
-npx create-ai-blueprint@latest
-```
+Start with the scaffold-first [Quick Start](#quick-start) below.
 
 ## Why use it?
 
@@ -68,6 +66,11 @@ app first and initialize Git before installing it.
 
 **Requirements:** Node.js 22 or newer, an existing application, and a Git
 repository.
+
+First create the application manually or with the scaffolding CLI for your
+framework or language of choice. This example uses Next.js, but Blueprint works
+with any stack. From the root of the new application, initialize Git if the
+scaffolder did not, then install Blueprint:
 
 ```bash
 npx create-next-app@latest my-app
