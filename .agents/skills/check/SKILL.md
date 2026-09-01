@@ -1,6 +1,6 @@
 ---
 name: check
-description: Prove the current work actually does what its spec says by running the real app and observing behavior against the "done when" criteria in current-feature.md. Drives the app (browser, CLI, or server), captures evidence (screenshots, output, console/network errors), and reports pass/fail per criterion. Does not edit source or commit - it observes; fixing stays /implement's job. Use when the user runs /check, asks to confirm a step or feature works, wants proof before /complete, or wants to check a change in the running app rather than just the build. (Supersedes the built-in /verify with a spec-aware version inside blueprint projects.)
+description: Check the running app, CLI, or server against the active spec's done-when criteria and capture observable pass or fail evidence without editing code. Use for /check, proving behavior before completion, or verifying the real result beyond builds and tests.
 ---
 
 # check - prove it works against the spec, with evidence

@@ -201,6 +201,8 @@ async function getSkillNames(root: string): Promise<string[]> {
 }
 
 async function validateSkillMetadata(skills: readonly string[]): Promise<void> {
+  let totalDescriptionCharacters = 0;
+
   for (const skill of skills) {
     const skillFile = path.join(codexSkillsRoot, skill, "SKILL.md");
     const content = await fs.readFile(skillFile, "utf8");
@@ -225,9 +227,17 @@ async function validateSkillMetadata(skills: readonly string[]): Promise<void> {
       throw new Error(`Skill description is missing: ${skill}`);
     }
 
-    if (description.length > 1024) {
-      throw new Error(`Skill description exceeds OpenCode's limit: ${skill}`);
+    if (description.length > 400) {
+      throw new Error(`Skill description exceeds the context budget: ${skill}`);
     }
+
+    totalDescriptionCharacters += description.length;
+  }
+
+  if (totalDescriptionCharacters > 7500) {
+    throw new Error(
+      `Skill descriptions exceed the 7,500-character context budget: ${totalDescriptionCharacters}`
+    );
   }
 }
 
@@ -290,7 +300,12 @@ async function validateVerificationContract(): Promise<void> {
       ".agents/skills/onboard/SKILL.md",
       [
         "Run /ci or $ci when you want automatic GitHub checks.",
-        "`/discovery` is optional and never runs as part of onboarding"
+        "`/discovery` is optional and never runs as part of onboarding",
+        "Efficient (Recommended)",
+        "Guided",
+        "Custom",
+        "Never write an `implementationStyle` key",
+        "A later `/implement` run reads the current configuration"
       ]
     ],
     [
@@ -498,10 +513,13 @@ function indentMarkdownBlock(content: string): string {
 async function validateClaudeImports(): Promise<number> {
   const content = await fs.readFile(path.join(repoRoot, "CLAUDE.md"), "utf8");
   const imports = [...content.matchAll(/^@(.+)$/gm)].map((match) => match[1].trim());
+  const expectedImports = [
+    "AGENTS.md",
+    "blueprint/context/project-overview.md",
+    "blueprint/context/current-feature.md"
+  ];
 
-  if (imports.length === 0) {
-    throw new Error("CLAUDE.md does not import any project files");
-  }
+  assertEqualLists(imports, expectedImports, "Claude core imports");
 
   for (const relativePath of imports) {
     assertSafeRelativePath(relativePath);

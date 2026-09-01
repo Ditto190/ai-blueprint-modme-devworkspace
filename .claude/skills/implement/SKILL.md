@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Build the feature, fix, or rollback spec'd in blueprint/context/current-feature.md, one small reviewable step at a time. Creates the matching branch, implements each step, shows the diff and explains it in plain English, tests, and iterates until it works. Type: Rollback specs use a guarded reverse patch that preserves Blueprint history. After each approved step it offers an optional commit checkpoint on the branch; the work-level commit, merge, and logging are /complete's job. Use when the user runs /implement, or asks to build, implement, or start the current feature, fix, or rollback once its spec is ready."
+description: Implement or start coding the active feature, fix, or rollback spec on its branch in small steps, running tests after each step and presenting the configured review handoff. Use for /implement or requests to build or resume an approved current-feature.md spec.
 ---
 
 # implement - build the current spec, one reviewed step at a time

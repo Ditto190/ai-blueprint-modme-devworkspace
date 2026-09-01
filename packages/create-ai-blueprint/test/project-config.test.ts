@@ -22,6 +22,8 @@ test("default config keeps every quality gate manual", () => {
 
   assert.deepEqual(defaults.qualityGates.regular, manualGates);
   assert.deepEqual(defaults.qualityGates.continuous, manualGates);
+  assert.equal(defaults.workflow.stepReview, "feature");
+  assert.equal(defaults.workflow.checkpointCommits, "disabled");
   assert.equal(defaults.continuous.finalIntegrationAudit, false);
 });
 

@@ -41,10 +41,11 @@ rather than mixing app source or unrelated work into the baseline.
 
 The skills are the structured path, not a requirement. You can also just describe
 a feature, fix, or change in chat at any time and we'll build it the same way; the
-rules below still apply (small steps, you approve each diff, the conventions in
-`coding-standards.md`), because they're always in context. Use the skills when you
-want the repeatable loop and the logging; prompt directly when you just want
-something done.
+rules below still apply (small steps, a reviewable diff, the conventions in
+`coding-standards.md`). Project instructions tell the agent to read these files
+when the work needs them instead of carrying them through every unrelated turn.
+Use the skills when you want the repeatable loop and the logging; prompt directly
+when you just want something done.
 
 1. **Spec** - Optionally run `/brief` first for a read-only preview of the next
    feature (scope, dependencies, size); it writes nothing. Then run `/feature`
@@ -52,10 +53,11 @@ something done.
    @blueprint/context/current-feature.md, then review it together before any code.
 2. **Branch** - Create a new branch for the feature/fix.
 3. **Implement** - Build one small step from the spec at a time, not the whole
-   feature at once.
-4. **Review** - Show the diff (not full files), with a short summary: what the
-   step delivered, one line per file on the why, and the done-when shown true. I
-   read and approve each step before moving to the next.
+   feature as one undifferentiated change.
+4. **Review** - By default, implement and verify each small step, then show one
+   feature-level review packet with the complete diff and done-when evidence.
+   Set `workflow.stepReview` to `every` when I should approve each step before
+   the next one begins.
 5. **Test** - Verify the done-when with evidence. If `AGENTS.md` declares a
    `Verify` command, run that exact command as the final automated gate. It wraps
    only the checks the project actually has. If no Verify command exists, run the
@@ -80,14 +82,17 @@ something done.
    staleness-checked receipt. Fixes still happen through `/implement` or `/fix`.
 8. **Iterate** - If it doesn't work or needs changes, re-prompt or hand-edit and
    re-test; repeat until it works, before moving on.
-9. **Checkpoint (optional)** - after an approved step `/implement` offers a quick
-   choice (continue / commit a checkpoint / walk me through it / stop here) as a
-   selectable popup, or in plain text when there's a lot to read first so it doesn't
-   cover what you're reading. Checkpoints are optional cheap rollback points; "walk
-   me through it" gives a deeper code explanation and loops back; `/complete` makes
-   the real feature-level commit. Verify, or the fallback checks, must pass first.
-   When implementation is done, end with a compact review packet: changed files,
+9. **Checkpoint (optional)** - checkpoint commits are disabled by default. When
+   enabled with per-step review, `/implement` offers continue, commit a
+   checkpoint, walk me through it, or stop here after an approved step. The
+   checkpoints are optional rollback points; `/complete` still makes the real
+   feature-level commit. Verify, or the fallback checks, must pass first. When
+   implementation is done, end with a compact review packet: changed files,
    checks run, manual try path, risks, and next action.
+
+`workflow.stepReview: "every"` restores per-step approval pauses but does not
+enable checkpoint prompts by itself. The previous workflow uses
+`stepReview: "every"` together with `checkpointCommits: "enabled"`.
 10. **Safety + log** - `/complete` first checks the active spec, branch, changed
    files, Verify or fallback check evidence, manual try path, and adapter sync when
    workflow files changed. Then it archives the spec to `blueprint/history/features/NN-name.md` (or

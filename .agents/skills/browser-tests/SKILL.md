@@ -1,6 +1,6 @@
 ---
 name: browser-tests
-description: Add or normalize an optional repository-owned browser test harness, preferring an existing runner and otherwise using Playwright for compatible web or browser-extension projects. Use when the user asks to install Playwright, add browser or end-to-end tests, create a browser harness, or make browser behavior repeatable in Check or Continuous Mode. Do not use for a one-time live verification; use check instead.
+description: Add or normalize a repository-owned browser test harness, reusing an existing runner or using Playwright when compatible. Use for /browser-tests, Playwright setup, end-to-end tests, or repeatable browser checks. Use check for one-time live verification.
 ---
 
 # browser-tests - set up repeatable browser verification

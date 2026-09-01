@@ -1,6 +1,6 @@
 ---
 name: overview
-description: "Validate and, when needed, normalize the two planning docs before generating blueprint/context/project-overview.md from blueprint/project-plan.md and blueprint/build-plan.md. The overview is the single AI-facing source of truth that project instructions load every session. Use when the user runs /overview, invokes $overview, has just finished writing or editing the plans, asks to shape rough plans into the Blueprint format, or asks to regenerate the project overview."
+description: Validate and normalize project-plan.md and build-plan.md, then generate the durable project-overview.md used by agents. Use for /overview, plan cleanup, generating the first overview, or refreshing context after either plan changes.
 ---
 
 # overview - turn the two plans into the AI-facing source of truth

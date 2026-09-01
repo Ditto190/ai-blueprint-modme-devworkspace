@@ -223,6 +223,51 @@ Read [Code Quality](https://ai-blueprint.dev/docs/code-quality/),
 [Project Configuration](https://ai-blueprint.dev/docs/project-configuration/)
 for the complete rules.
 
+## Context efficiency
+
+Blueprint keeps durable project context available without loading every workflow
+rule into every Claude Code turn. New installations auto-import only the core
+project instructions, overview, and active spec. Workflow skills load coding
+standards and interaction rules when they are needed, and implementation uses
+one feature-level review packet by default.
+
+![Fresh-session startup context](assets/context-startup-tokens.svg)
+
+![Three-step feature implementation](assets/context-feature-loop-tokens.svg)
+
+In one controlled Claude Code fixture, the optimized workflow used 13.3% less
+startup context, 10.8% less cumulative implementation input, and 10.1% less
+final live context than Blueprint 1.3.0. Read the
+[benchmark method, exact results, changes, and limits](benchmarks/context-efficiency.md).
+
+The updater preserves user-owned `CLAUDE.md` and `blueprint/config.json` files.
+Existing projects can run `/doctor` to find legacy Claude imports, remove the
+direct coding-standards and AI-interaction imports it identifies, and set
+`workflow.stepReview` to `feature` with `workflow.checkpointCommits` set to
+`disabled`. Use `/context all` in Claude Code to inspect the live context before
+and after changing those files.
+
+The two workflow settings do different jobs. `stepReview: "every"` restores an
+approval pause after every implementation step. It does not restore checkpoint
+commit prompts by itself. To match the previous Blueprint workflow exactly, use
+both settings:
+
+```json
+"workflow": {
+  "stepReview": "every",
+  "checkpointCommits": "enabled"
+}
+```
+
+The reduced Claude imports and shorter skill descriptions still save context
+with either review configuration.
+
+During onboarding, **Efficient** selects `feature` plus `disabled`, while
+**Guided** selects `every` plus `enabled`. **Custom** asks for each value
+separately. These are friendly choices, not another configuration field. The two
+stored values can be edited at any time and apply to the next implementation
+run.
+
 ## Automatic GitHub checks
 
 Automatic checks are an explicit setup step, not part of installation or

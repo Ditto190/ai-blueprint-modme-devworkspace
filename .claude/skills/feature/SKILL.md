@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Turn a feature from build-plan.md into a buildable spec. With no argument, specs the next unchecked item in the build plan; given a number or name, specs that one. If a clearly new feature does not match the plan, proposes a reviewed plan addition, refreshes the overview after approval, then specs it. Sizes the feature and splits anything too big into smaller sub-features (4a, 4b, ...), writes small, reviewable build steps to blueprint/context/current-feature.md, then red-teams its own draft for gaps, oversized steps, and scope creep before stopping at a review gate. Use when the user runs /feature, names or numbers a feature, asks to add and start a new feature, or asks to spec out, break down, or start the next feature.
+description: Turn the next, named, or numbered build-plan feature into a buildable current-feature.md spec, splitting oversized work and critiquing scope, steps, contracts, and tests before review. Use for /feature, starting the next feature, adding a planned feature, or breaking work into a spec.
 ---
 
 # feature - turn a build-plan feature into a buildable spec

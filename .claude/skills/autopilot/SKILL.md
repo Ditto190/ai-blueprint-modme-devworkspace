@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: Optional explicit Blueprint mode for one bounded spec and build pass. It can pick or resume the current feature, write the spec when needed, create or reuse the branch, implement small steps, run verification, apply the configured regular check, audit, independent-review, and try-guide gates, create allowed checkpoint commits, repair confirmed high-severity findings from an enabled audit, and stop with a review packet or independent-review handoff. It never completes, merges, pushes, deploys, publishes, sends, or performs destructive actions without explicit approval. Use only when the user explicitly runs /autopilot, invokes $autopilot, or directly asks for Autopilot.
+description: Run one explicit bounded Blueprint spec and implementation pass through configured quality gates, then stop before completion or external actions. Use only when the user directly invokes /autopilot, $autopilot, or asks for Autopilot.
 ---
 
 # autopilot - optional Blueprint loop

@@ -5,6 +5,26 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added `/doctor` context-size diagnostics for Claude imports and skill
+  descriptions, plus a reproducible benchmark and two before-and-after charts.
+
+### Changed
+
+- Reduced Claude Code startup context by auto-importing only the core project
+  instructions, overview, and active spec. Coding standards and interaction
+  rules now load when relevant.
+- Shortened all skill descriptions while preserving distinct routing terms and
+  added a regression budget to prevent description bloat.
+- Changed new-project defaults to one feature-level implementation review packet
+  with step checkpoint commits disabled. Existing user-owned configuration is
+  preserved during updates. Per-step approval remains available with
+  `stepReview: "every"`; matching the previous checkpoint experience also
+  requires `checkpointCommits: "enabled"`.
+- Added Efficient, Guided, and Custom onboarding choices that write those two
+  existing settings without introducing another persistent workflow mode.
+
 ## [1.3.0] - 2026-09-01
 
 ### Added

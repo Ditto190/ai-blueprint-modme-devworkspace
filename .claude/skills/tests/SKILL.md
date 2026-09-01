@@ -1,6 +1,6 @@
 ---
 name: tests
-description: Add or normalize unit testing for a Blueprint project. Detects the stack, reuses an existing test runner when present, or installs the stack-native unit test runner when missing, then adds one small example test, updates AGENTS.md commands, runs build and tests, and reports the diff. Use when the user runs /tests, invokes $tests, asks to add unit tests, set up unit testing, configure tests, or make tests part of the Blueprint workflow.
+description: Add or normalize stack-native unit testing, reuse or install the appropriate runner, add one example test, document commands, and verify the setup. Use for /tests, adding unit tests, configuring a test runner, or enabling the Blueprint logic-test gate.
 ---
 
 # tests - add unit testing to the project

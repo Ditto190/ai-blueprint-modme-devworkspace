@@ -1,6 +1,6 @@
 ---
 name: status
-description: "Show where the project stands: build-plan progress, the current feature's checked and unchecked steps, git state, drift warnings, and the exact next action. Read-only. Use when the user runs /status, asks where things stand, what's next, what's in progress, or is picking work back up after a break or a context clear."
+description: Show read-only build-plan progress, active steps, git state, drift warnings, and the next action. Use for /status, what is in progress, what comes next, or resuming after a break or context clear.
 ---
 
 # status - where the project stands right now

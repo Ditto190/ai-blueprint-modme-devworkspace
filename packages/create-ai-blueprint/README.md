@@ -169,6 +169,49 @@ an invalid file is reported by status and blocks mutating workflow skills until
 commit, merge, push, deploy, publish, or take destructive action. Only an
 explicit `/continuous` or `$continuous` request starts the multi-feature loop.
 
+## Context efficiency
+
+New installations keep Claude Code's automatic project imports focused on the
+core instructions, overview, and active spec. Coding standards and interaction
+rules load when the workflow needs them. New project configuration also defaults
+to one feature-level review packet with step checkpoint commits disabled.
+
+The updater preserves `CLAUDE.md` and `blueprint/config.json`, so existing
+projects do not receive those user-owned changes automatically. Run `/doctor` to
+identify the legacy direct imports, remove the coding-standards and
+AI-interaction import lines it reports, and choose the lower-context defaults in
+`blueprint/config.json` if they fit the project:
+
+```json
+"workflow": {
+  "stepReview": "feature",
+  "checkpointCommits": "disabled"
+}
+```
+
+These settings are separate. `stepReview: "every"` restores the approval pause
+after each implementation step, but it does not enable checkpoint commit prompts.
+To match the previous workflow exactly, use:
+
+```json
+"workflow": {
+  "stepReview": "every",
+  "checkpointCommits": "enabled"
+}
+```
+
+Context savings from the narrower Claude imports and shorter skill descriptions
+still apply.
+
+Onboarding offers **Efficient**, **Guided**, and **Custom** implementation styles.
+They write only the existing `stepReview` and `checkpointCommits` values, so no
+additional mode is stored. You can edit either value later; the next Implement
+run uses the current configuration.
+
+Use `/context all` in Claude Code to inspect the live result. See the
+[controlled benchmark](https://github.com/aiblueprinthq/ai-blueprint/blob/main/benchmarks/context-efficiency.md)
+for the two charts, exact results, method, and limits.
+
 Locally modified managed files are reported as conflicts. Interactive updates
 ask before replacing them. Non-interactive updates exit unless you pass
 `--force`, which backs up the conflicting files before replacement. Backups are

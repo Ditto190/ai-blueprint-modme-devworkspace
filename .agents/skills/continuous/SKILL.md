@@ -1,6 +1,6 @@
 ---
 name: continuous
-description: Explicit multi-feature Blueprint mode that builds every remaining planned feature serially, resuming or selecting the next unchecked build-plan item and repeating the human-style lifecycle through the configured limit or end of plan. It creates one local branch and one clean default-branch commit per feature, implements small steps, verifies, applies Continuous quality gates, pauses for any required independent-review handoff, archives and squash-merges each completed feature, deletes its branch, and continues. It stops on decisions, unsafe work, unresolved failures, or P0/P1 blockers. It never pushes, deploys, publishes, sends, or performs destructive actions. Use only when the user runs /continuous, invokes $continuous, or directly asks to run Continuous Mode.
+description: Build every remaining planned feature serially in explicit Continuous Mode, with one local branch, verification cycle, commit, archive, and local merge per feature. Stop on decisions or blockers and never push or deploy. Use only for /continuous, $continuous, or a direct Continuous Mode request.
 ---
 
 # continuous - complete the build plan one local feature at a time

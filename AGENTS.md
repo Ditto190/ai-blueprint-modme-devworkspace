@@ -18,12 +18,12 @@ because the directory isn't empty.
 
 The workflow is defined by the local skills and context files below.
 
-## Read these for full context
+## Read these when relevant
 
 - `blueprint/config.json` - deterministic project workflow settings
 - `blueprint/context/project-overview.md` - the project's source of truth
-- `blueprint/context/coding-standards.md` - conventions to follow
-- `blueprint/context/ai-interaction.md` - how to work with the user on this project
+- `blueprint/context/coding-standards.md` - read before changing code
+- `blueprint/context/ai-interaction.md` - read when running the Blueprint workflow
 - `blueprint/context/current-feature.md` - the one feature, fix, or rollback being built right now
 
 ## Project configuration
@@ -46,6 +46,16 @@ Mode. Every gate defaults to `manual`, so the named skill runs only when
 explicitly requested. The conditional modes are `when-sensitive` for audit and
 independent review, `when-behavioral` for check, and `when-user-facing` for try
 guides. `always` runs the gate for every work item in that workflow.
+
+New projects default to one review packet after all small implementation steps
+(`workflow.stepReview: "feature"`) with step checkpoint commits disabled. This
+keeps the normal loop reviewable without repeating the full session context after
+every step. Set `stepReview` to `every` when teaching, pairing closely, or working
+on a high-risk change. That restores the per-step approval pauses. To fully
+restore the previous workflow, including optional checkpoint prompts after an
+approved step, also set `checkpointCommits` to `enabled`. Onboarding presents
+these pairs as Efficient and Guided choices, but stores only the two low-level
+settings. They can be changed at any time.
 
 ## Workflow
 

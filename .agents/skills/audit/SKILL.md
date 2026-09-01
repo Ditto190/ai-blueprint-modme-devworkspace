@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Read-only code audit for a Blueprint project, except for the findings ledger it maintains at blueprint/context/findings.md and the optional independent-review request or receipt at blueprint/context/review.md. Reviews the active feature, changed files, a selected path, or the full project through all concerns or a focused quality, security, performance, or tests lens. Independent mode hands an immutable checkpoint to a selected fresh reviewer session and records a freshness-bound receipt. Use when the user runs /audit, invokes $audit, asks for an independent review, code or quality audit, security review, performance review, test quality review, dead-code or duplication check, vibe-coded project cleanup, or standards review.
+description: Audit current changes, a path, or the full project for quality, security, performance, or test problems and record durable findings. Independent mode prepares or completes a fresh-reviewer checkpoint handoff. Use for /audit, independent review, security review, code quality review, dead code, duplication, or standards drift.
 ---
 
 # audit - review code quality against the project standards

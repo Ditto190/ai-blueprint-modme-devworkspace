@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: Set up the Blueprint after overlaying it onto a freshly scaffolded or early project. Detects the stack, tunes project files and adapters, documents real commands and existing checks, points to the optional standalone CI setup, and tells the user what to fill in before /overview or $overview. Use when the user runs /onboard, invokes $onboard, just copied the Blueprint into a new project, or asks what to do after overlaying the Blueprint. For an existing app with meaningful shipped features, use adopt instead.
+description: Onboard a fresh or early scaffold after Blueprint is overlaid by tuning commands, standards, adapters, visibility, and context loading. Use for /onboard, fresh installation setup, or what to do after installing Blueprint. Use adopt for an established app.
 ---
 
 # onboard - finish the Blueprint overlay setup
@@ -100,9 +100,13 @@ If no test command exists, say so explicitly. Do not claim tests are a gate unti
 a real test command is configured.
 
 If `CLAUDE.md` exists and still has the placeholder `# Project Name`, replace it
-with the detected project name. Keep the `@AGENTS.md` and `@blueprint/...`
-imports intact. Do not move detailed app context into `CLAUDE.md`; that belongs
-in `AGENTS.md` and the generated project overview.
+with the detected project name. Keep `@AGENTS.md`,
+`@blueprint/context/project-overview.md`, and
+`@blueprint/context/current-feature.md`. Remove the legacy direct imports of
+`coding-standards.md` and `ai-interaction.md`; project instructions and workflow
+skills read those files only when relevant. Preserve any unrelated user imports.
+Do not move detailed app context into `CLAUDE.md`; that belongs in `AGENTS.md`
+and the generated project overview.
 
 ## Step 3 - tune coding standards
 
@@ -139,11 +143,32 @@ commands, product requirements, communication prose, secrets, or permission for
 commits, merges, pushes, deployments, publication, destructive actions, failed
 checks, or finding waivers into config.
 
+Unless the user already chose these values, ask one short **Implementation
+style** question using the current tool's selectable prompt when available:
+
+1. **Efficient (Recommended)** - one feature-level review packet and no step
+   checkpoint prompts. Write `workflow.stepReview: "feature"` and
+   `workflow.checkpointCommits: "disabled"`.
+2. **Guided** - pause for approval after every step and offer optional checkpoint
+   commits. Write `workflow.stepReview: "every"` and
+   `workflow.checkpointCommits: "enabled"`.
+3. **Custom** - ask separately when review should happen and whether checkpoint
+   commits should be offered, then write the selected low-level values.
+
+These are onboarding presets, not a third configuration field. Never write an
+`implementationStyle` key. Show the current two values before asking, preserve
+them if the user chooses not to change them, and explain that either value can be
+edited later. A later `/implement` run reads the current configuration.
+
 Read `blueprint/context/ai-interaction.md` and update only obvious mismatches.
 Usually the default review loop should stay intact. Flag preferences for the user
 instead of guessing, such as:
 
-- whether commits should be offered after every step
+- whether review should happen once per feature (the lower-context default) or
+  after every step for teaching, close pairing, or high-risk work
+- whether optional step checkpoint commits should be enabled. Explain that the
+  previous workflow requires per-step review and enabled checkpoints together;
+  changing only `stepReview` restores the approval pauses, not checkpoint prompts
 - whether branches should use a different naming pattern
 - whether `/check` should require browser evidence for UI work
 - whether audit, independent review, check, or try guides should stay manual, run only for their

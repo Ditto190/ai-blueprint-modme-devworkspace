@@ -1,6 +1,6 @@
 ---
 name: complete
-description: Wrap up a finished feature, fix, or rollback. Runs a final safety pass, archives its spec to blueprint/history/features/, blueprint/history/fixes/, or blueprint/history/rollbacks/, updates the build plan for features and rollbacks, resets blueprint/context/current-feature.md to its stub, makes one work-level commit, then squash-merges the branch to main and deletes it. Merges only with explicit approval, then asks separately before pushing main. Use when the user runs /complete, or asks to finish, wrap up, merge, or close out the current feature, fix, or rollback after it is built and reviewed.
+description: Complete a finished feature, fix, or rollback by running final gates, archiving its spec, updating plans, creating the work commit, and requesting approval before squash merge. Use for /complete or requests to finish, wrap up, merge, or close the current work item.
 ---
 
 # complete - log the finished work, make the work commit, and merge
