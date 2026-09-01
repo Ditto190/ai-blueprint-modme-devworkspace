@@ -3,7 +3,15 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
-## Unreleased
+## [1.4.1] - 2026-09-01
+
+### Changed
+
+- Limited generated project overviews to less than 20,000 bytes, added a
+  matching `/doctor` warning and `/feature` stop, and told Feature to reuse the
+  overview already loaded by Claude Code instead of reading it twice.
+- Replaced the original context benchmark and charts with a controlled Opus 5
+  reproduction of the oversized-overview report and the compact correction.
 
 ## [1.4.0] - 2026-09-01
 
