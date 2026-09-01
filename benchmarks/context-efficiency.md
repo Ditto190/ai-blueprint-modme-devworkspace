@@ -1,8 +1,8 @@
 # Context Efficiency Benchmark
 
-AI Blueprint 1.3.0 was tested against the context-efficient workflow changes on
-2026-09-01. The benchmark measures startup context and one small three-step
-feature implementation in Claude Code.
+AI Blueprint 1.3.0 was tested against AI Blueprint 1.4.0 on 2026-09-01. The
+benchmark measures startup context and one small three-step feature
+implementation in Claude Code.
 
 ![Fresh-session startup context](../assets/context-startup-tokens.svg)
 
@@ -10,7 +10,7 @@ feature implementation in Claude Code.
 
 ## Results
 
-| Measurement | Blueprint 1.3.0 | Optimized | Savings |
+| Measurement | Blueprint 1.3.0 | Blueprint 1.4.0 | Savings |
 | --- | ---: | ---: | ---: |
 | Fresh-session startup input | 52,135 | 45,198 | 6,937 (13.3%) |
 | Implementation cumulative input | 1,624,621 | 1,449,599 | 175,022 (10.8%) |
@@ -18,11 +18,11 @@ feature implementation in Claude Code.
 | CLI estimated list cost | $0.7403 | $0.4871 | $0.2532 (34.2%) |
 
 The bare Claude Code fixture started at 44,148 tokens on the same machine. The
-optimized Blueprint fixture was 1,050 tokens above that baseline.
+Blueprint 1.4.0 fixture was 1,050 tokens above that baseline.
 
 ## What changed
 
-| Change | Before | Optimized |
+| Change | Blueprint 1.3.0 | Blueprint 1.4.0 |
 | --- | --- | --- |
 | Claude auto-imports | AGENTS, overview, coding standards, interaction rules, active spec | AGENTS, overview, active spec |
 | Skill descriptions | 1,920 words | 847 words with routing terms preserved |
@@ -53,7 +53,7 @@ approved step, requires `stepReview: "every"` and
 - No dev server or browser check
 - Fresh sessions for onboarding, overview, and feature planning
 - Blueprint 1.3.0 resumed the same implementation session after each of three
-  step reviews; the optimized run used one feature-level review handoff
+  step reviews; the 1.4.0 run used one feature-level review handoff
 
 Input totals are the CLI's reported `input_tokens`,
 `cache_creation_input_tokens`, and `cache_read_input_tokens`. Estimated cost is

@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.4.0] - 2026-09-01
+
 ### Added
 
 - Added `/doctor` context-size diagnostics for Claude imports and skill
