@@ -76,7 +76,9 @@ Core skills:
 - `discovery` - optional deep, multi-turn planning conversation that drafts the two user-owned plans only after review and approval; direct plan writing remains fully supported
 - `doctor` - read-only Blueprint health check for setup, adapters, plans, overview freshness, and workflow drift
 - `adopt` - bootstrap the Blueprint into an existing brownfield app with shipped features
-- `overview` - distill the two planning docs into `blueprint/context/project-overview.md`
+- `overview` - distill the two planning docs into
+  `blueprint/context/project-overview.md`, then offer a reviewed initial planning
+  baseline commit before Feature 1
 - `brief` - read-only briefing on an upcoming build-plan feature (scope, dependencies, size) before you spec it
 - `feature` - turn a build-plan item into a spec, or propose a reviewed plan addition for a genuinely new feature
 - `debug` - reproduce and isolate a failure without editing code, then hand the evidence to `fix` or `implement`

@@ -5,6 +5,12 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+### Added
+
+- Added a first-run `/overview` handoff that offers a reviewed local commit for
+  Blueprint setup and planning before Feature 1, while skipping local-only
+  installations and refusing to mix unrelated work into the baseline.
+
 ## [1.2.0] - 2026-08-31
 
 ### Added

@@ -304,7 +304,14 @@ async function validateVerificationContract(): Promise<void> {
     ],
     [
       ".agents/skills/overview/SKILL.md",
-      ["Discovery is not a gate", "Never require `/discovery`"]
+      [
+        "Discovery is not a gate",
+        "Never require `/discovery`",
+        "Never create this commit silently",
+        "Create the initial planning baseline commit now? (Recommended)",
+        "chore: establish Blueprint project baseline",
+        "Do not offer this baseline on later overview reruns once `HEAD` already contains"
+      ]
     ],
     [
       ".agents/skills/adopt/SKILL.md",
@@ -417,12 +424,16 @@ async function validateVerificationContract(): Promise<void> {
       "blueprint/context/ai-interaction.md",
       [
         "run that exact command as the final automated gate",
-        "Continuous Mode also exists only as an explicit opt-in command"
+        "Continuous Mode also exists only as an explicit opt-in command",
+        "The initial Overview baseline also requires explicit approval"
       ]
     ],
     [
       "packages/create-ai-blueprint/README.md",
-      ["optional `/ci` or `$ci` skill"]
+      [
+        "optional `/ci` or `$ci` skill",
+        "offers a reviewed local commit for the Blueprint setup and plans"
+      ]
     ]
   ]);
 

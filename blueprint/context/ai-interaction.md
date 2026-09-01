@@ -34,6 +34,11 @@ Run `/feature` (or `/fix` for a bug or change that isn't a planned feature) to
 write the spec, `/implement` to build it on a branch, and `/complete` to log it
 and merge. The numbered loop below is what those skills follow.
 
+After the first successful `/overview`, Blueprint offers a reviewed local commit
+for the initial workflow setup and plans before Feature 1. It shows the exact
+candidate diff and asks first. It skips local-only installations and stops
+rather than mixing app source or unrelated work into the baseline.
+
 The skills are the structured path, not a requirement. You can also just describe
 a feature, fix, or change in chat at any time and we'll build it the same way; the
 rules below still apply (small steps, you approve each diff, the conventions in
@@ -137,6 +142,8 @@ branch.
 
 - Ask before committing, except for checkpoint and feature-lifecycle commits
   explicitly authorized by `/autopilot` or `/continuous`
+- The initial Overview baseline also requires explicit approval and uses
+  `chore: establish Blueprint project baseline`
 - Use conventional commit messages (feat:, fix:, chore:, etc.)
 - Keep commits focused (one feature/fix per commit)
 - Never put "Generated with Claude" or any AI attribution in commit messages
