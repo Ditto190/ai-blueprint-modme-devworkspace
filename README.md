@@ -237,7 +237,9 @@ one feature-level review packet by default.
 
 In one controlled Claude Code fixture, the optimized workflow used 13.3% less
 startup context, 10.8% less cumulative implementation input, and 10.1% less
-final live context than Blueprint 1.3.0. Read the
+final live context than Blueprint 1.3.0. The no-Blueprint bar reflects the same
+maintainer machine and global Claude configuration, not a clean installation or
+a universal Claude Code baseline. Read the
 [benchmark method, exact results, changes, and limits](benchmarks/context-efficiency.md).
 
 The updater preserves user-owned `CLAUDE.md` and `blueprint/config.json` files.

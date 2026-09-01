@@ -17,8 +17,17 @@ implementation in Claude Code.
 | Final implementation context | 74,805 | 67,256 | 7,549 (10.1%) |
 | CLI estimated list cost | $0.7403 | $0.4871 | $0.2532 (34.2%) |
 
-The bare Claude Code fixture started at 44,148 tokens on the same machine. The
-Blueprint 1.4.0 fixture was 1,050 tokens above that baseline.
+The same Claude Code setup without Blueprint started at 44,148 tokens. This was
+the maintainer's configured environment, not a clean installation or a general
+Claude Code baseline. The Blueprint 1.4.0 fixture was 1,050 tokens above that
+same-environment comparison.
+
+Claude Code's `/context all` estimate attributed the 44,148 tokens to a 9.4k
+system prompt, 21k active system tools, 557 tokens of custom agents, 3.1k of
+memory files, 7.8k of skills, and 2.3k of messages. About 5k of the skill tokens
+came from maintainer-installed skills and 2.7k from built-in skills. Deferred
+system tools were listed separately and were not part of the 44,148-token live
+total.
 
 ## What changed
 
@@ -47,8 +56,9 @@ approved step, requires `stepReview: "every"` and
 - Claude Code 2.1.252
 - `claude-sonnet-5`, medium effort, 1,000,000-token context window
 - Chrome disabled and an empty strict MCP configuration
-- Same machine, global Claude configuration, minimal Node task-tracker app, demo
-  plans, and Claude-only adapter
+- Same machine and global Claude configuration for every fixture, including the
+  maintainer's installed skills, memory files, and custom agents
+- Minimal Node task-tracker app, demo plans, and Claude-only adapter
 - `/onboard`, `/overview`, `/feature 1`, and `/implement`
 - No dev server or browser check
 - Fresh sessions for onboarding, overview, and feature planning
@@ -61,8 +71,10 @@ the CLI's list-cost estimate, not a prediction of Claude subscription quota use.
 
 ## Limits
 
-This is one controlled fixture, not a universal savings guarantee. Tool output,
-project size, global skills, plugins, model behavior, and the work itself can
-change both context growth and cost. The test isolates a realistic Blueprint
-feature loop, but the generated specs and implementations were not byte-for-byte
-identical.
+This is one controlled fixture, not a universal savings guarantee or a measure
+of a clean Claude Code installation. The 44,148-token no-Blueprint result is
+specific to the maintainer's global Claude configuration. Tool output, project
+size, global skills, plugins, model behavior, and the work itself can change
+both context growth and cost. The same environment across all fixtures makes
+the Blueprint 1.3.0 versus 1.4.0 comparison useful, but the generated specs and
+implementations were not byte-for-byte identical.
