@@ -231,46 +231,14 @@ project instructions, compact overview, and active spec. Workflow skills load
 coding standards and interaction rules when they are needed, and implementation
 uses one feature-level review packet by default.
 
-![Compact overview startup context](assets/context-startup-tokens.svg)
+`/overview` keeps generated project context below 20,000 bytes, while `/doctor`
+flags oversized legacy overviews. A controlled Opus 5 test measured 55% less
+startup context and about 36% less Feature context after compacting the overview.
 
-![Compact overview Feature planning](assets/context-feature-loop-tokens.svg)
-
-After a user reported a 33.8k-token overview, a controlled Claude Opus 5
-reproduction reduced startup context by 55.1%, cumulative Feature input by
-36.4%, and final live Feature context by 36.2%. `/overview` regenerated the same
-project's 94KB overview as a 4KB consolidation while Feature runtime stayed
-effectively unchanged. This is one controlled test, not a universal savings
-guarantee. Read the
-[benchmark method, exact results, changes, and limits](benchmarks/context-efficiency.md).
-
-The updater preserves user-owned `CLAUDE.md` and `blueprint/config.json` files.
-Existing projects can run `/doctor` to find legacy Claude imports and oversized
-project overviews. Remove the direct coding-standards and AI-interaction imports
-it identifies, rerun `/overview` when the generated overview is 20,000 bytes or
-larger, and set `workflow.stepReview` to `feature` with
-`workflow.checkpointCommits` set to `disabled`. Use `/context all` in Claude Code
-to inspect the live context before and after changing those files.
-
-The two workflow settings do different jobs. `stepReview: "every"` restores an
-approval pause after every implementation step. It does not restore checkpoint
-commit prompts by itself. To match the previous Blueprint workflow exactly, use
-both settings:
-
-```json
-"workflow": {
-  "stepReview": "every",
-  "checkpointCommits": "enabled"
-}
-```
-
-Compact project context, narrower Claude imports, and shorter skill descriptions
-still save live context with either review configuration.
-
-During onboarding, **Efficient** selects `feature` plus `disabled`, while
-**Guided** selects `every` plus `enabled`. **Custom** asks for each value
-separately. These are friendly choices, not another configuration field. The two
-stored values can be edited at any time and apply to the next implementation
-run.
+Existing projects keep their own `CLAUDE.md` and configuration during updates.
+Run `/doctor` afterward, then follow the [updating guide](https://ai-blueprint.dev/docs/updating-blueprint/)
+for any recommended cleanup. Read the [benchmark](benchmarks/context-efficiency.md)
+for the full method, charts, results, and limits.
 
 ## Automatic GitHub checks
 
