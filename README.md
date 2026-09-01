@@ -227,27 +227,29 @@ for the complete rules.
 
 Blueprint keeps durable project context available without loading every workflow
 rule into every Claude Code turn. New installations auto-import only the core
-project instructions, overview, and active spec. Workflow skills load coding
-standards and interaction rules when they are needed, and implementation uses
-one feature-level review packet by default.
+project instructions, compact overview, and active spec. Workflow skills load
+coding standards and interaction rules when they are needed, and implementation
+uses one feature-level review packet by default.
 
-![Fresh-session startup context](assets/context-startup-tokens.svg)
+![Compact overview startup context](assets/context-startup-tokens.svg)
 
-![Three-step feature implementation](assets/context-feature-loop-tokens.svg)
+![Compact overview Feature planning](assets/context-feature-loop-tokens.svg)
 
-In one controlled Claude Code fixture, the optimized workflow used 13.3% less
-startup context, 10.8% less cumulative implementation input, and 10.1% less
-final live context than Blueprint 1.3.0. The no-Blueprint bar reflects the same
-maintainer machine and global Claude configuration, not a clean installation or
-a universal Claude Code baseline. Read the
+After a user reported a 33.8k-token overview, a controlled Claude Opus 5
+reproduction reduced startup context by 55.1%, cumulative Feature input by
+36.4%, and final live Feature context by 36.2%. `/overview` regenerated the same
+project's 94KB overview as a 4KB consolidation while Feature runtime stayed
+effectively unchanged. This is one controlled test, not a universal savings
+guarantee. Read the
 [benchmark method, exact results, changes, and limits](benchmarks/context-efficiency.md).
 
 The updater preserves user-owned `CLAUDE.md` and `blueprint/config.json` files.
-Existing projects can run `/doctor` to find legacy Claude imports, remove the
-direct coding-standards and AI-interaction imports it identifies, and set
-`workflow.stepReview` to `feature` with `workflow.checkpointCommits` set to
-`disabled`. Use `/context all` in Claude Code to inspect the live context before
-and after changing those files.
+Existing projects can run `/doctor` to find legacy Claude imports and oversized
+project overviews. Remove the direct coding-standards and AI-interaction imports
+it identifies, rerun `/overview` when the generated overview is 20,000 bytes or
+larger, and set `workflow.stepReview` to `feature` with
+`workflow.checkpointCommits` set to `disabled`. Use `/context all` in Claude Code
+to inspect the live context before and after changing those files.
 
 The two workflow settings do different jobs. `stepReview: "every"` restores an
 approval pause after every implementation step. It does not restore checkpoint
@@ -261,8 +263,8 @@ both settings:
 }
 ```
 
-The reduced Claude imports and shorter skill descriptions still save context
-with either review configuration.
+Compact project context, narrower Claude imports, and shorter skill descriptions
+still save live context with either review configuration.
 
 During onboarding, **Efficient** selects `feature` plus `disabled`, while
 **Guided** selects `every` plus `enabled`. **Custom** asks for each value

@@ -139,6 +139,9 @@ Gather these, then summarize. Do not dump file contents.
 6. **Overview freshness**
    - Check whether `blueprint/context/project-overview.md` exists and looks
      generated from the current plans.
+   - Report its byte size. At or above 20,000 bytes, call it oversized and say
+     `/feature` should stop until `/overview` regenerates a compact
+     consolidation.
    - If either planning file appears newer than the overview by filesystem time,
      call the overview possibly stale and suggest `/overview` before feature work.
 7. **Current workflow state**

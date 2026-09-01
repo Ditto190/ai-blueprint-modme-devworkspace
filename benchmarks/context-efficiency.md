@@ -1,80 +1,95 @@
 # Context Efficiency Benchmark
 
-AI Blueprint 1.3.0 was tested against AI Blueprint 1.4.0 on 2026-09-01. The
-benchmark measures startup context and one small three-step feature
-implementation in Claude Code.
+AI Blueprint was retested on 2026-09-01 after a user reported a 33.8k-token
+`project-overview.md` and a fresh `/feature` session reaching 162.9k tokens. The
+test focused on the largest actionable cause: an overview that had become a
+detailed plan copy instead of a compact consolidation.
 
-![Fresh-session startup context](../assets/context-startup-tokens.svg)
+![Compact overview startup context](../assets/context-startup-tokens.svg)
 
-![Three-step feature implementation](../assets/context-feature-loop-tokens.svg)
+![Compact overview Feature planning](../assets/context-feature-loop-tokens.svg)
 
 ## Results
 
-| Measurement | Blueprint 1.3.0 | Blueprint 1.4.0 | Savings |
+| Measurement | Before correction | Compact overview | Savings |
 | --- | ---: | ---: | ---: |
-| Fresh-session startup input | 52,135 | 45,198 | 6,937 (13.3%) |
-| Implementation cumulative input | 1,624,621 | 1,449,599 | 175,022 (10.8%) |
-| Final implementation context | 74,805 | 67,256 | 7,549 (10.1%) |
-| CLI estimated list cost | $0.7403 | $0.4871 | $0.2532 (34.2%) |
+| Overview file size | 94,441 bytes | 4,087 bytes | 90,354 bytes (95.7%) |
+| Fresh-session startup input | 79,479 | 35,688 | 43,791 (55.1%) |
+| Feature cumulative input | 654,550 | 416,302 | 238,248 (36.4%) |
+| Final Feature context | 89,352 | 57,034 | 32,318 (36.2%) |
+| CLI estimated list cost | $0.9982 | $0.6940 | $0.3042 (30.5%) |
+| Feature runtime | 122 seconds | 124 seconds | effectively unchanged |
 
-The same Claude Code setup without Blueprint started at 44,148 tokens. This was
-the maintainer's configured environment, not a clean installation or a general
-Claude Code baseline. The Blueprint 1.4.0 fixture was 1,050 tokens above that
-same-environment comparison.
-
-Claude Code's `/context all` estimate attributed the 44,148 tokens to a 9.4k
-system prompt, 21k active system tools, 557 tokens of custom agents, 3.1k of
-memory files, 7.8k of skills, and 2.3k of messages. About 5k of the skill tokens
-came from maintainer-installed skills and 2.7k from built-in skills. Deferred
-system tools were listed separately and were not part of the 44,148-token live
-total.
+The corrected Feature run produced almost the same amount of model output as
+the original run: 8,624 output tokens versus 8,594. The runtime was also nearly
+identical. This makes the context reduction more useful than the earlier
+lazy-loading experiment, which mostly moved context between categories and
+reduced cumulative Feature input by only 1%.
 
 ## What changed
 
-| Change | Blueprint 1.3.0 | Blueprint 1.4.0 |
-| --- | --- | --- |
-| Claude auto-imports | AGENTS, overview, coding standards, interaction rules, active spec | AGENTS, overview, active spec |
-| Skill descriptions | 1,920 words | 847 words with routing terms preserved |
-| Implementation review | Approval after every step | One feature-level review packet |
-| Step checkpoints | Enabled | Disabled |
-| Context diagnosis | Manual investigation | `/doctor` reports import and description size, then points to `/context all` |
+- `/overview` must keep the generated `project-overview.md` below 20,000 bytes.
+  It measures the file before handoff and compacts repeated narrative while
+  preserving contracts, build order, and constraints.
+- `/doctor` reports the overview byte size and flags files at or above 20,000
+  bytes.
+- `/feature` checks the size before continuing. It stops on an oversized
+  overview and directs the user to `/overview`.
+- Feature reuses the overview already loaded by Claude Code instead of reading
+  the same file again with a tool.
 
-`coding-standards.md` and `ai-interaction.md` remain in every project. Project
-instructions and workflow skills read them when the task needs them instead of
-carrying both files through every turn.
-
-Per-step review and checkpoint commits remain available through
-`blueprint/config.json`. They are useful for teaching, close pairing, and
-high-risk changes, but feature-level review is the lower-context default for new
-projects. Setting only `stepReview` to `every` restores per-step approval pauses.
-Matching the previous workflow, including optional checkpoint prompts after an
-approved step, requires `stepReview: "every"` and
-`checkpointCommits: "enabled"` together.
+Claude Code still starts with `AGENTS.md`, the compact overview, and the active
+spec. This preserves normal project awareness and commands such as "continue"
+while removing the large-file failure mode. Coding standards and interaction
+rules still load only when relevant, and feature-level implementation review
+remains the default.
 
 ## Method
 
 - Claude Code 2.1.252
-- `claude-sonnet-5`, medium effort, 1,000,000-token context window
+- `claude-opus-5`, high effort, 1,000,000-token context window
 - Chrome disabled and an empty strict MCP configuration
-- Same machine and global Claude configuration for every fixture, including the
-  maintainer's installed skills, memory files, and custom agents
-- Minimal Node task-tracker app, demo plans, and Claude-only adapter
-- `/onboard`, `/overview`, `/feature 1`, and `/implement`
+- Same machine and global Claude configuration for both Feature runs
+- Same minimal Node task-tracker app, plans, and Claude adapter
 - No dev server or browser check
-- Fresh sessions for onboarding, overview, and feature planning
-- Blueprint 1.3.0 resumed the same implementation session after each of three
-  step reviews; the 1.4.0 run used one feature-level review handoff
+- Fresh sessions for startup and `/feature 1`
+- Before fixture: 94,441-byte synthetic overview shaped around the same project,
+  with the reporter's legacy eager imports
+- Corrected fixture: `/overview` generated a 4,087-byte overview from the same
+  project and build plans, with the current reduced import layout
 
 Input totals are the CLI's reported `input_tokens`,
-`cache_creation_input_tokens`, and `cache_read_input_tokens`. Estimated cost is
-the CLI's list-cost estimate, not a prediction of Claude subscription quota use.
+`cache_creation_input_tokens`, and `cache_read_input_tokens`. Final context is
+the same sum from the last Feature model request. CLI estimated list cost is not
+a prediction of Claude subscription quota use.
+
+## Literal sandbox confirmation
+
+The corrected workflow was also rerun end to end through the repository's actual
+`npm run sandbox` command, using the package tarball packed from the working
+branch. The Claude-only sandbox passed its app tests and build, then fresh Opus
+sessions ran `/overview` and `/feature 1`.
+
+- Overview generated a 3,524-byte project overview.
+- Feature checked the size with `wc -c` and did not read the already loaded
+  overview with a tool.
+- Cumulative Feature input was 424,261 tokens and final context was 58,384.
+- Feature produced 8,933 output tokens in 128 seconds.
+
+The cumulative and final-context totals were within 2.4% of the corrected
+fixture shown in the charts. This second run confirms that the measured result
+holds through the public sandbox path, not only in the isolated benchmark
+directory.
 
 ## Limits
 
-This is one controlled fixture, not a universal savings guarantee or a measure
-of a clean Claude Code installation. The 44,148-token no-Blueprint result is
-specific to the maintainer's global Claude configuration. Tool output, project
-size, global skills, plugins, model behavior, and the work itself can change
-both context growth and cost. The same environment across all fixtures makes
-the Blueprint 1.3.0 versus 1.4.0 comparison useful, but the generated specs and
-implementations were not byte-for-byte identical.
+This is one controlled fixture, not a universal savings guarantee. The
+reporter's 162.9k post-Feature context was not reproduced, so the benchmark does
+not claim every project will fall to 57k. Tool output, global skills, plugins,
+model behavior, project size, and the work itself all affect usage.
+
+The before fixture intentionally matched the oversized overview and legacy
+imports that triggered the report. The corrected fixture includes both the
+compact-overview fix and the reduced Claude imports already introduced in 1.4.
+The result therefore represents the practical upgrade path for that report, not
+an isolated measurement of only one line of instructions.

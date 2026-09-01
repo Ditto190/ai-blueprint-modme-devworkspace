@@ -79,9 +79,13 @@ State which feature you're building before going further.
 
 ## Step 2 - size it, and split if too big
 
-Read the target line from `build-plan.md`, then pull full context from
-`blueprint/context/project-overview.md` (the data model, stack, and conventions). Decide
-how big the feature is:
+Read the target line from `build-plan.md`, then check the byte size of
+`blueprint/context/project-overview.md` before reading it. At or above 20,000
+bytes, stop and tell the user to run `/overview` to regenerate a compact
+consolidation. Do not pull the oversized file into the conversation again. If
+the overview is already present in project instructions or the current session,
+use that copy and do not read it again with a tool. Otherwise, read it once for
+the data model, stack, and conventions. Decide how big the feature is:
 
 - **Small enough to build and review as one unit** -> one spec. Continue to
   Step 3.

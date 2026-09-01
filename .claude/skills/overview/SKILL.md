@@ -127,6 +127,12 @@ overview.
 - **Stay faithful.** Don't add features, data, or stack choices that aren't in
   the plans. If something is underspecified, leave a clearly marked `> TODO`
   rather than inventing an answer.
+- **Keep the overview compact.** Never copy long plan passages. The generated
+  overview must remain below 20,000 bytes. Measure it before the final handoff.
+  If a draft is larger, compact narrative and repeated lists while preserving
+  concrete contracts, build order, and constraints. If those distinct facts
+  cannot fit, stop and identify which plan section needs to be split or moved to
+  a focused reference instead of writing an oversized overview.
 
 Report what you wrote and list any contradictions or gaps you found between the
 two plans, so the user can fix the plans and re-run. Then apply the initial

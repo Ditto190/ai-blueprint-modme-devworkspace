@@ -325,7 +325,8 @@ async function validateVerificationContract(): Promise<void> {
         "Never create this commit silently",
         "Create the initial planning baseline commit now? (Recommended)",
         "chore: establish Blueprint project baseline",
-        "Do not offer this baseline on later overview reruns once `HEAD` already contains"
+        "Do not offer this baseline on later overview reruns once `HEAD` already contains",
+        "overview must remain below 20,000 bytes"
       ]
     ],
     [
@@ -415,7 +416,10 @@ async function validateVerificationContract(): Promise<void> {
     ],
     [
       ".agents/skills/doctor/SKILL.md",
-      ["missing `Verify` command or GitHub workflow is informational"]
+      [
+        "missing `Verify` command or GitHub workflow is informational",
+        "At or above 20,000 bytes, call it oversized"
+      ]
     ],
     [
       ".agents/skills/autopilot/SKILL.md",

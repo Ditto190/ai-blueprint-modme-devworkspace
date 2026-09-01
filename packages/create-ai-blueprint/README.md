@@ -172,15 +172,17 @@ explicit `/continuous` or `$continuous` request starts the multi-feature loop.
 ## Context efficiency
 
 New installations keep Claude Code's automatic project imports focused on the
-core instructions, overview, and active spec. Coding standards and interaction
-rules load when the workflow needs them. New project configuration also defaults
-to one feature-level review packet with step checkpoint commits disabled.
+core instructions, compact overview, and active spec. Coding standards and
+interaction rules load when the workflow needs them. New project configuration
+also defaults to one feature-level review packet with step checkpoint commits
+disabled.
 
 The updater preserves `CLAUDE.md` and `blueprint/config.json`, so existing
 projects do not receive those user-owned changes automatically. Run `/doctor` to
-identify the legacy direct imports, remove the coding-standards and
-AI-interaction import lines it reports, and choose the lower-context defaults in
-`blueprint/config.json` if they fit the project:
+identify the legacy direct imports and an oversized overview, remove the
+coding-standards and AI-interaction import lines it reports, rerun `/overview`
+when needed, and choose the lower-context defaults in `blueprint/config.json` if
+they fit the project:
 
 ```json
 "workflow": {
@@ -200,8 +202,8 @@ To match the previous workflow exactly, use:
 }
 ```
 
-Context savings from the narrower Claude imports and shorter skill descriptions
-still apply.
+Context savings from the compact overview, narrower Claude imports, and shorter
+skill descriptions still apply.
 
 Onboarding offers **Efficient**, **Guided**, and **Custom** implementation styles.
 They write only the existing `stepReview` and `checkpointCommits` values, so no
