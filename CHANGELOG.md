@@ -5,6 +5,8 @@ published `create-ai-blueprint` package.
 
 ## Unreleased
 
+## [1.3.0] - 2026-09-01
+
 ### Added
 
 - Added a first-run `/overview` handoff that offers a reviewed local commit for
