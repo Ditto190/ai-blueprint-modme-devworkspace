@@ -246,12 +246,18 @@ suggested next action. Onboarding uses a dedicated setup marker, overview
 freshness uses a fingerprint of both plans, and a verified current-work status
 makes the completion gate ready. Running command activity overrides
 contradictory next-action advice, and an activity record that stops updating is
-shown as interrupted instead of running forever. For scripts and integrations,
-request the versioned JSON object:
+shown as interrupted instead of running forever. Malformed generated activity
+points to `/doctor`, which can offer to reset only `blueprint/.state/run.json`
+after approval. For scripts and integrations, request the versioned JSON object:
 
 ```bash
 npx create-ai-blueprint@latest status --json
 ```
+
+Tracked workflow skills use the packaged dashboard activity helper instead of
+constructing `run.json` directly. The helper validates every field before an
+atomic replacement. Invalid updates fail without replacing the previous valid
+state, and the next tracked command safely replaces malformed legacy state.
 
 After an interactive Blueprint install or update, the installer checks the
 global CLI version. It offers to run the following command only when the CLI is

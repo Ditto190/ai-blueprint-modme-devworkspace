@@ -872,6 +872,13 @@ function selectIndependentReviewPolicy(
 function selectActivityNextAction(
   activity: StatusActivity
 ): StatusNextAction | null {
+  if (activity.state === "malformed") {
+    return {
+      command: "/doctor",
+      reason: "Inspect and reset malformed dashboard state in blueprint/.state/run.json."
+    };
+  }
+
   if (activity.state !== "recorded" || !activity.command || !activity.status) {
     return null;
   }

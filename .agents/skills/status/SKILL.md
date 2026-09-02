@@ -75,7 +75,8 @@ state.
 9. **Dashboard activity** - read `blueprint/.state/run.json` when it exists.
    Report the command, mode, status, progress, boundary, and safe resume command.
    A missing file simply means no activity has been recorded. Invalid activity
-   state is a warning, not a blocker for the underlying workflow.
+   state is a warning, not a blocker for the underlying workflow; point to
+   `/doctor` to inspect and offer the approved generated-state reset.
 
 ## Output
 
@@ -98,6 +99,7 @@ A short, scannable summary, not a wall of text. Aim for something like:
 End with a single suggested next action, chosen in this order:
 
 - The project configuration is invalid -> `/doctor`.
+- Dashboard activity is malformed -> `/doctor`.
 - The overview is missing or stale and no feature is in progress -> `/overview`.
 - A spec is in progress with unchecked steps -> `/implement` and name the step.
 - A spec is in progress and all implementation steps are checked -> `/check` if

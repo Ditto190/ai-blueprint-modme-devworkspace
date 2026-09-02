@@ -571,6 +571,31 @@ test("readProjectStatus offers the recovery command for interrupted activity", a
   assert.ok(status.warnings.some((warning) => warning.code === "stale_run_state"));
 });
 
+test("readProjectStatus sends malformed dashboard state to Doctor", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main",
+    runState: {
+      schemaVersion: 1,
+      command: "feature"
+    }
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.activity.state, "malformed");
+  assert.deepEqual(status.nextAction, {
+    command: "/doctor",
+    reason: "Inspect and reset malformed dashboard state in blueprint/.state/run.json."
+  });
+  assert.ok(status.warnings.some((warning) =>
+    warning.code === "malformed_run_state" &&
+    warning.message.includes("Run /doctor")
+  ));
+  assert.match(formatHumanStatus(status), /Next action\n  \/doctor/);
+});
+
 test("formatHumanStatus prints a scannable orientation", async (t) => {
   const projectRoot = await createProject(t, {
     currentWork: resetCurrentWork(),

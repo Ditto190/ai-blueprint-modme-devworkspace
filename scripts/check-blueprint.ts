@@ -24,6 +24,10 @@ const checks: CheckCommand[] = [
     ...npmInvocation(["run", "test:sandbox"])
   },
   {
+    name: "Dashboard activity helper tests",
+    ...npmInvocation(["run", "test:activity"])
+  },
+  {
     name: "Installer unit tests",
     ...npmInvocation(["--prefix", "packages/create-ai-blueprint", "test"])
   },

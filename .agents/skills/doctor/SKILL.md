@@ -1,6 +1,6 @@
 ---
 name: doctor
-description: Run a read-only Blueprint health and context check covering setup, adapters, commands, visibility, plans, overview freshness, configuration, and workflow drift. Use for /doctor, installation checks, context overhead, setup problems, or when something feels wrong.
+description: Run a Blueprint health and context check covering setup, adapters, commands, visibility, plans, overview freshness, configuration, dashboard state, and workflow drift. May offer to reset malformed generated dashboard state after approval. Use for /doctor, installation checks, context overhead, setup problems, or when something feels wrong.
 ---
 
 # doctor - Blueprint health check
@@ -10,13 +10,14 @@ description: Run a read-only Blueprint health and context check covering setup, 
 Where this sits in the workflow:
 
     any time  ->  [doctor]  ->  reads setup + plans + workflow state + git
-                  (read-only)   prints health, warnings, and repair order
+                  (diagnostic)  prints health, warnings, and repair order
 
 This skill answers one question: *is this Blueprint project ready to use?* It is
 the diagnostic pass for setup drift, incomplete onboarding, missing files,
 placeholder plans, stale generated context, Blueprint visibility, and confusing
 workflow state. It never changes anything: no edits, no commits, no installs, no
-builds, no branch changes.
+builds, no branch changes. Its only repair is an approved reset of a malformed
+generated `blueprint/.state/run.json` file.
 
 Use `/status` when the user mainly wants progress and the next build action. Use
 `/doctor` when the user wants to know whether the workflow itself is healthy.
@@ -79,6 +80,10 @@ Gather these, then summarize. Do not dump file contents.
    - If git shows changes under `.agents/skills/` or `.claude/skills/`, check
      the matching adapter file too. Warn when workflow behavior was updated in
      one adapter but not the other.
+   - Confirm each installed adapter tree contains
+     `doctor/scripts/run-state.mjs`. This managed helper validates and atomically
+     writes dashboard activity. A missing helper needs a Blueprint update before
+     tracked commands can record activity safely.
    - If only one tool is used, mention the unused adapter can be deleted. Do not
      treat extra adapters as an error.
    - If `CLAUDE.md` exists and still starts with `# Project Name`, flag that
@@ -148,6 +153,22 @@ Gather these, then summarize. Do not dump file contents.
    - If either planning file appears newer than the overview by filesystem time,
      call the overview possibly stale and suggest `/overview` before feature work.
 7. **Current workflow state**
+   - Inspect `blueprint/.state/run.json` when it exists. Missing means no recorded
+     activity and is healthy. Require a regular non-symbolic-link JSON file that
+     matches dashboard schema version 1 from `AGENTS.md`.
+   - If the path is a symbolic link or not a regular file, do not read, replace,
+     or remove it. Report the exact path for manual review.
+   - If the regular file is invalid JSON or does not match the schema, report it
+     as malformed generated state. Explain that resetting it removes only the
+     dashboard's last-command record, not project work, and that the next tracked
+     Blueprint command recreates it.
+   - Offer this exact repair question: `Reset the malformed dashboard state now?`
+     On approval, use the installed dashboard activity helper's `reset` action.
+     It confirms the exact path is a regular non-symbolic-link file and removes
+     only `blueprint/.state/run.json`. Verify the file is absent and report the
+     dashboard state as reset. Never remove `blueprint/.state/`, its manifest,
+     backups, or any project file. Without approval, leave it unchanged and
+     include the reset in `Repair order:`.
    - Check whether `blueprint/context/current-feature.md` is the reset stub or an
      active feature, fix, or rollback spec.
    - If a spec is active, report checked and unchecked implementation steps.
@@ -193,6 +214,8 @@ Choose the repair order in this priority:
 - No git repo -> initialize git before using the build loop.
 - No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the
   selected tool. OpenCode can use either compatible tree.
+- Installed adapter is missing `doctor/scripts/run-state.mjs` -> update
+  Blueprint before relying on dashboard activity.
 - Claude uses legacy direct context imports -> remove the exact direct imports
   for `project-overview.md`, `current-feature.md`, `coding-standards.md`, and
   `ai-interaction.md` that are present in `CLAUDE.md`, then rerun `/doctor`. The
@@ -214,6 +237,8 @@ Choose the repair order in this priority:
 - Plans are placeholders -> fill `blueprint/project-plan.md` and
   `blueprint/build-plan.md`.
 - Overview missing or stale -> run `/overview`.
+- Malformed regular `blueprint/.state/run.json` -> offer to reset that exact
+  generated file, then rerun `/doctor` or refresh the dashboard.
 - Active spec has unchecked steps -> run `/status` or `/implement`, depending on
   whether the user wants orientation or action.
 - A P0 or P1 finding is `open` -> repair it through `/implement` while a spec
@@ -225,8 +250,10 @@ Choose the repair order in this priority:
 
 ## Rules
 
-- **Read-only, always.** This skill never writes files, never commits, never runs
-  installs, never runs builds or tests, and never switches branches.
+- **Diagnostic by default.** This skill never edits project files, commits, runs
+  installs, runs builds or tests, or switches branches. It may remove only a
+  malformed regular `blueprint/.state/run.json` through the installed helper
+  after the user approves the exact reset described above.
 - **Diagnose, then order repairs.** Do not just list problems. End with the
   smallest ordered sequence that gets the project back to a healthy state.
 - **Do not over-police adapters.** Extra adapters are optional clutter, not a

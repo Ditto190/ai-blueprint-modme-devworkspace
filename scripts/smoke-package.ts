@@ -304,6 +304,36 @@ async function main(): Promise<void> {
 
       await validateInstall(targetDir, metadata.version, adapters);
 
+      const helperRoot = adapters.includes("codex") ||
+          adapters.includes("copilot") ||
+          (adapters.includes("opencode") && !adapters.includes("claude"))
+        ? ".agents"
+        : ".claude";
+      const activityHelper = path.join(
+        targetDir,
+        helperRoot,
+        "skills",
+        "doctor",
+        "scripts",
+        "run-state.mjs"
+      );
+      const activityResult = run(
+        process.execPath,
+        [
+          activityHelper,
+          "start",
+          "--command", "onboard",
+          "--summary", "Checking the installed workflow",
+          "--boundary", "reviewed"
+        ],
+        targetDir,
+        true
+      );
+
+      if (!activityResult.stdout.includes("Recorded /onboard: running")) {
+        throw new Error(`${mode} activity helper did not record valid state`);
+      }
+
       const statusResult = runInstalledCommand(
         installedCommand,
         ["status", "--target", targetDir],
@@ -313,6 +343,10 @@ async function main(): Promise<void> {
 
       if (!statusResult.stdout.includes(`Blueprint Status  ${targetName}`)) {
         throw new Error(`${mode} status smoke test did not identify the project`);
+      }
+
+      if (!statusResult.stdout.includes("Activity      /onboard running")) {
+        throw new Error(`${mode} status did not read helper-managed activity`);
       }
 
       if (statusResult.stdout.includes("\u001b[")) {
@@ -446,6 +480,7 @@ async function validateInstall(
     expectedPaths.push(
       ".agents/skills/browser-tests/SKILL.md",
       ".agents/skills/discovery/SKILL.md",
+      ".agents/skills/doctor/scripts/run-state.mjs",
       ".agents/skills/onboard/SKILL.md",
       ".agents/skills/rollback/SKILL.md"
     );
@@ -456,6 +491,7 @@ async function validateInstall(
       "CLAUDE.md",
       ".claude/skills/browser-tests/SKILL.md",
       ".claude/skills/discovery/SKILL.md",
+      ".claude/skills/doctor/scripts/run-state.mjs",
       ".claude/skills/onboard/SKILL.md",
       ".claude/skills/rollback/SKILL.md"
     );

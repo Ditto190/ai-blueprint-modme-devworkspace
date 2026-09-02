@@ -151,7 +151,7 @@ lifecycle and command-specific behavior.
 | **/continuous** | Complete reviewed build-plan items serially with local Git work. |
 | **/debug** | Reproduce and isolate a failure without editing code. |
 | **/discovery** | Develop detailed plans through a reviewed conversation. |
-| **/doctor** | Check Blueprint setup and drift without changing files. |
+| **/doctor** | Check Blueprint health and offer to reset malformed generated dashboard state. |
 | **/feature** | Turn one build-plan item into the active spec. |
 | **/fix** | Write the active spec for a small change or confirmed bug. |
 | **/implement** | Build the approved spec in small, reviewed steps. |
@@ -234,9 +234,10 @@ the approved spec as its packet and runs the full Verify command once after the
 steps unless an earlier gate is necessary.
 
 `/overview` keeps generated project context below 20,000 bytes, while `/doctor`
-flags oversized legacy overviews. The existing controlled Opus 5 benchmark
-measures the compact-overview improvement from 1.4.1. It does not assign a new
-percentage to on-demand loading without checked-in raw paired artifacts.
+flags oversized legacy overviews. The focused 1.5 benchmark records internal
+paired Feature observations of 30.2% less input on an ordinary fixture and 55.6%
+less on a complex fixture. The raw disposable sessions were not retained, so
+those results are release evidence rather than a reproducible guarantee.
 
 Existing projects keep their own `CLAUDE.md` and configuration during updates.
 The updater names any obsolete direct context imports to remove. A 1.4.1 project
@@ -339,6 +340,10 @@ blueprint dashboard
 The dashboard binds to `127.0.0.1`, reads the same project files and Git state,
 and stops when you press Ctrl+C. It does not run workflow commands or expose the
 project outside the local machine.
+
+Tracked skills record dashboard activity through a packaged deterministic
+helper. It validates the complete state before an atomic replacement, so an
+invalid activity update fails without corrupting the previous dashboard state.
 
 Read [Updating Blueprint](https://ai-blueprint.dev/docs/updating-blueprint/),
 [CLI Status](https://ai-blueprint.dev/docs/cli/status/), and

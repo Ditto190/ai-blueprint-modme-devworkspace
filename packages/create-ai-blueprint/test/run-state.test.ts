@@ -60,8 +60,13 @@ test("parseRunState treats other commands as manual mode", () => {
 });
 
 test("parseRunState rejects malformed or incomplete state", () => {
-  assert.equal(parseRunState("not-json").state, "malformed");
-  assert.equal(parseRunState("{}").state, "malformed");
+  const invalidJson = parseRunState("not-json");
+  const invalidSchema = parseRunState("{}");
+
+  assert.equal(invalidJson.state, "malformed");
+  assert.match(invalidJson.warnings[0]?.message || "", /Run \/doctor/);
+  assert.equal(invalidSchema.state, "malformed");
+  assert.match(invalidSchema.warnings[0]?.message || "", /Run \/doctor/);
   assert.equal(
     parseRunState(JSON.stringify({
       schemaVersion: 1,

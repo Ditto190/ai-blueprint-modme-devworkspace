@@ -100,7 +100,7 @@ function parseRunState(value: string, now: Date = new Date()): RunStateSummary {
   } catch {
     return malformedSummary({
       code: "malformed_run_state",
-      message: "Dashboard run state is not valid JSON."
+      message: "Dashboard run state is not valid JSON. Run /doctor to inspect and reset blueprint/.state/run.json."
     });
   }
 
@@ -222,7 +222,7 @@ function parseFeature(value: unknown): RunFeature | null {
 function malformedRunState(): RunStateSummary {
   return malformedSummary({
     code: "malformed_run_state",
-    message: "Dashboard run state does not match schema version 1."
+    message: "Dashboard run state does not match schema version 1. Run /doctor to inspect and reset blueprint/.state/run.json."
   });
 }
 

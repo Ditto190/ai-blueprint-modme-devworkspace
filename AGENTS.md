@@ -87,7 +87,7 @@ Core skills:
 
 - `onboard` - tune commands, standards, visibility, ignore rules, and tool adapters after overlaying the Blueprint onto a freshly scaffolded or early project
 - `discovery` - optional deep, multi-turn planning conversation that drafts the two user-owned plans only after review and approval; direct plan writing remains fully supported
-- `doctor` - read-only Blueprint health check for setup, adapters, plans, overview freshness, and workflow drift
+- `doctor` - Blueprint health check for setup, adapters, plans, overview freshness, dashboard state, and workflow drift; it may offer to reset only malformed generated dashboard state after approval
 - `adopt` - bootstrap the Blueprint into an existing brownfield app with shipped features
 - `overview` - distill the two planning docs into
   `blueprint/context/project-overview.md`, then offer a reviewed initial planning
@@ -145,18 +145,31 @@ Commands with meaningful progress or a durable handoff should write it when the
 state directory exists: `onboard`, `adopt`, `discovery`, `overview`, `feature`,
 `fix`, `rollback`, `implement`, `debug`, `check`, `audit`, `tests`,
 `browser-tests`, `ci`, `prototype`, `autopilot`, `continuous`, `complete`, and
-`release`. Short
-read-only orientation commands such as `brief`, `try`, `status`, and `doctor`
-do not need activity state.
+`release`. Short orientation commands such as `brief`, `try`, `status`, and
+`doctor` do not need activity state. Doctor's optional approved reset removes
+malformed activity instead of recording another run.
 
 Writing the initial activity record is the first action of a tracked command,
 before project inspection, preflight, or other tool calls. This one generated
-state write does not authorize product changes or bypass any safety check. Set
-status to `running`, use the command name and a truthful initial summary, then
-replace the record at meaningful milestones. On a preflight stop or another
-blocker, set it to `blocked` with the exact recovery command. Leave the final
-state in place for the next session; the next tracked command replaces it. Use
-this schema:
+state write does not authorize product changes or bypass any safety check.
+
+Never create or edit `run.json` directly. From the project root, use the first
+helper that exists:
+
+```text
+node .agents/skills/doctor/scripts/run-state.mjs <action> <options>
+node .claude/skills/doctor/scripts/run-state.mjs <action> <options>
+```
+
+Start with `start --command <skill> --summary <truthful-summary> --boundary
+<boundary>`. Use `update` at meaningful milestones or for a blocker, with
+`--status blocked` and `--resume <exact-command>` when recovery is needed. End
+with `finish --status ready|completed --summary <truthful-summary>`. The helper
+validates every field before atomically replacing the generated file. If it is
+missing or fails, report the activity warning and continue the workflow without
+writing a manual fallback.
+
+The helper writes this schema:
 
 ```json
 {

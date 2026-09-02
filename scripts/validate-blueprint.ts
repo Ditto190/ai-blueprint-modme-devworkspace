@@ -288,6 +288,26 @@ async function validateDashboardActivityContract(skills: readonly string[]): Pro
     throw new Error("Could not find the dashboard activity command inventory in AGENTS.md");
   }
 
+  for (const required of [
+    "Never create or edit `run.json` directly.",
+    ".agents/skills/doctor/scripts/run-state.mjs",
+    ".claude/skills/doctor/scripts/run-state.mjs"
+  ]) {
+    if (!agents.includes(required)) {
+      throw new Error(`Dashboard activity contract is missing: ${required}`);
+    }
+  }
+
+  for (const relativePath of [
+    ".agents/skills/doctor/scripts/run-state.mjs",
+    ".claude/skills/doctor/scripts/run-state.mjs"
+  ]) {
+    await requirePath(
+      path.join(repoRoot, ...relativePath.split("/")),
+      relativePath
+    );
+  }
+
   const trackedSkills = [...trackedBlock[1].matchAll(/`([a-z0-9-]+)`/g)].map(
     (match) => match[1]
   );

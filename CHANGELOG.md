@@ -3,6 +3,21 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.5.1] - 2026-09-02
+
+### Fixed
+
+- Added a packaged dashboard activity helper that validates state before an
+  atomic replacement, preventing invalid command updates from corrupting
+  `blueprint/.state/run.json`.
+- Made Status route malformed activity to Doctor, where users can approve a
+  narrow reset of only the generated dashboard record.
+
+### Changed
+
+- Clarified that Overview runs initially and after material plan changes, not
+  before or after every feature.
+
 ## [1.5.0] - 2026-09-02
 
 ### Changed
