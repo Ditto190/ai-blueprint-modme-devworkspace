@@ -1,95 +1,213 @@
-# Context Efficiency Benchmark
+# AI Blueprint 1.5 Feature Context Optimization
 
-AI Blueprint was retested on 2026-09-01 after a user reported a 33.8k-token
-`project-overview.md` and a fresh `/feature` session reaching 162.9k tokens. The
-test focused on the largest actionable cause: an overview that had become a
-detailed plan copy instead of a compact consolidation.
+AI Blueprint 1.5 changes how `/feature` gathers and uses project context. The
+goal was to reduce repeated input without producing weaker specifications or
+letting the workflow guess material product and security decisions.
 
-![Compact overview startup context](../assets/context-startup-tokens.svg)
-
-![Compact overview Feature planning](../assets/context-feature-loop-tokens.svg)
+In two paired internal tests, Feature input fell by 30.2% on an ordinary task
+and 55.6% on a complex task. A third security test intentionally used more
+tokens because the optimized workflow asked for missing decisions and stopped
+at an undefined trust boundary instead of inventing a contract.
 
 ## Results
 
-| Measurement | Before correction | Compact overview | Savings |
+| Fixture | Published 1.4.1 | Optimized 1.5 | Observed change |
 | --- | ---: | ---: | ---: |
-| Overview file size | 94,441 bytes | 4,087 bytes | 90,354 bytes (95.7%) |
-| Fresh-session startup input | 79,479 | 35,688 | 43,791 (55.1%) |
-| Feature cumulative input | 654,550 | 416,302 | 238,248 (36.4%) |
-| Final Feature context | 89,352 | 57,034 | 32,318 (36.2%) |
-| CLI estimated list cost | $0.9982 | $0.6940 | $0.3042 (30.5%) |
-| Feature runtime | 122 seconds | 124 seconds | effectively unchanged |
+| Ordinary task tracker | 266,680 input tokens | 186,016 input tokens | 30.2% less |
+| Complex reporting feature | 512,625 input tokens | 227,778 input tokens | 55.6% less |
+| Security-sensitive token feature | 295,824 in one turn | 652,928 across three turns | 120.7% more |
 
-The corrected Feature run produced almost the same amount of model output as
-the original run: 8,624 output tokens versus 8,594. The runtime was also nearly
-identical. This makes the context reduction more useful than the earlier
-lazy-loading experiment, which mostly moved context between categories and
-reduced cumulative Feature input by only 1%.
+![Paired Feature input results](../assets/context-on-demand-feature-input.svg)
 
-## What changed
+The ordinary and complex comparisons used the same Codex client, fixture, and
+prompt within each pair. The published 1.4.1 workflow was compared with the
+final 1.5 candidate. A blind review evaluated the resulting specifications, not
+only the token totals.
 
-- `/overview` must keep the generated `project-overview.md` below 20,000 bytes.
-  It measures the file before handoff and compacts repeated narrative while
-  preserving contracts, build order, and constraints.
-- `/doctor` reports the overview byte size and flags files at or above 20,000
-  bytes.
-- `/feature` checks the size before continuing. It stops on an oversized
-  overview and directs the user to `/overview`.
-- Feature reuses the overview already loaded by Claude Code instead of reading
-  the same file again with a tool.
+These are internal release observations, not a reproducible public benchmark.
+The aggregate results were retained, but the raw session files, fixture
+snapshots, and exact model identifier were removed with the disposable testing
+sandboxes after release.
 
-In published 1.4.1, Claude Code starts with `AGENTS.md`, the compact overview,
-and the active spec. The current workflow removes the latter two startup imports
-and lets each explicit skill load them when required. This page does not assign
-a new savings percentage to that later change because its raw paired run
-artifacts are not checked in as a reproducible benchmark.
+## What we changed
 
-## Method
+The working name for the candidate was Lean. It shipped as the default 1.5
+workflow rather than a separate mode.
 
-- Claude Code 2.1.252
-- `claude-opus-5`, high effort, 1,000,000-token context window
-- Chrome disabled and an empty strict MCP configuration
-- Same machine and global Claude configuration for both Feature runs
-- Same minimal Node task-tracker app, plans, and Claude adapter
-- No dev server or browser check
-- Fresh sessions for startup and `/feature 1`
-- Before fixture: 94,441-byte synthetic overview shaped around the same project,
-  with the reporter's legacy eager imports
-- Corrected fixture: `/overview` generated a 4,087-byte overview from the same
-  project and build plans, with the current reduced import layout
+### Context loads on demand
 
-Input totals are the CLI's reported `input_tokens`,
-`cache_creation_input_tokens`, and `cache_read_input_tokens`. Final context is
-the same sum from the last Feature model request. CLI estimated list cost is not
-a prediction of Claude subscription quota use.
+Claude Code now imports only `AGENTS.md` at startup. Feature loads the relevant
+overview passages, plans, repository paths, standards, and verification evidence
+when it needs them. Every Blueprint skill is also told to reuse relevant context
+that is already present in the session.
 
-## Literal sandbox confirmation
+Claude skills are explicit-only, so they run when the user invokes them instead
+of being selected automatically by model invocation.
 
-The corrected workflow was also rerun end to end through the repository's actual
-`npm run sandbox` command, using the package tarball packed from the working
-branch. The Claude-only sandbox passed its app tests and build, then fresh Opus
-sessions ran `/overview` and `/feature 1`.
+### Feature uses targeted reads
 
-- Overview generated a 3,524-byte project overview.
-- Feature checked the size with `wc -c` and did not read the already loaded
-  overview with a tool.
-- Cumulative Feature input was 424,261 tokens and final context was 58,384.
-- Feature produced 8,933 output tokens in 128 seconds.
+Feature no longer begins with a broad read of every planning and context file.
+It starts with the selected build-plan item, then reads the smallest useful
+project evidence around that item.
 
-The cumulative and final-context totals were within 2.4% of the corrected
-fixture shown in the charts. This second run confirms that the measured result
-holds through the public sandbox path, not only in the isolated benchmark
-directory.
+Context gathering is limited to four tool rounds. Searches and reads are grouped
+when they are independent, and the workflow stops gathering once it has enough
+evidence to write a buildable specification.
+
+### Feature writes the spec once
+
+The workflow drafts and critiques the specification in context before writing
+`blueprint/context/current-feature.md`. It performs one final write instead of
+repeatedly writing, rereading, and revising the file during planning.
+
+The final critique checks:
+
+- Data types, encodings, identifiers, defaults, uniqueness, and lifecycle
+- Authentication trust, authorization, and tenant scoping
+- Atomicity, idempotency, error behavior, and redaction
+- Safe rendering and accessible validation behavior
+- Runtime reachability and required build prerequisites
+- Exact verification evidence and observable done-when criteria
+
+### Material decisions still stop the workflow
+
+Feature may choose a reversible internal detail when it creates no public or
+compatibility contract. It does not invent material public behavior, security
+rules, persisted-data formats, or interoperability contracts.
+
+When one of those decisions is missing, Feature asks the user and leaves the
+active specification untouched until the answer is known.
+
+### The handoff is more deterministic
+
+New Feature specs record the exact configured work branch. Fix and Rollback
+specs do the same. Implement retains a deterministic prefix plus kebab-case
+fallback for specs written by older Blueprint versions.
+
+Implement then treats the approved spec as its work packet, uses focused checks
+while building, and normally runs the complete Verify command once after all
+feature-level steps. Required logic-test and UI-evidence settings remain hard
+gates.
+
+## Ordinary task result
+
+The ordinary fixture used a small task tracker feature.
+
+| Workflow | Feature input | Review outcome |
+| --- | ---: | --- |
+| Published 1.4.1 | 266,680 | Complete regular-workflow spec |
+| Final 1.5 candidate | 186,016 | Preferred by blind review |
+
+The optimized workflow used 80,664 fewer input tokens, a 30.2% reduction.
+
+Blind review of an earlier candidate found one real problem: stale validation
+state was not cleared explicitly enough. That issue was corrected in the final
+candidate. The final spec covered text content, UUID and ISO boundaries,
+accessible error association and clearing, asset routes, and the intended
+verification cadence.
+
+## Complex task result
+
+The complex fixture used a reporting feature with deliberately incomplete
+product contracts.
+
+| Workflow | Feature input | Review outcome |
+| --- | ---: | --- |
+| Published 1.4.1 | 512,625 | Completed the spec by inventing missing contracts |
+| Final 1.5 candidate | 227,778 | Stopped for the required product decisions |
+
+The optimized workflow used 284,847 fewer input tokens, a 55.6% reduction.
+
+It identified missing date, filter, and role contracts plus missing build
+prerequisites. The published workflow filled those gaps itself and wrote a full
+specification. Blind review found no actionable issue in the optimized result,
+but found two P1 contract inventions and one P2 serialization ambiguity in the
+regular result.
+
+This test mattered because a shorter specification can look efficient while
+quietly transferring product decisions to the agent. The optimized workflow
+used less input and made the safer planning decision.
+
+## Security counterexample
+
+The security fixture tested the opposite case: a workflow could appear more
+efficient by guessing.
+
+![Security boundary tradeoff](../assets/context-security-tradeoff.svg)
+
+| Workflow | Input | Outcome |
+| --- | ---: | --- |
+| Published 1.4.1 | 295,824 in one turn | Wrote a spec with invented security contracts |
+| Final 1.5 candidate | 652,928 across three turns | Refused to invent the remaining trust boundary |
+
+The optimized workflow first asked how the secret should be encoded. It then
+asked for the HTTP contract. After retaining both answers in the same session,
+it stopped because the trusted request actor was still undefined.
+
+The regular workflow used fewer tokens by completing the spec in one turn, but
+it invented the missing security behavior. Blind review judged the optimized
+result safer.
+
+The optimized run used 120.7% more cumulative input. This is not an efficiency
+win, and the totals are not quality-equivalent because one run is an unsafe
+completion while the other contains two decision rounds and a safe stop. It
+defines the optimization boundary: token savings never outrank a required
+security decision.
+
+## What review changed before release
+
+Independent review caught several problems during the optimization process:
+
+1. Required logic-test and UI-evidence gates had become optional in the shorter
+   Implement wording.
+2. Branch recording was not exact enough for every work type.
+3. Early public claims treated internal observations like a reproducible
+   benchmark.
+4. Upgrade instructions named only two of four possible stale Claude imports.
+5. Some documentation still claimed the overview loaded every session.
+
+The required gates were restored, branch recording became exact, unsupported
+public benchmark claims were removed, all four stale imports were documented,
+and the outdated context wording was corrected. A final independent review
+reported no actionable P0 through P3 findings.
+
+## Release validation
+
+The final workflow was tested beyond the paired Feature measurements:
+
+- Codex completed Feature and Implement on the ordinary sandbox. An independent
+  rerun passed six tests and the application build.
+- Claude Code 2.1.258 completed Feature and Implement on an actual packed
+  Claude-only install using `claude-fable-5-1`. An independent rerun passed nine
+  tests and the application build.
+- Default, individual, combined, all, and legacy `both` adapter installations
+  passed the packed-package test matrix.
+- Dedicated Copilot and OpenCode package sandboxes verified distinct manifests,
+  one compatible 23-skill tree, and byte-for-byte Feature parity. Live Copilot
+  and OpenCode clients were not installed.
+- A disposable 1.4.0 Claude project updated without conflicts, preserved
+  project-owned plans and context, reported its stale imports, and instructed
+  the user to restart Claude Code.
+- The published 1.4.1 updater restored the previous managed workflow, removed
+  the candidate-only rollback reference, preserved `CLAUDE.md`, and created a
+  backup.
+- The final source gate passed 23 skills, 32 adapter files, 69 of 74 rank-one
+  routing cases, 11 sandbox tests, 86 installer tests, and the complete packed
+  adapter matrix.
 
 ## Limits
 
-This is one controlled fixture, not a universal savings guarantee. The
-reporter's 162.9k post-Feature context was not reproduced, so the benchmark does
-not claim every project will fall to 57k. Tool output, global skills, plugins,
-model behavior, project size, and the work itself all affect usage.
+- The paired 1.5 session artifacts and exact model identifier are not checked
+  into the repository, so the new percentages are internal observations.
+- The ordinary and complex results come from two fixtures, not every kind of
+  project or Feature request.
+- The security comparison uses different turn counts and different outcomes.
+  It demonstrates the cost of a safe stop, not equivalent-output efficiency.
+- Blind review adds useful separation but does not prove complete reviewer
+  independence.
+- Live behavior was tested in Codex and Claude Code. Copilot and OpenCode were
+  validated at the packaged-adapter level only.
 
-The before fixture intentionally matched the oversized overview and legacy
-imports that triggered the report. The corrected fixture includes both the
-compact-overview fix and the reduced Claude imports already introduced in 1.4.
-The result therefore represents the practical upgrade path for that report, not
-an isolated measurement of only one line of instructions.
+Future comparisons should retain sanitized fixtures, exact prompts, client and
+model versions, raw usage exports, calculation inputs, and review receipts
+before their results are presented as a reproducible benchmark.
