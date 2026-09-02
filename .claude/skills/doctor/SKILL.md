@@ -1,9 +1,12 @@
 ---
 name: doctor
 description: Run a read-only Blueprint health and context check covering setup, adapters, commands, visibility, plans, overview freshness, configuration, and workflow drift. Use for /doctor, installation checks, context overhead, setup problems, or when something feels wrong.
+disable-model-invocation: true
 ---
 
 # doctor - Blueprint health check
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 Where this sits in the workflow:
 
@@ -82,13 +85,14 @@ Gather these, then summarize. Do not dump file contents.
    - If `CLAUDE.md` exists and still starts with `# Project Name`, flag that
      `/onboard` probably has not finished.
    - When Claude Code is installed, report its startup-context shape. Confirm
-     `CLAUDE.md` imports `AGENTS.md`, `project-overview.md`, and
-     `current-feature.md`. If it directly imports `coding-standards.md` or
-     `ai-interaction.md`, warn that this is the legacy higher-context layout and
-     give the exact two import lines to remove. Count the imported files and
-     their total byte size, plus the total byte size of project skill
-     descriptions. Label these as file-size diagnostics, not token counts.
-     Recommend Claude Code's `/context all` for the live token breakdown.
+     `CLAUDE.md` imports `AGENTS.md` and lets skills load the overview, active
+     spec, coding standards, and interaction guide on demand. If it directly
+     imports any of those four context files, warn that this is the legacy
+     always-loaded layout and give the exact direct import lines to remove.
+     Count the imported files and their total byte size, plus the total byte
+     size of project skill descriptions. Label these as file-size diagnostics,
+     not token counts. Recommend Claude Code's `/context all` for the live token
+     breakdown.
 3. **Commands and project setup**
    - Check whether root `README.md` is still the copied Blueprint workflow doc
      by looking for `# AI Coding Blueprint` or opening text that describes the
@@ -190,10 +194,10 @@ Choose the repair order in this priority:
 - No git repo -> initialize git before using the build loop.
 - No tool adapter -> restore `.agents/skills/` or `.claude/skills/` for the
   selected tool. OpenCode can use either compatible tree.
-- Claude uses the legacy direct context imports -> remove the exact
-  `@blueprint/context/coding-standards.md` and
-  `@blueprint/context/ai-interaction.md` lines from `CLAUDE.md`, then rerun
-  `/doctor`. The files stay in the project and workflow skills still read them.
+- Claude uses legacy direct context imports -> remove the exact direct imports
+  for `project-overview.md`, `current-feature.md`, `coding-standards.md`, and
+  `ai-interaction.md` that are present in `CLAUDE.md`, then rerun `/doctor`. The
+  files stay in the project and workflow skills still read them on demand.
 - Onboarding incomplete -> run `/onboard`.
 - Root README is still the Blueprint workflow doc -> run `/onboard` to replace
   it with a project README before publishing.

@@ -113,11 +113,19 @@ async function main(): Promise<void> {
     const codexFile = path.join(codexSkillsRoot, ...relativePath.split("/"));
     const claudeFile = path.join(claudeSkillsRoot, ...relativePath.split("/"));
     const [codexContent, claudeContent] = await Promise.all([
-      fs.readFile(codexFile),
-      fs.readFile(claudeFile)
+      fs.readFile(codexFile, "utf8"),
+      fs.readFile(claudeFile, "utf8")
     ]);
 
-    if (!codexContent.equals(claudeContent)) {
+    const comparableClaudeContent = relativePath.endsWith("SKILL.md")
+      ? claudeContent.replace("disable-model-invocation: true\n", "")
+      : claudeContent;
+
+    if (relativePath.endsWith("SKILL.md") && !claudeContent.includes("disable-model-invocation: true")) {
+      throw new Error(`Claude skill is not explicit-only: ${relativePath}`);
+    }
+
+    if (codexContent !== comparableClaudeContent) {
       throw new Error(`Adapter files differ: ${relativePath}`);
     }
   }
@@ -231,6 +239,10 @@ async function validateSkillMetadata(skills: readonly string[]): Promise<void> {
       throw new Error(`Skill description exceeds the context budget: ${skill}`);
     }
 
+    if (!content.includes("**Context reuse:** Reuse any required file already loaded")) {
+      throw new Error(`Skill does not enforce loaded context reuse: ${skill}`);
+    }
+
     totalDescriptionCharacters += description.length;
   }
 
@@ -326,7 +338,8 @@ async function validateVerificationContract(): Promise<void> {
         "Create the initial planning baseline commit now? (Recommended)",
         "chore: establish Blueprint project baseline",
         "Do not offer this baseline on later overview reruns once `HEAD` already contains",
-        "overview must remain below 20,000 bytes"
+        "overview must remain below 20,000 bytes",
+        "Never create additional generated context files"
       ]
     ],
     [
@@ -359,11 +372,31 @@ async function validateVerificationContract(): Promise<void> {
       [
         "declares a `Verify` command, run that exact",
         "fallback build and tests",
+        "verification.logicTests: required",
+        "verification.uiEvidence:",
+        "Use the exact `**Branch:**` value"
+      ]
+    ],
+    [
+      ".agents/skills/implement/reference/rollback-implementation.md",
+      [
         "both values match `^[0-9a-f]{40}$`",
         "verify it has exactly one parent",
         "Stop on a merge target",
         "resolved parent exactly equals `Target parent`",
         "Use only the resolved full SHA values"
+      ]
+    ],
+    [
+      ".agents/skills/feature/SKILL.md",
+      [
+        "Build one authoritative feature packet",
+        "Do not read the whole overview by default",
+        "Do not invent presets, defaults, limits, permissions",
+        "Write the final spec once",
+        "Record `**Branch:**` with the",
+        "Do not bury repair inside this feature",
+        "Never implement from this skill"
       ]
     ],
     [
@@ -418,7 +451,9 @@ async function validateVerificationContract(): Promise<void> {
       ".agents/skills/doctor/SKILL.md",
       [
         "missing `Verify` command or GitHub workflow is informational",
-        "At or above 20,000 bytes, call it oversized"
+        "At or above 20,000 bytes, call it oversized",
+        "lets skills load the overview, active",
+        "Claude uses legacy direct context imports"
       ]
     ],
     [
@@ -517,11 +552,7 @@ function indentMarkdownBlock(content: string): string {
 async function validateClaudeImports(): Promise<number> {
   const content = await fs.readFile(path.join(repoRoot, "CLAUDE.md"), "utf8");
   const imports = [...content.matchAll(/^@(.+)$/gm)].map((match) => match[1].trim());
-  const expectedImports = [
-    "AGENTS.md",
-    "blueprint/context/project-overview.md",
-    "blueprint/context/current-feature.md"
-  ];
+  const expectedImports = ["AGENTS.md"];
 
   assertEqualLists(imports, expectedImports, "Claude core imports");
 

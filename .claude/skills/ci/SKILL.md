@@ -1,9 +1,12 @@
 ---
 name: ci
 description: Set up or normalize one project Verify command and matching GitHub Actions checks while preserving existing CI. Use for /ci, GitHub Actions setup, pull-request checks, automatic checks, or aligning typecheck, test, and build verification.
+disable-model-invocation: true
 ---
 
 # ci - set up automatic GitHub checks
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

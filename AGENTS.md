@@ -26,6 +26,9 @@ The workflow is defined by the local skills and context files below.
 - `blueprint/context/ai-interaction.md` - read when running the Blueprint workflow
 - `blueprint/context/current-feature.md` - the one feature, fix, or rollback being built right now
 
+Reuse relevant context already loaded in the session. Claude Code imports only
+this file; its Blueprint skills load the other files on demand.
+
 ## Project configuration
 
 `blueprint/config.json` is the user-owned, machine-readable workflow policy for

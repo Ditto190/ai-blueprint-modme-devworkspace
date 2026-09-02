@@ -1,9 +1,12 @@
 ---
 name: release
 description: Prepare local Render or Vercel deployment configuration and verify build, start, output, environment, and health-check readiness without deploying. Use for /release, Render setup, Vercel setup, deploy readiness, render.yaml, or vercel.json.
+disable-model-invocation: true
 ---
 
 # release - deployment readiness for Render and Vercel
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

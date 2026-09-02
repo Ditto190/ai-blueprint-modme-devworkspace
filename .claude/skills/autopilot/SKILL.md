@@ -1,9 +1,12 @@
 ---
 name: autopilot
 description: Run one explicit bounded Blueprint spec and implementation pass through configured quality gates, then stop before completion or external actions. Use only when the user directly invokes /autopilot, $autopilot, or asks for Autopilot.
+disable-model-invocation: true
 ---
 
 # autopilot - optional Blueprint loop
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

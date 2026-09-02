@@ -5,6 +5,8 @@ description: Build every remaining planned feature serially in explicit Continuo
 
 # continuous - complete the build plan one local feature at a time
 
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
+
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
 contract in `AGENTS.md`.

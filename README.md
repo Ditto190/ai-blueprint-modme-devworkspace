@@ -226,19 +226,26 @@ for the complete rules.
 ## Context efficiency
 
 Blueprint keeps durable project context available without loading every workflow
-rule into every Claude Code turn. New installations auto-import only the core
-project instructions, compact overview, and active spec. Workflow skills load
-coding standards and interaction rules when they are needed, and implementation
-uses one feature-level review packet by default.
+rule into every Claude Code turn. New installations import only `AGENTS.md` at
+Claude startup. Each explicit workflow skill loads the compact overview, active
+spec, coding standards, or interaction guide only when that command needs it.
+Feature uses targeted repository reads and one final spec write. Implement uses
+the approved spec as its packet and runs the full Verify command once after the
+steps unless an earlier gate is necessary.
 
 `/overview` keeps generated project context below 20,000 bytes, while `/doctor`
-flags oversized legacy overviews. A controlled Opus 5 test measured 55% less
-startup context and about 36% less Feature context after compacting the overview.
+flags oversized legacy overviews. The existing controlled Opus 5 benchmark
+measures the compact-overview improvement from 1.4.1. It does not assign a new
+percentage to on-demand loading without checked-in raw paired artifacts.
 
 Existing projects keep their own `CLAUDE.md` and configuration during updates.
-Run `/doctor` afterward, then follow the [updating guide](https://ai-blueprint.dev/docs/updating-blueprint/)
-for any recommended cleanup. Read the [benchmark](benchmarks/context-efficiency.md)
-for the full method, charts, results, and limits.
+The updater names any obsolete direct context imports to remove. A 1.4.1 project
+normally has `project-overview.md` and `current-feature.md`; older layouts may
+also import `coding-standards.md` and `ai-interaction.md`. Restart Claude Code
+after that cleanup, then run `/doctor`. Follow the
+[updating guide](https://ai-blueprint.dev/docs/updating-blueprint/) and read the
+[benchmark](benchmarks/context-efficiency.md) for the full method, quality
+review, results, and limits.
 
 ## Automatic GitHub checks
 

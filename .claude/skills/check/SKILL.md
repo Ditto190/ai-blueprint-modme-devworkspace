@@ -1,9 +1,12 @@
 ---
 name: check
 description: Check the running app, CLI, or server against the active spec's done-when criteria and capture observable pass or fail evidence without editing code. Use for /check, proving behavior before completion, or verifying the real result beyond builds and tests.
+disable-model-invocation: true
 ---
 
 # check - prove it works against the spec, with evidence
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

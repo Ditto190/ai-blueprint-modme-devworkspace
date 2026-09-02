@@ -1,9 +1,12 @@
 ---
 name: status
 description: Show read-only build-plan progress, active steps, git state, drift warnings, and the next action. Use for /status, what is in progress, what comes next, or resuming after a break or context clear.
+disable-model-invocation: true
 ---
 
 # status - where the project stands right now
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 Where this sits in the workflow:
 

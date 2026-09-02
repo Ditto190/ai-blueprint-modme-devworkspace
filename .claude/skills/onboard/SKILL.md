@@ -1,9 +1,12 @@
 ---
 name: onboard
 description: Onboard a fresh or early scaffold after Blueprint is overlaid by tuning commands, standards, adapters, visibility, and context loading. Use for /onboard, fresh installation setup, or what to do after installing Blueprint. Use adopt for an established app.
+disable-model-invocation: true
 ---
 
 # onboard - finish the Blueprint overlay setup
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
@@ -100,13 +103,11 @@ If no test command exists, say so explicitly. Do not claim tests are a gate unti
 a real test command is configured.
 
 If `CLAUDE.md` exists and still has the placeholder `# Project Name`, replace it
-with the detected project name. Keep `@AGENTS.md`,
-`@blueprint/context/project-overview.md`, and
-`@blueprint/context/current-feature.md`. Remove the legacy direct imports of
-`coding-standards.md` and `ai-interaction.md`; project instructions and workflow
-skills read those files only when relevant. Preserve any unrelated user imports.
-Do not move detailed app context into `CLAUDE.md`; that belongs in `AGENTS.md`
-and the generated project overview.
+with the detected project name. Keep `@AGENTS.md`. Remove direct imports of
+`project-overview.md`, `current-feature.md`, `coding-standards.md`, and
+`ai-interaction.md`; workflow skills read those files only when relevant.
+Preserve unrelated user imports. Do not move detailed app context into
+`CLAUDE.md`; that belongs in `AGENTS.md` and the generated project overview.
 
 ## Step 3 - tune coding standards
 

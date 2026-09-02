@@ -1,9 +1,12 @@
 ---
 name: brief
 description: Brief an upcoming build-plan feature without writing files. Explain scope, dependencies, affected areas, size, and likely splits for the next item or a named item. Use for /brief, feature previews, what comes next, or build-order decisions before /feature.
+disable-model-invocation: true
 ---
 
 # brief - understand a feature before you spec it
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 Where this sits in the workflow:
 

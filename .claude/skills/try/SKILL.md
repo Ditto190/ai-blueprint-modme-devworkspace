@@ -1,9 +1,12 @@
 ---
 name: try
 description: Generate a read-only manual try guide for current or recent work with commands, locations, actions, expected results, and failure signs. Use for /try, how to test manually, where to click, how to see a change, or a human review path.
+disable-model-invocation: true
 ---
 
 # try - manual review guide
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 Where this sits in the workflow:
 

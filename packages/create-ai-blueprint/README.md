@@ -171,18 +171,22 @@ explicit `/continuous` or `$continuous` request starts the multi-feature loop.
 
 ## Context efficiency
 
-New installations keep Claude Code's automatic project imports focused on the
-core instructions, compact overview, and active spec. Coding standards and
-interaction rules load when the workflow needs them. New project configuration
-also defaults to one feature-level review packet with step checkpoint commits
-disabled.
+New installations make Claude Code import only `AGENTS.md` at startup. Explicit
+workflow skills load the compact overview, active spec, coding standards, and
+interaction guide on demand. Feature uses targeted repository reads and writes
+one reviewed spec. Implement reuses that spec and normally runs the full Verify
+command once after all steps. New project configuration also defaults to one
+feature-level review packet with step checkpoint commits disabled.
 
 The updater preserves `CLAUDE.md` and `blueprint/config.json`, so existing
 projects do not receive those user-owned changes automatically. Run `/doctor` to
-identify the legacy direct imports and an oversized overview, remove the
-coding-standards and AI-interaction import lines it reports, rerun `/overview`
-when needed, and choose the lower-context defaults in `blueprint/config.json` if
-they fit the project:
+identify an oversized overview. The updater directly reports the obsolete
+`project-overview.md` and `current-feature.md` import lines when they are present
+in `CLAUDE.md`. Older layouts may also contain direct `coding-standards.md` and
+`ai-interaction.md` imports, which the updater reports too. Remove every reported
+line, restart Claude Code in the project, rerun `/overview` when needed, and
+choose the lower-context defaults in `blueprint/config.json` if they fit the
+project:
 
 ```json
 "workflow": {
@@ -202,8 +206,11 @@ To match the previous workflow exactly, use:
 }
 ```
 
-Context savings from the compact overview, narrower Claude imports, and shorter
-skill descriptions still apply.
+Context savings from the compact overview, on-demand project context, and
+shorter skill descriptions still apply. Feature may pause when a missing choice
+would define public behavior, security, persisted data, or interoperability. It
+does not pause for reversible internal details with no current compatibility
+surface.
 
 Onboarding offers **Efficient**, **Guided**, and **Custom** implementation styles.
 They write only the existing `stepReview` and `checkpointCommits` values, so no

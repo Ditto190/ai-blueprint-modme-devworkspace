@@ -5,6 +5,8 @@ description: Brief an upcoming build-plan feature without writing files. Explain
 
 # brief - understand a feature before you spec it
 
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
+
 Where this sits in the workflow:
 
     build-plan + overview  ->  [brief]  ->  /feature  ->  /implement

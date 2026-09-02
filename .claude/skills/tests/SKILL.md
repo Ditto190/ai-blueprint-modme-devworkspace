@@ -1,9 +1,12 @@
 ---
 name: tests
 description: Add or normalize stack-native unit testing, reuse or install the appropriate runner, add one example test, document commands, and verify the setup. Use for /tests, adding unit tests, configuring a test runner, or enabling the Blueprint logic-test gate.
+disable-model-invocation: true
 ---
 
 # tests - add unit testing to the project
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

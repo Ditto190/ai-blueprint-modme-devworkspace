@@ -1,9 +1,12 @@
 ---
 name: discovery
 description: Run an optional guided product-discovery interview and draft project-plan.md and build-plan.md only after the user is ready. Use for /discovery, guided planning, thinking through a new product, or deepening plans. Never require it before /overview.
+disable-model-invocation: true
 ---
 
 # discovery - develop the plans through a deep conversation
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

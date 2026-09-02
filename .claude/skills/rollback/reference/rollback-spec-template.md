@@ -2,6 +2,7 @@
 
 **Type:** Rollback
 **Status:** not started
+**Branch:** `rollback/<name>`
 **Target feature:** NN - Name
 **Target archive:** `blueprint/history/features/NN-name.md`
 **Target commit:** `<full 40-character commit SHA>`

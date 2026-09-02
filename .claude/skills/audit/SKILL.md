@@ -1,9 +1,12 @@
 ---
 name: audit
 description: Audit current changes, a path, or the full project for quality, security, performance, or test problems and record durable findings. Independent mode prepares or completes a fresh-reviewer checkpoint handoff. Use for /audit, independent review, security review, code quality review, dead code, duplication, or standards drift.
+disable-model-invocation: true
 ---
 
 # audit - review code quality against the project standards
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
@@ -173,7 +176,7 @@ pass reviews the complete new delta, not only the old findings.
 
 ## Step 1 - gather context
 
-Read:
+Resolve this required context:
 
 - `AGENTS.md`
 - `blueprint/config.json`
@@ -186,6 +189,12 @@ Read:
 - `blueprint/build-plan.md`, when feature order matters
 - git branch and working tree status
 - relevant source files, tests, and configs for the chosen scope
+
+For `current`, `changed`, and path scopes, begin with the diff or named area and
+follow only the callers, dependencies, tests, and contracts needed to verify a
+reachable finding. Do not survey unrelated directories. For `full`, preserve the
+declared exclusions and inspect by bounded area rather than dumping the project
+into one response.
 
 For `current`, resolve the comparison base without network access:
 

@@ -1,9 +1,12 @@
 ---
 name: debug
 description: Diagnose a failing test, build, crash, regression, or unexpected behavior without editing source. Reproduce the symptom, test hypotheses, identify the supported root cause, and hand off a repair. Use for /debug, root-cause investigation, or questions about why something is broken.
+disable-model-invocation: true
 ---
 
 # debug - find the cause before changing the code
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

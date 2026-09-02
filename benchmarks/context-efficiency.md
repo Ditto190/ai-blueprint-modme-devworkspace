@@ -38,11 +38,11 @@ reduced cumulative Feature input by only 1%.
 - Feature reuses the overview already loaded by Claude Code instead of reading
   the same file again with a tool.
 
-Claude Code still starts with `AGENTS.md`, the compact overview, and the active
-spec. This preserves normal project awareness and commands such as "continue"
-while removing the large-file failure mode. Coding standards and interaction
-rules still load only when relevant, and feature-level implementation review
-remains the default.
+In published 1.4.1, Claude Code starts with `AGENTS.md`, the compact overview,
+and the active spec. The current workflow removes the latter two startup imports
+and lets each explicit skill load them when required. This page does not assign
+a new savings percentage to that later change because its raw paired run
+artifacts are not checked in as a reproducible benchmark.
 
 ## Method
 

@@ -1,9 +1,12 @@
 ---
 name: complete
 description: Complete a finished feature, fix, or rollback by running final gates, archiving its spec, updating plans, creating the work commit, and requesting approval before squash merge. Use for /complete or requests to finish, wrap up, merge, or close the current work item.
+disable-model-invocation: true
 ---
 
 # complete - log the finished work, make the work commit, and merge
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

@@ -1,9 +1,12 @@
 ---
 name: overview
 description: Validate and normalize project-plan.md and build-plan.md, then generate the durable project-overview.md used by agents. Use for /overview, plan cleanup, generating the first overview, or refreshing context after either plan changes.
+disable-model-invocation: true
 ---
 
 # overview - turn the two plans into the AI-facing source of truth
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
@@ -12,9 +15,9 @@ contract in `AGENTS.md`.
 Where this sits in the workflow:
 
     project-plan.md  +  build-plan.md  ->  [this skill]  ->  project-overview.md  ->  /feature  ->  build
-    (what & why,         (high-level                          (the one doc the         (one spec
-     written by you)      feature list,                        AI reads every           at a time)
-                          written by you)                      session)
+    (what & why,         (high-level                          (compact product         (one spec
+     written by you)      feature list,                        context loaded            at a time)
+                          written by you)                      on demand)
 
 You provide two files: `blueprint/project-plan.md` (what & why) and
 `blueprint/build-plan.md` (the ordered feature list), drafted directly, through
@@ -22,7 +25,8 @@ any AI conversation, or with the optional `/discovery` skill. What matters is
 that you own their content. `/discovery` is never required. Everything else in
 the workflow is generated from those two. This skill is the first generation
 step: it distills both plans into `blueprint/context/project-overview.md`, the
-single doc project instructions load at the start of every session.
+compact doc workflow skills load on demand when they need durable product
+context.
 
 ## Input
 
@@ -133,6 +137,11 @@ overview.
   concrete contracts, build order, and constraints. If those distinct facts
   cannot fit, stop and identify which plan section needs to be split or moved to
   a focused reference instead of writing an oversized overview.
+- **Write one generated context file.** This skill writes
+  `blueprint/context/project-overview.md` and any user-approved plan cleanup only.
+  Never create additional generated context files such as `data-model.md`,
+  `architecture.md`, or `open-questions.md` unless the user explicitly requests
+  a separately scoped artifact.
 
 Report what you wrote and list any contradictions or gaps you found between the
 two plans, so the user can fix the plans and re-run. Then apply the initial

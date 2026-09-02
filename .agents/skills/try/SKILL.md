@@ -5,6 +5,8 @@ description: Generate a read-only manual try guide for current or recent work wi
 
 # try - manual review guide
 
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
+
 Where this sits in the workflow:
 
     /implement or /complete  ->  [try]  ->  human review

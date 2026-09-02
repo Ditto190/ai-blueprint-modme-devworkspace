@@ -542,6 +542,18 @@ function printUpdatePlan(prepared: PreparedUpdate): void {
   console.log(
     "Preserved: AGENTS.md, CLAUDE.md, project configuration, plans, context, history, references, and prototypes."
   );
+
+  if (prepared.staleClaudeImports.length > 0) {
+    console.log("");
+    console.log("Claude Code context cleanup recommended.");
+    console.log(
+      "After the update succeeds, remove these obsolete import lines from the preserved CLAUDE.md:"
+    );
+    for (const line of prepared.staleClaudeImports) {
+      console.log(`- ${line}`);
+    }
+    console.log("Then restart Claude Code in this project.");
+  }
 }
 
 function printSuccess(

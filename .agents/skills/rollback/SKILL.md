@@ -5,6 +5,8 @@ description: Plan a safe history-preserving reversal of a completed feature from
 
 # rollback - safely reverse a completed feature
 
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
+
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
 contract in `AGENTS.md`.
@@ -120,6 +122,8 @@ remediation or explicitly plan the dependent rollbacks.
 Write `blueprint/context/current-feature.md` using
 `reference/rollback-spec-template.md`. Fill in:
 
+- the full rollback branch from the configured prefix plus the rollback title in
+  lowercase kebab-case
 - target feature and archive
 - target commit and parent commit as full 40-character SHA values
 - user's reason

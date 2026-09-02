@@ -64,6 +64,7 @@ interface PreparedUpdate {
   adapters: Adapter[];
   templateFiles: Map<string, TemplateFile>;
   plan: UpdatePlan;
+  staleClaudeImports: string[];
 }
 
 interface ApplyUpdateOptions {
@@ -92,6 +93,12 @@ const MANAGED_ROOTS = {
   claude: [".claude/skills"]
 } as const;
 const RETIRED_MANAGED_PATHS = new Set(["blueprint/README.md"]);
+const STALE_CLAUDE_IMPORTS = [
+  "@blueprint/context/project-overview.md",
+  "@blueprint/context/current-feature.md",
+  "@blueprint/context/coding-standards.md",
+  "@blueprint/context/ai-interaction.md"
+] as const;
 
 function adapterListFromMode(adapter: AdapterMode): Adapter[] {
   if (adapter === "all") {
@@ -349,6 +356,7 @@ async function prepareUpdate({
   }
 
   sortPlan(plan);
+  const staleClaudeImports = await findStaleClaudeImports(realTargetDir, adapters);
 
   return {
     targetDir: realTargetDir,
@@ -359,8 +367,30 @@ async function prepareUpdate({
     desiredManifest,
     adapters,
     templateFiles,
-    plan
+    plan,
+    staleClaudeImports
   };
+}
+
+async function findStaleClaudeImports(
+  targetDir: string,
+  adapters: readonly Adapter[]
+): Promise<string[]> {
+  if (!adapters.includes("claude")) {
+    return [];
+  }
+
+  const relativePath = "CLAUDE.md";
+  const state = await getTargetFileState(targetDir, relativePath);
+
+  if (state.type !== "file") {
+    return [];
+  }
+
+  const content = await fs.readFile(targetPath(targetDir, relativePath), "utf8");
+  const lines = new Set(content.split(/\r?\n/).map((line) => line.trim()));
+
+  return STALE_CLAUDE_IMPORTS.filter((line) => lines.has(line));
 }
 
 async function applyPreparedUpdate(
@@ -763,6 +793,7 @@ export {
   applyPreparedUpdate,
   collectManagedTemplateFiles,
   createManifest,
+  findStaleClaudeImports,
   managedRootsForAdapters,
   prepareUpdate,
   readManifest,

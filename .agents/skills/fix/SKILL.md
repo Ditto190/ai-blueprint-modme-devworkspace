@@ -5,6 +5,8 @@ description: Write a current-feature.md spec for an ad-hoc bug fix or small unpl
 
 # fix - document an ad-hoc fix, then build it like anything else
 
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
+
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity
 contract in `AGENTS.md`.
@@ -40,6 +42,8 @@ is being built now, feature or fix). Keep it lighter than a feature spec:
 - **Type:** Fix  (so `/complete` logs it to `blueprint/history/fixes/`, not `blueprint/history/features/`).
 - **Status:** not started - `/implement` updates this durable workflow state as
   work and verification progress.
+- **Branch:** the full fix branch from the configured prefix plus the fix title
+  in lowercase kebab-case.
 - **Fixes:** `<finding id>` - only when the fix targets a ledger finding. The
   stamp makes the repair traceable: `/implement` marks that finding `fixed`
   when the repairing step lands, and `/audit` re-reviews it before it closes.

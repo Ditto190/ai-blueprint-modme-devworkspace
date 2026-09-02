@@ -3,6 +3,25 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.5.0] - 2026-09-02
+
+### Changed
+
+- Changed Claude Code startup context to import only `AGENTS.md`; explicit
+  skills now load the overview, active spec, coding standards, and interaction
+  guide on demand.
+- Tightened Feature around targeted reads, material decision stops, complete
+  data and security contracts, safe rendering, runtime reachability, and one
+  final spec write.
+- Tightened Implement around the approved feature packet, targeted code reads,
+  one final Verify run, and a separate rollback-only reference.
+- Made Claude project skills explicit-only and taught the updater and Doctor to
+  report obsolete direct context imports without editing user-owned
+  `CLAUDE.md`. This covers the overview and active spec from 1.4.1 plus coding
+  standards and the interaction guide from older layouts.
+- Added adapter parity, explicit-invocation, update-cleanup, and on-demand
+  context validation.
+
 ## [1.4.1] - 2026-09-01
 
 ### Changed

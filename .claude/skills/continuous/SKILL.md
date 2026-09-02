@@ -1,9 +1,12 @@
 ---
 name: continuous
 description: Build every remaining planned feature serially in explicit Continuous Mode, with one local branch, verification cycle, commit, archive, and local merge per feature. Stop on decisions or blockers and never push or deploy. Use only for /continuous, $continuous, or a direct Continuous Mode request.
+disable-model-invocation: true
 ---
 
 # continuous - complete the build plan one local feature at a time
+
+**Context reuse:** Reuse any required file already loaded in project instructions or the current session. Read it again only if absent, changed, or exact current bytes or line references are needed.
 
 **First action:** Before project inspection, preflight, or any other tool call,
 publish `running` to `blueprint/.state/run.json` using the dashboard activity

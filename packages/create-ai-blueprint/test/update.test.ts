@@ -23,6 +23,7 @@ import {
   MANIFEST_PATH,
   adapterListFromMode,
   applyPreparedUpdate,
+  findStaleClaudeImports,
   prepareUpdate,
   readManifest,
   writeInstallManifest
@@ -376,6 +377,57 @@ test("updates preserve pre-Copilot Codex and Claude manifests", async (t) => {
   await applyPreparedUpdate(prepared);
 
   assert.deepEqual((await readManifest(targetDir))?.adapters, ["claude", "codex"]);
+});
+
+test("updates report obsolete Claude imports without changing CLAUDE.md", async (t) => {
+  const workspace = await createWorkspace(t);
+  const templateRoot = path.join(workspace, "template");
+  const targetDir = path.join(workspace, "target");
+  const skillPath = ".claude/skills/feature/SKILL.md";
+  const oldClaudeFile = [
+    "# Project",
+    "",
+    "@AGENTS.md",
+    "@blueprint/context/project-overview.md",
+    "@blueprint/context/coding-standards.md",
+    "@blueprint/context/ai-interaction.md",
+    "@blueprint/context/current-feature.md",
+    ""
+  ].join("\n");
+
+  await writeFiles(templateRoot, { [skillPath]: "Old feature skill\n" });
+  await writeFiles(targetDir, {
+    [skillPath]: "Old feature skill\n",
+    "CLAUDE.md": oldClaudeFile
+  });
+  await writeInstallManifest({
+    targetDir,
+    templateRoot,
+    version: "1.3.0",
+    adapters: ["claude"]
+  });
+  await writeFiles(templateRoot, { [skillPath]: "New feature skill\n" });
+
+  const prepared = await prepareUpdate({
+    targetDir,
+    templateRoot,
+    version: "1.5.0"
+  });
+
+  assert.deepEqual(prepared.staleClaudeImports, [
+    "@blueprint/context/project-overview.md",
+    "@blueprint/context/current-feature.md",
+    "@blueprint/context/coding-standards.md",
+    "@blueprint/context/ai-interaction.md"
+  ]);
+  assert.deepEqual(
+    await findStaleClaudeImports(targetDir, ["claude"]),
+    prepared.staleClaudeImports
+  );
+
+  await applyPreparedUpdate(prepared);
+
+  assert.equal(await fs.readFile(path.join(targetDir, "CLAUDE.md"), "utf8"), oldClaudeFile);
 });
 
 test("update replaces unchanged managed files and preserves project files", async (t) => {

@@ -112,10 +112,9 @@ enable checkpoint prompts by itself. The previous workflow uses
 
 **Resuming after a context clear.** Progress lives in files, not the chat:
 `current-feature.md` holds the spec with each step checked off as it's done, and git
-holds the code (branch, commits, working tree). A fresh session auto-loads
-`current-feature.md` through the project instructions (`AGENTS.md`, and
-`CLAUDE.md` for Claude Code), so `/implement` or `$implement` just continues from
-the first unchecked step - no separate save/load needed.
+holds the code (branch, commits, working tree). A fresh `/implement` or
+`$implement` run loads `current-feature.md` on demand and continues from the
+first unchecked step, so no separate save or load command is needed.
 
 Do NOT commit without permission or until Verify, or the fallback build and tests,
 passes. If a required check fails, fix the issue first.
