@@ -373,8 +373,8 @@ async function resolveAdapters(
     choices: [
       { name: "Codex", value: "codex", checked: true },
       { name: "Claude Code", value: "claude", checked: true },
-      { name: "GitHub Copilot", value: "copilot", checked: true },
-      { name: "OpenCode", value: "opencode", checked: true }
+      { name: "GitHub Copilot", value: "copilot", checked: false },
+      { name: "OpenCode", value: "opencode", checked: false }
     ],
     required: true
   });

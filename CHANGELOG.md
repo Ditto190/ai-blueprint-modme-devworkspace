@@ -3,6 +3,18 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.5.3] - 2026-09-03
+
+### Changed
+
+- Defaulted the interactive installer to Claude Code and Codex while leaving
+  GitHub Copilot and OpenCode available but unchecked.
+
+### Fixed
+
+- Made Onboard preserve the installer-selected adapter list instead of treating
+  every tool compatible with `.agents/` as selected.
+
 ## [1.5.2] - 2026-09-03
 
 ### Fixed

@@ -341,7 +341,11 @@ async function validateVerificationContract(): Promise<void> {
         "git rev-parse --verify HEAD",
         "Both are valid",
         "handle it here instead of sending the user away",
-        "Create the initial scaffold commit and continue Onboard? (Recommended)"
+        "Create the initial scaffold commit and continue Onboard? (Recommended)",
+        "authoritative installer selection",
+        "does not mean all three tools were selected",
+        "Do not ask the user to select adapters again",
+        "point to `/doctor` instead of guessing"
       ]
     ],
     [
@@ -521,7 +525,8 @@ async function validateVerificationContract(): Promise<void> {
       "packages/create-ai-blueprint/README.md",
       [
         "optional `/ci` or `$ci` skill",
-        "offers a reviewed local commit for the Blueprint setup and plans"
+        "offers a reviewed local commit for the Blueprint setup and plans",
+        "Claude Code and Codex selected by default"
       ]
     ]
   ]);

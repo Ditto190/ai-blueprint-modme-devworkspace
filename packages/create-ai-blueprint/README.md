@@ -95,8 +95,9 @@ npx create-ai-blueprint@latest -- --target ./my-app
 
 The same flags work with `npm create ai-blueprint@latest -- ...`.
 
-The interactive installer shows a checkbox list with all adapters selected by
-default. Adapter flags are composable, so scripts can select any combination.
+The interactive installer shows a checkbox list with Claude Code and Codex
+selected by default. GitHub Copilot and OpenCode remain available but unchecked.
+Adapter flags are composable, so scripts can select any combination.
 `--both` remains as a deprecated alias for `--all` and prints a warning. GitHub
 Copilot uses `AGENTS.md` and the shared `.agents/skills/` files; the installer
 does not manage `.github/copilot-instructions.md`. OpenCode reuses the compatible

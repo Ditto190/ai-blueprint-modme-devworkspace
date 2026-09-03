@@ -99,6 +99,7 @@ Read only enough to identify the setup:
   `tailwind.config.*`, database config, test config)
 - source layout, route layout, and app/package directories
 - existing `.gitignore`
+- `blueprint/.state/manifest.json`, when present, and its selected adapter list
 - which selected tools need `.agents/`, `.claude/`, or both
 - whether Blueprint workflow paths are already tracked by git
 - existing verification commands and `.github/workflows/`
@@ -281,15 +282,19 @@ Recommend option 1 by default. If the user chooses option 2:
   `git rm --cached -r .agents .claude blueprint CLAUDE.md`, and
   only run it if the user explicitly approves. Never delete the local files.
 
-Then report which adapter folders are needed:
+Then report which selected tools and adapter folders are needed:
 
-- Treat Codex, GitHub Copilot, and OpenCode as separate tool selections that
-  share the same `.agents/` adapter tree. Claude Code uses `.claude/`.
-- If asking whether to remove unused adapters when all four tools are installed,
-  use these choices: `Keep all adapters`, `Claude Code only`, and
-  `Codex, GitHub Copilot, and OpenCode only`. Never call the first choice
-  `Keep both`, and never label the shared `.agents/` choice as only Codex or
-  Copilot.
+- When a valid `blueprint/.state/manifest.json` exists, its `adapters` list is
+  the authoritative installer selection. The presence of `.agents/` means its
+  files are compatible with Codex, GitHub Copilot, and OpenCode; it does not mean
+  all three tools were selected.
+- Do not ask the user to select adapters again when that valid manifest exists.
+  Keep and report the exact selection. If a required adapter tree is missing,
+  report the mismatch and point to `/doctor` instead of guessing or deleting
+  another tree.
+- Without a valid manifest, explain that folder detection cannot distinguish
+  Codex, GitHub Copilot, and OpenCode, then ask which tools the user actually
+  uses instead of assuming all of them are selected.
 - Codex only: keep `AGENTS.md`, `.agents/`, and `blueprint/`; `CLAUDE.md` and
   `.claude/` can be deleted.
 - Claude Code only: keep `AGENTS.md`, `CLAUDE.md`, `.claude/`, and `blueprint/`;

@@ -169,7 +169,7 @@ test("shared adapters reuse compatible skill trees", () => {
   ]);
 });
 
-test("interactive installs use a default-selected checkbox prompt", async () => {
+test("interactive installs default to Claude Code and Codex", async () => {
   let receivedConfig: unknown = null;
   const options = parseArgs([]);
   const selected = await resolveAdapters(
@@ -187,8 +187,8 @@ test("interactive installs use a default-selected checkbox prompt", async () => 
     choices: [
       { name: "Codex", value: "codex", checked: true },
       { name: "Claude Code", value: "claude", checked: true },
-      { name: "GitHub Copilot", value: "copilot", checked: true },
-      { name: "OpenCode", value: "opencode", checked: true }
+      { name: "GitHub Copilot", value: "copilot", checked: false },
+      { name: "OpenCode", value: "opencode", checked: false }
     ],
     required: true
   });
