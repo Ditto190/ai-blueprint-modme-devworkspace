@@ -118,7 +118,7 @@ The normal feature loop is:
 feature -> review spec -> implement -> check -> audit current -> complete
 ```
 
-![AI Blueprint fresh-project workflow](assets/ai-blueprint-workflow.png)
+![AI Blueprint fresh-project workflow](assets/ai-blueprint-workflow-v2.png)
 
 Each step has a narrow job:
 
