@@ -337,7 +337,11 @@ async function validateVerificationContract(): Promise<void> {
         "Guided",
         "Custom",
         "Never write an `implementationStyle` key",
-        "A later `/implement` run reads the current configuration"
+        "A later `/implement` run reads the current configuration",
+        "git rev-parse --verify HEAD",
+        "Both are valid",
+        "handle it here instead of sending the user away",
+        "Create the initial scaffold commit and continue Onboard? (Recommended)"
       ]
     ],
     [
@@ -355,8 +359,12 @@ async function validateVerificationContract(): Promise<void> {
         "Discovery is not a gate",
         "Never require `/discovery`",
         "Never create this commit silently",
-        "Create the initial planning baseline commit now? (Recommended)",
+        "Finalize the Blueprint baseline locally? (Recommended)",
         "chore: establish Blueprint project baseline",
+        "dedicated setup branch",
+        "blueprint/.state/manifest.json",
+        "git merge --ff-only",
+        "It never pushes",
         "Do not offer this baseline on later overview reruns once `HEAD` already contains",
         "overview must remain below 20,000 bytes",
         "Never create additional generated context files"
@@ -489,7 +497,13 @@ async function validateVerificationContract(): Promise<void> {
       ]
     ],
     ["AGENTS.md", ["## Automatic verification", "`contents: read`"]],
-    ["README.md", ["## Automatic GitHub checks", "**Verify is the recipe.**"]],
+    [
+      "README.md",
+      [
+        "## Automatic GitHub checks",
+        "**Verify is the recipe.**"
+      ]
+    ],
     [
       "blueprint/context/coding-standards.md",
       ["treat it as the umbrella automated"]
@@ -499,7 +513,8 @@ async function validateVerificationContract(): Promise<void> {
       [
         "run that exact command as the final automated gate",
         "Continuous Mode also exists only as an explicit opt-in command",
-        "The initial Overview baseline also requires explicit approval"
+        "The initial Overview baseline also requires explicit approval",
+        "the same approval can finalize the local baseline"
       ]
     ],
     [

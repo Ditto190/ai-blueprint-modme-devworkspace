@@ -37,7 +37,9 @@ and merge. The numbered loop below is what those skills follow.
 After the first successful `/overview`, Blueprint offers a reviewed local commit
 for the initial workflow setup and plans before Feature 1. It shows the exact
 candidate diff and asks first. It skips local-only installations and stops
-rather than mixing app source or unrelated work into the baseline.
+rather than mixing app source or unrelated work into the baseline. When setup
+work is on a dedicated branch, the same approval can finalize the local baseline
+and fast-forward it into the unchanged default branch. It never pushes.
 
 The skills are the structured path, not a requirement. You can also just describe
 a feature, fix, or change in chat at any time and we'll build it the same way; the

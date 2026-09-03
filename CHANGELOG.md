@@ -3,6 +3,16 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.5.2] - 2026-09-03
+
+### Fixed
+
+- Made Onboard create a reviewed scaffold-only first commit when needed, restore
+  the setup branch, and continue without sending the user through manual Git
+  recovery.
+- Made Overview finalize the initial Blueprint baseline from either the default
+  branch or its unchanged setup branch with one explicit local approval.
+
 ## [1.5.1] - 2026-09-02
 
 ### Fixed
