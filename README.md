@@ -8,7 +8,7 @@
 
 <h1 align="center">AI Blueprint</h1>
 
-<p align="center"><strong>A file-backed, spec-driven workflow for building real software with AI while staying in control.</strong></p>
+<p align="center"><strong>A file-backed, spec-driven AI coding workflow framework for building real software while staying in control.</strong></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/create-ai-blueprint"><img src="https://img.shields.io/npm/v/create-ai-blueprint?style=flat-square&color=155eef" alt="npm version"></a>
@@ -25,13 +25,14 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-AI Blueprint gives coding agents a shared process for planning, building,
-verifying, and documenting one feature at a time. Plans, specs, findings,
-review evidence, and completed history stay as readable files in your project
-instead of disappearing with the chat that created them.
+AI Blueprint gives coding agents a shared workflow framework for planning,
+building, verifying, and documenting one feature at a time. Plans, specs,
+findings, review evidence, and completed history stay as readable files in your
+project instead of disappearing with the chat that created them.
 
 It works with any application stack and supports Codex, Claude Code, GitHub
-Copilot, OpenCode, and other file-aware coding agents.
+Copilot, OpenCode, and other file-aware coding agents. It does not replace your
+application framework or add application code.
 
 Start with the scaffold-first [Quick Start](#quick-start) below.
 
@@ -61,8 +62,9 @@ the code.
 
 ## Quick start
 
-AI Blueprint is a workflow overlay, not an application starter. Scaffold the
-app first and initialize Git before installing it.
+AI Blueprint adds an AI coding workflow framework around your project. It is
+not an application starter and does not replace your application framework.
+Scaffold the app first and initialize Git before installing it.
 
 **Requirements:** Node.js 22 or newer, an existing application, and a Git
 repository.
