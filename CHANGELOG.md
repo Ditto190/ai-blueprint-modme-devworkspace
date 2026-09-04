@@ -3,6 +3,27 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.5.4] - 2026-09-04
+
+### Added
+
+- Added an optional read-only code walkthrough after the final Implement and
+  Autopilot review packet, regardless of review cadence or checkpoint settings.
+
+### Changed
+
+- Clarified that Autopilot combines spec creation and implementation by
+  continuing through the normal spec-approval stop.
+- Distinguished local Verify evidence from authoritative clean-checkout proof
+  produced by a successful GitHub Actions run.
+
+### Fixed
+
+- Prevented completed build-plan checkboxes from making the project overview
+  appear stale while preserving drift detection for actual plan changes.
+- Reported the completion gate as idle when no work is active and recognized
+  older numbered feature fields in current work and history.
+
 ## [1.5.3] - 2026-09-03
 
 ### Changed
