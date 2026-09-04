@@ -59,7 +59,9 @@ when you just want something done.
 4. **Review** - By default, implement and verify each small step, then show one
    feature-level review packet with the complete diff and done-when evidence.
    Set `workflow.stepReview` to `every` when I should approve each step before
-   the next one begins.
+   the next one begins. After the final packet, `/implement` always offers a
+   read-only walkthrough of the finished code, regardless of review cadence or
+   checkpoint settings.
 5. **Test** - Verify the done-when with evidence. If `AGENTS.md` declares a
    `Verify` command, run that exact command as the final automated gate. It wraps
    only the checks the project actually has. If no Verify command exists, run the
@@ -90,7 +92,10 @@ when you just want something done.
    checkpoints are optional rollback points; `/complete` still makes the real
    feature-level commit. Verify, or the fallback checks, must pass first. When
    implementation is done, end with a compact review packet: changed files,
-   checks run, manual try path, risks, and next action.
+   checks run, manual try path, risks, and next action. The per-step walkthrough
+   is part of the Guided checkpoint prompt. The final code walkthrough is always
+   available and is separate from the manual product-review path produced by
+   `/try`.
 
 `workflow.stepReview: "every"` restores per-step approval pauses but does not
 enable checkpoint prompts by itself. The previous workflow uses
@@ -122,11 +127,13 @@ Do NOT commit without permission or until Verify, or the fallback build and test
 passes. If a required check fails, fix the issue first.
 
 Autopilot exists only as an explicit opt-in command: `/autopilot` or
-`$autopilot`. Do not suggest it as the default next action. When invoked, it runs
-one bounded pass without pausing after each passing implementation step. It may
-create checkpoint commits on the feature or fix branch after passing steps. It
-stops before `/complete`, merge, push, deploy, publish, destructive actions, or
-hiding failing checks.
+`$autopilot`. Do not suggest it as the default next action. It combines
+`/feature` or `/fix` with `/implement` in one bounded pass. The normal workflow
+stops for human approval of the spec before implementation; an explicit
+Autopilot request continues through that review point without pausing after each
+passing implementation step. It may create checkpoint commits on the feature or
+fix branch after passing steps. It stops before `/complete`, merge, push, deploy,
+publish, destructive actions, or hiding failing checks.
 
 Continuous Mode also exists only as an explicit opt-in command: `/continuous`
 or `$continuous`. Do not suggest it as the default next action. Its explicit

@@ -23,6 +23,11 @@ same quality gates, but it does not stop after every normal review point. A
 single user request is permission to run one bounded loop until the feature is
 ready for review, blocked, or unsafe to continue.
 
+It combines `/feature` or `/fix` with `/implement` and continues through the
+spec-review stop retained by the normal workflow. That human spec approval is
+the main control Autopilot intentionally removes. It does not remove the final
+review packet or the option to walk through the completed code.
+
 It does **not** replace the normal workflow. `/feature`, `/implement`, `/check`,
 and `/complete` remain the conservative default.
 
@@ -134,8 +139,9 @@ problem.
 ## Step 4 - implement in small steps
 
 Work through the spec's build steps in order. Each step must remain reviewable.
-Unlike `/implement`, do not pause for user approval after each passing step. The
-review happens at the final packet unless a hard stop is hit.
+Do not pause for user approval after each passing step, regardless of the
+configured `workflow.stepReview` value. The review happens at the final packet
+unless a hard stop is hit.
 
 For every step:
 
@@ -297,6 +303,11 @@ a full audit report:
 
 If everything is green, the next action is usually: review the diff, run `/try`
 if its gate was manual and a walkthrough is wanted, then `/complete`.
+
+Always offer a read-only walkthrough of the completed code after the packet.
+Follow the spec's build steps, explain the key files, symbols, flow, and
+non-obvious decisions, then offer a focused deep dive. Keep `/try` distinct as
+the manual product-review path.
 
 If something failed, name the failing check and the next fix target.
 

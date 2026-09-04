@@ -137,5 +137,24 @@ When all steps and required gates pass:
   findings and independent-review state, known risks, configured gate outcomes,
   and `/complete` as the next action.
 
+After the final packet, always offer these choices:
+
+1. Walk me through the implementation.
+2. Request changes.
+3. Continue to the exact next workflow command.
+
+The final walkthrough is available with either `workflow.stepReview` value and
+regardless of `workflow.checkpointCommits`. It is a read-only code tour, not the
+manual product-review path produced by `/try`, and it is not verification.
+
+When the user chooses the walkthrough, begin with a short map of the completed
+feature, then follow the spec's build steps. For each step, explain its purpose,
+key files and symbols, important data or control flow, and non-obvious decisions.
+Use file and line links when the client supports them. Do not narrate every line
+or reload broad project context. End by offering a focused deep dive into one
+named area. If the feature spans too many distinct areas for one useful pass,
+name the sections first and let the user choose where to begin. Remain read-only
+unless the user separately requests changes.
+
 Never commit, merge, push, deploy, publish, or start unrelated work from this
 skill.

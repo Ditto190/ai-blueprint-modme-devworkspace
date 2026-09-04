@@ -46,6 +46,8 @@ Blueprint adds a controlled loop:
 
 - **Spec before code.** The agent writes a feature or fix spec and stops for
   review before implementation.
+- **Explain the result.** Every completed implementation offers a read-only code
+  walkthrough, regardless of the configured review cadence.
 - **One work item at a time.** The current feature, fix, or rollback has one
   explicit scope and one set of acceptance criteria.
 - **Proof before completion.** Check runs the real app against the spec instead
@@ -144,7 +146,7 @@ lifecycle and command-specific behavior.
 | --- | --- |
 | **/adopt** | Bring Blueprint into an existing codebase with shipped behavior. |
 | **/audit** | Review a branch or project, record findings, or run independent review. |
-| **/autopilot** | Run one bounded spec and build pass through configured gates. |
+| **/autopilot** | Combine one spec and build pass through configured gates. |
 | **/brief** | Preview an upcoming feature without changing project state. |
 | **/browser-tests** | Add or normalize an optional repeatable browser harness. |
 | **/check** | Prove the current spec against the real application. |
@@ -156,7 +158,7 @@ lifecycle and command-specific behavior.
 | **/doctor** | Check Blueprint health and offer to reset malformed generated dashboard state. |
 | **/feature** | Turn one build-plan item into the active spec. |
 | **/fix** | Write the active spec for a small change or confirmed bug. |
-| **/implement** | Build the approved spec in small, reviewed steps. |
+| **/implement** | Build the approved spec, then offer a code walkthrough. |
 | **/onboard** | Tune a fresh Blueprint installation to the real project. |
 | **/overview** | Generate durable project context from both planning docs. |
 | **/prototype** | Create throwaway static mockups before implementation. |
@@ -267,10 +269,12 @@ Read [CI Setup](https://ai-blueprint.dev/docs/commands/ci/) for the full contrac
 ## Optional automation
 
 The conservative workflow remains the default. Two explicit modes can automate
-bounded local work while preserving the same gates:
+bounded local work while preserving safety boundaries and configured quality
+gates:
 
-- **Autopilot** runs one feature or fix through its configured regular gates,
-  then stops before completion.
+- **Autopilot** combines spec creation and implementation for one feature or fix,
+  continues through the normal spec-approval stop, and then runs its configured
+  regular gates before stopping prior to completion.
 - **Continuous Mode** processes reviewed build-plan items serially with one
   local branch and one local main commit per completed feature.
 

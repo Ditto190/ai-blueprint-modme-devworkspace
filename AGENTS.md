@@ -58,7 +58,9 @@ on a high-risk change. That restores the per-step approval pauses. To fully
 restore the previous workflow, including optional checkpoint prompts after an
 approved step, also set `checkpointCommits` to `enabled`. Onboarding presents
 these pairs as Efficient and Guided choices, but stores only the two low-level
-settings. They can be changed at any time.
+settings. They can be changed at any time. Both styles end with an optional
+read-only code walkthrough. Review cadence controls approval pauses, not whether
+the user can ask for an explanation of the finished implementation.
 
 ## Workflow
 
@@ -118,8 +120,10 @@ conventions in `blueprint/context/` apply however a step is invoked. `/discovery
 is never required: users may write detailed plans directly or develop them
 through any conversation before running `/overview`.
 
-Optional explicit-only skill: `autopilot` can run one bounded spec/build pass
-when directly invoked, including the configured regular quality gates. It may
+Optional explicit-only skill: `autopilot` combines `feature` or `fix` with
+`implement` in one bounded pass when directly invoked, including the configured
+regular quality gates. The normal workflow stops for human approval of the spec
+before implementation; Autopilot continues through that review point. It may
 create checkpoint commits on the feature or fix branch after passing steps and
 repair confirmed P0/P1 findings when its audit gate runs. It stops before
 `/complete`, merge, push, deploy, or destructive actions.

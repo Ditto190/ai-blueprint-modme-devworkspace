@@ -189,12 +189,12 @@ checks, or finding waivers into config.
 Unless the user already chose these values, ask one short **Implementation
 style** question using the current tool's selectable prompt when available:
 
-1. **Efficient (Recommended)** - one feature-level review packet and no step
-   checkpoint prompts. Write `workflow.stepReview: "feature"` and
-   `workflow.checkpointCommits: "disabled"`.
+1. **Efficient (Recommended)** - one feature-level review packet, a final code
+   walkthrough option, and no step checkpoint prompts. Write
+   `workflow.stepReview: "feature"` and `workflow.checkpointCommits: "disabled"`.
 2. **Guided** - pause for approval after every step and offer optional checkpoint
-   commits. Write `workflow.stepReview: "every"` and
-   `workflow.checkpointCommits: "enabled"`.
+   commits, followed by the same final code walkthrough option. Write
+   `workflow.stepReview: "every"` and `workflow.checkpointCommits: "enabled"`.
 3. **Custom** - ask separately when review should happen and whether checkpoint
    commits should be offered, then write the selected low-level values.
 
@@ -202,6 +202,8 @@ These are onboarding presets, not a third configuration field. Never write an
 `implementationStyle` key. Show the current two values before asking, preserve
 them if the user chooses not to change them, and explain that either value can be
 edited later. A later `/implement` run reads the current configuration.
+The final code walkthrough is not a configuration setting and remains available
+with every implementation style.
 
 Read `blueprint/context/ai-interaction.md` and update only obvious mismatches.
 Usually the default review loop should stay intact. Flag preferences for the user
