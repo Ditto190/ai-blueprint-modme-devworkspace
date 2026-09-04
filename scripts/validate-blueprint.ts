@@ -371,6 +371,8 @@ async function validateVerificationContract(): Promise<void> {
         "It never pushes",
         "Do not offer this baseline on later overview reruns once `HEAD` already contains",
         "overview must remain below 20,000 bytes",
+        "normalize only build-plan completion markers",
+        "without treating completed features as overview drift",
         "Never create additional generated context files"
       ]
     ],
@@ -383,12 +385,22 @@ async function validateVerificationContract(): Promise<void> {
       [
         ".github/workflows/verify.yml",
         "permissions: contents: read",
-        "Never push or change a remote ruleset"
+        "Never push or change a remote ruleset",
+        "prepared locally, not CI verified",
+        "authoritative clean-checkout proof"
       ]
     ],
     [
       ".agents/skills/tests/SKILL.md",
       ["add the real test command", "never creates a GitHub workflow on its own"]
+    ],
+    [
+      ".agents/skills/status/SKILL.md",
+      [
+        "markers normalized to `- [ ]`",
+        "matching legacy exact-byte hash",
+        "Do not use filesystem timestamps"
+      ]
     ],
     [
       ".agents/skills/browser-tests/SKILL.md",
@@ -406,7 +418,10 @@ async function validateVerificationContract(): Promise<void> {
         "fallback build and tests",
         "verification.logicTests: required",
         "verification.uiEvidence:",
-        "Use the exact `**Branch:**` value"
+        "Use the exact `**Branch:**` value",
+        "Walk me through the implementation.",
+        "available with either `workflow.stepReview` value",
+        "read-only code tour"
       ]
     ],
     [
@@ -457,6 +472,8 @@ async function validateVerificationContract(): Promise<void> {
         "Keep every unresolved entry in the ledger",
         "A `fixed` entry is not resolved at any severity",
         "must remain verbatim for a later `/audit` re-review",
+        "checkbox-normalized hash contract",
+        "migrates older exact-byte fingerprints",
         "replace `blueprint/context/current-feature.md` with the canonical stub below",
         "Never merge with a required or explicitly initiated independent review"
       ]
@@ -490,7 +507,11 @@ async function validateVerificationContract(): Promise<void> {
     ],
     [
       ".agents/skills/autopilot/SKILL.md",
-      ["exact `Verify` command from `AGENTS.md`"]
+      [
+        "exact `Verify` command from `AGENTS.md`",
+        "combines `/feature` or `/fix` with `/implement`",
+        "option to walk through the completed code"
+      ]
     ],
     [
       ".agents/skills/continuous/SKILL.md",
