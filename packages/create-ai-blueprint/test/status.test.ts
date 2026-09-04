@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -14,6 +15,30 @@ import {
 } from "../lib/status.js";
 
 const execFileAsync = promisify(execFile);
+
+test("overview source hashes ignore build-plan completion markers", () => {
+  const projectPlan = "# Project Plan\n";
+  const uncheckedBuildPlan = `# Build Plan
+
+- [ ] 1. **Foundation** - establish the project
+  - [ ] 1a. **Shell** - add the shell
+`;
+  const completedBuildPlan = uncheckedBuildPlan
+    .replace("- [ ] 1.", "- [x] 1.")
+    .replace("- [ ] 1a.", "- [X] 1a.");
+
+  assert.equal(
+    createOverviewSourceHash(projectPlan, uncheckedBuildPlan),
+    createOverviewSourceHash(projectPlan, completedBuildPlan)
+  );
+  assert.notEqual(
+    createOverviewSourceHash(projectPlan, uncheckedBuildPlan),
+    createOverviewSourceHash(
+      projectPlan,
+      uncheckedBuildPlan.replace("establish the project", "change the project")
+    )
+  );
+});
 
 test("readProjectStatus reports active work, findings, Git, and the next step", async (t) => {
   const projectRoot = await createProject(t, {
@@ -208,11 +233,30 @@ test("readProjectStatus warns when project config is invalid", async (t) => {
     command: "/doctor",
     reason: "Repair blueprint/config.json before running a mutating workflow."
   });
-  assert.ok(
-    status.completion.blockers.includes("project configuration is invalid")
-  );
+  assert.deepEqual(status.completion, { state: "idle", blockers: [] });
   assert.ok(status.warnings.some((warning) => warning.code === "invalid_config"));
   assert.match(formatHumanStatus(status), /Config\s+invalid, using defaults/);
+});
+
+test("readProjectStatus blocks malformed current work", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: `# Current Feature
+
+## Build steps
+
+- [ ] Repair the current work contract.
+`,
+    findings: emptyFindings(),
+    branch: "feature/status-command"
+  });
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.currentWork.state, "malformed");
+  assert.deepEqual(status.completion, {
+    state: "blocked",
+    blockers: ["current work contract is malformed"]
+  });
 });
 
 test("readProjectStatus selects overview before new feature work", async (t) => {
@@ -231,6 +275,79 @@ test("readProjectStatus selects overview before new feature work", async (t) => 
   assert.equal(status.plans.overview.state, "stale");
   assert.equal(status.nextAction.command, "/overview");
   assert.ok(status.warnings.some((warning) => warning.code === "stale_overview"));
+});
+
+test("readProjectStatus keeps the overview current after a feature is checked off", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main"
+  });
+  const projectPlan = await fs.readFile(
+    path.join(projectRoot, "blueprint", "project-plan.md"),
+    "utf8"
+  );
+  const completedBuildPlan = await fs.readFile(
+    path.join(projectRoot, "blueprint", "build-plan.md"),
+    "utf8"
+  );
+  const uncheckedBuildPlan = completedBuildPlan.replace("- [x] 1.", "- [ ] 1.");
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "context", "project-overview.md"),
+    `# Project Overview
+
+<!-- blueprint:source-hash ${createOverviewSourceHash(projectPlan, uncheckedBuildPlan)} -->
+`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.plans.overview.state, "current");
+  assert.deepEqual(status.completion, { state: "idle", blockers: [] });
+  assert.deepEqual(status.nextAction, {
+    command: "/feature 2",
+    reason: "Spec the next build-plan item, Status command."
+  });
+  assert.match(formatHumanStatus(status), /Completion\s+idle/);
+  assert.ok(
+    status.warnings.every((warning) => warning.code !== "stale_overview")
+  );
+});
+
+test("readProjectStatus accepts a current legacy exact-byte fingerprint", async (t) => {
+  const projectRoot = await createProject(t, {
+    currentWork: resetCurrentWork(),
+    findings: emptyFindings(),
+    branch: "main"
+  });
+  const projectPlan = await fs.readFile(
+    path.join(projectRoot, "blueprint", "project-plan.md"),
+    "utf8"
+  );
+  const buildPlan = await fs.readFile(
+    path.join(projectRoot, "blueprint", "build-plan.md"),
+    "utf8"
+  );
+  const legacyHash = createHash("sha256")
+    .update(projectPlan, "utf8")
+    .update(Buffer.from([0]))
+    .update(buildPlan, "utf8")
+    .digest("hex");
+  assert.notEqual(legacyHash, createOverviewSourceHash(projectPlan, buildPlan));
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "context", "project-overview.md"),
+    `# Project Overview
+
+<!-- blueprint:source-hash ${legacyHash} -->
+`
+  );
+
+  const status = await readProjectStatus(projectRoot);
+
+  assert.equal(status.plans.overview.state, "current");
+  assert.ok(
+    status.warnings.every((warning) => warning.code !== "stale_overview")
+  );
 });
 
 test("readProjectStatus requires a one-time fingerprint for legacy overviews", async (t) => {

@@ -99,11 +99,24 @@ function parseHistoryItem(
   file: string
 ): HistoryItem {
   const heading = markdown.match(/^#\s+(?:(Feature|Fix|Rollback):\s*)?(.+)$/im);
-  const type = normalizeHistoryType(heading?.[1]) || fallbackType;
-  const title = heading?.[2]?.trim() || titleFromFile(file);
-  const buildPlanItem = markdown.match(
+  const fieldIdentity = markdown.match(
+    /^\*\*(Feature|Fix|Rollback):\*\*\s*(.+)$/im
+  );
+  const type = normalizeHistoryType(heading?.[1] || fieldIdentity?.[1]) || fallbackType;
+  const fieldValue = fieldIdentity?.[2]?.trim() || null;
+  const fieldFeatureIdentity = type === "feature"
+    ? fieldValue?.match(/^([0-9]+[a-z]?)\.?(?:\s+|$)(.*)$/i)
+    : null;
+  const genericHeading = heading?.[2]?.trim();
+  const title = heading?.[1]
+    ? genericHeading || titleFromFile(file)
+    : fieldFeatureIdentity?.[2]?.trim() || fieldValue || genericHeading || titleFromFile(file);
+  const explicitBuildPlanItem = markdown.match(
     /^\*\*From build-plan:\*\*\s*feature\s+([0-9]+[a-z]?)\b/im
   )?.[1]?.toLowerCase() || null;
+  const buildPlanItem = explicitBuildPlanItem ||
+    fieldFeatureIdentity?.[1]?.toLowerCase() ||
+    null;
   const status = markdown.match(/^\*\*Status:\*\*\s*(.+)$/im)?.[1]?.trim() || null;
 
   return { type, title, buildPlanItem, status, file };

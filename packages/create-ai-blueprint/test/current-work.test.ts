@@ -38,6 +38,25 @@ test("parseCurrentWork reports feature identity and step progress", () => {
   assert.deepEqual(currentWork.warnings, []);
 });
 
+test("parseCurrentWork accepts a numbered feature field", () => {
+  const currentWork = parseCurrentWork(`# Current Feature
+
+**Feature:** 2. Testing foundation
+**Branch:** \`feature/testing-foundation\`
+
+## Build steps
+
+- [ ] 1. **Install and wire the runner.** Add Vitest.
+`);
+
+  assert.equal(currentWork.state, "active");
+  assert.equal(currentWork.type, "feature");
+  assert.equal(currentWork.title, "Testing foundation");
+  assert.equal(currentWork.buildPlanItem, "2");
+  assert.equal(currentWork.nextStep?.title, "Install and wire the runner.");
+  assert.deepEqual(currentWork.warnings, []);
+});
+
 test("parseCurrentWork reports an incomplete active-work contract", () => {
   const currentWork = parseCurrentWork(`# Feature: Missing identity
 

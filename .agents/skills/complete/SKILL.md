@@ -130,7 +130,11 @@ and records the exact target feature, archive, commit, and parent.
 
 - **Feature** - archive `blueprint/context/current-feature.md` to `blueprint/history/features/NN-name.md`
   (NN is the build-plan number), and check it off in `blueprint/build-plan.md`
-  (and its parent item once all sub-items are checked).
+  (and its parent item once all sub-items are checked). Then recompute the
+  overview fingerprint using `/overview`'s checkbox-normalized hash contract and
+  replace only the existing `blueprint:source-hash` value. Do not regenerate or
+  rewrite the overview body. This keeps completion progress from looking like
+  plan drift and migrates older exact-byte fingerprints.
 - **Fix** - archive it to `blueprint/history/fixes/name.md`. A fix isn't a build-plan item, so
   there's nothing to check off.
 - **Rollback** - archive it to

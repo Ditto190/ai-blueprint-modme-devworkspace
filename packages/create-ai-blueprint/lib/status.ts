@@ -41,7 +41,7 @@ import type {
 
 type OverviewState = "current" | "missing" | "stale" | "unknown";
 type OnboardingState = "complete" | "needed" | "unknown";
-type CompletionState = "blocked" | "needs_verification" | "ready";
+type CompletionState = "blocked" | "idle" | "needs_verification" | "ready";
 
 interface StatusWarning {
   code: string;
@@ -472,6 +472,10 @@ function formatCompletionValue(
   completion: StatusCompletion,
   style: TextStyle
 ): string {
+  if (completion.state === "idle") {
+    return style.dim("idle");
+  }
+
   if (completion.state === "ready") {
     return style.green("ready");
   }
@@ -637,15 +641,24 @@ function selectCompletion(
   configState: ProjectConfigState,
   runMode: RunMode
 ): StatusCompletion {
+  if (currentWork.state === "idle") {
+    return { state: "idle", blockers: [] };
+  }
+
+  if (currentWork.state === "malformed") {
+    return {
+      state: "blocked",
+      blockers: ["current work contract is malformed"]
+    };
+  }
+
   const blockers: string[] = [];
 
   if (configState === "invalid") {
     blockers.push("project configuration is invalid");
   }
 
-  if (currentWork.state !== "active") {
-    blockers.push("no valid work spec is active");
-  } else if (currentWork.remaining > 0) {
+  if (currentWork.remaining > 0) {
     blockers.push(`${currentWork.remaining} build steps remain`);
   }
 
@@ -1114,8 +1127,12 @@ async function readOverviewStatus(
     projectPlanContent,
     buildPlanContent
   );
+  const legacyCurrentHash = createLegacyOverviewSourceHash(
+    projectPlanContent,
+    buildPlanContent
+  );
 
-  if (recordedHash !== currentHash) {
+  if (recordedHash !== currentHash && recordedHash !== legacyCurrentHash) {
     const message = "Project overview does not match the current project and build plans.";
     warnings.push({ code: "stale_overview", message });
     return {
@@ -1131,6 +1148,18 @@ async function readOverviewStatus(
 }
 
 function createOverviewSourceHash(
+  projectPlan: string,
+  buildPlan: string
+): string {
+  const normalizedBuildPlan = buildPlan.replace(
+    /^([ \t]*-[ \t]+)\[[xX]\]/gm,
+    "$1[ ]"
+  );
+
+  return createLegacyOverviewSourceHash(projectPlan, normalizedBuildPlan);
+}
+
+function createLegacyOverviewSourceHash(
   projectPlan: string,
   buildPlan: string
 ): string {

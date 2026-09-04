@@ -244,8 +244,10 @@ It reports configuration state, recorded command activity, build-plan progress,
 active work, findings, independent-review state, Git state, drift warnings,
 completion blockers, and one
 suggested next action. Onboarding uses a dedicated setup marker, overview
-freshness uses a fingerprint of both plans, and a verified current-work status
-makes the completion gate ready. Running command activity overrides
+freshness uses a fingerprint of both plans that ignores checkbox completion
+markers while still detecting plan content changes. A verified active-work
+status makes the completion gate ready, while no active work reports the gate as
+idle. Running command activity overrides
 contradictory next-action advice, and an activity record that stops updating is
 shown as interrupted instead of running forever. Malformed generated activity
 points to `/doctor`, which can offer to reset only `blueprint/.state/run.json`

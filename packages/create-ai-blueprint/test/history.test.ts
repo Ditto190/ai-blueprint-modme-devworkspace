@@ -27,6 +27,27 @@ test("parseHistoryItem reads completed Blueprint work", () => {
   );
 });
 
+test("parseHistoryItem accepts a numbered feature field", () => {
+  assert.deepEqual(
+    parseHistoryItem(
+      `# Current Feature
+
+**Feature:** 1. App shell and dashboard UI
+**Status:** verified
+`,
+      "feature",
+      "features/01-app-shell-and-dashboard-ui.md"
+    ),
+    {
+      type: "feature",
+      title: "App shell and dashboard UI",
+      buildPlanItem: "1",
+      status: "verified",
+      file: "features/01-app-shell-and-dashboard-ui.md"
+    }
+  );
+});
+
 test("readHistory reads feature, fix, and rollback archives", async (t) => {
   const projectRoot = await createProject(t);
 

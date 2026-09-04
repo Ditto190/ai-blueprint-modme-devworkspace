@@ -59,9 +59,14 @@ state.
    the requested or actual reviewer adapter and model. A selected or explicitly
    initiated independent review blocks `/complete` until a passing receipt
    matches the exact current checkpoint and spec.
-6. **Overview freshness** - if `blueprint/context/project-overview.md` is missing,
-   or if `project-plan.md` or `build-plan.md` appears newer than it by filesystem
-   time, mention that `/overview` should run before new feature work.
+6. **Overview freshness** - if `blueprint/context/project-overview.md` is missing
+   or has no `blueprint:source-hash`, mention that `/overview` should run before
+   new feature work. Otherwise use `/overview`'s hash contract: exact project-plan
+   bytes, one zero byte, then build-plan bytes with line-start `- [x]` and
+   `- [X]` markers normalized to `- [ ]`. Treat a matching legacy exact-byte hash
+   as current for backward compatibility. Recommend `/overview` only when the
+   recorded hash matches neither value. Do not use filesystem timestamps;
+   `/complete` legitimately makes `build-plan.md` newer when it checks off work.
 7. **Git** - current branch, whether the working tree is clean or has uncommitted
    changes, roughly how many files changed, last commit subject, and whether the
    branch is ahead of its remote. If the directory is not a git repo, say so and

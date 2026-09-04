@@ -167,6 +167,17 @@ test("dashboard serves live read-only project status on loopback", async (t) => 
   assert.equal(historyStatus.history.total, 2);
   assert.equal(historyStatus.history.items[0]?.title, "Dashboard");
 
+  await fs.writeFile(
+    path.join(projectRoot, "blueprint", "context", "current-feature.md"),
+    `# Current Feature
+
+_Nothing in progress. Run /feature to start._
+`
+  );
+
+  const idleStatus = await readStatus(dashboard.url);
+  assert.deepEqual(idleStatus.completion, { state: "idle", blockers: [] });
+
   const postResponse = await fetch(`${dashboard.url}/api/status`, {
     method: "POST"
   });
@@ -279,6 +290,10 @@ interface DashboardStatus {
       buildPlanItem: string | null;
       status: string | null;
     }>;
+  };
+  completion: {
+    state: string;
+    blockers: string[];
   };
 }
 

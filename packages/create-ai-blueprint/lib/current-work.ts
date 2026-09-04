@@ -91,16 +91,29 @@ function parseCurrentWork(markdown: string): CurrentWorkSummary {
 
   const heading = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() || null;
   const headingIdentity = heading?.match(/^(Feature|Fix|Rollback):\s*(.+)$/i);
+  const fieldIdentity = markdown.match(
+    /^\*\*(Feature|Fix|Rollback):\*\*\s*(.+)$/im
+  );
   const explicitType = markdown.match(
     /^\*\*Type:\*\*\s*(Feature|Fix|Rollback)\s*$/im
   )?.[1];
-  const typeLabel = explicitType || headingIdentity?.[1] || null;
+  const typeLabel = explicitType || headingIdentity?.[1] || fieldIdentity?.[1] || null;
   const type = normalizeWorkType(typeLabel);
-  const title = headingIdentity?.[2]?.trim() || heading;
+  const fieldValue = fieldIdentity?.[2]?.trim() || null;
+  const fieldFeatureIdentity = type === "feature"
+    ? fieldValue?.match(/^([0-9]+[a-z]?)\.?(?:\s+|$)(.*)$/i)
+    : null;
+  const title = headingIdentity?.[2]?.trim() ||
+    fieldFeatureIdentity?.[2]?.trim() ||
+    fieldValue ||
+    heading;
   const status = markdown.match(/^\*\*Status:\*\*\s*(.+)$/im)?.[1]?.trim() || null;
-  const buildPlanItem = markdown.match(
+  const explicitBuildPlanItem = markdown.match(
     /^\*\*From build-plan:\*\*\s*feature\s+([0-9]+[a-z]?)\b/im
   )?.[1]?.toLowerCase() || null;
+  const buildPlanItem = explicitBuildPlanItem ||
+    fieldFeatureIdentity?.[1]?.toLowerCase() ||
+    null;
   const steps = parseBuildSteps(markdown);
   const warnings: CurrentWorkWarning[] = [];
 
@@ -175,7 +188,7 @@ function parseBuildSteps(markdown: string): CurrentWorkStep[] | null {
 }
 
 function parseStepTitle(content: string): string {
-  const boldTitle = content.match(/^\*\*(.+?)\*\*/)?.[1];
+  const boldTitle = content.match(/^(?:\d+\.\s*)?\*\*(.+?)\*\*/)?.[1];
   const label = boldTitle || content.split(/\s+-\s+/, 1)[0] || content;
   return label.replace(/^Step\s+\d+\s*[-:]\s*/i, "").trim();
 }
