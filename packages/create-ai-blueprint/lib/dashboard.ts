@@ -253,6 +253,22 @@ const DASHBOARD_HTML: string = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Blueprint Dashboard</title>
+  <script>
+    (() => {
+      const themeCookieName = "blueprint_dashboard_theme";
+      const savedTheme = document.cookie
+        .split("; ")
+        .find((entry) => entry.startsWith(themeCookieName + "="))
+        ?.split("=")[1];
+      const theme = savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = theme;
+      if (savedTheme === "dark" || savedTheme === "light") {
+        document.cookie = themeCookieName + "=" + savedTheme + "; Max-Age=31536000; Path=/; SameSite=Lax";
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
@@ -263,20 +279,32 @@ const DASHBOARD_HTML: string = `<!doctype html>
       --surface: rgba(255, 255, 255, .78);
       --surface-solid: #ffffff;
       --surface-muted: #eef1ed;
+      --surface-glass: rgba(255, 255, 255, .82);
+      --surface-soft: rgba(255, 255, 255, .68);
       --ink: #121817;
       --ink-soft: #45504d;
       --ink-muted: #65706d;
       --line: #d9ded9;
       --line-strong: #bdc7c1;
+      --card-line: rgba(189, 199, 193, .78);
       --blue: #155eef;
       --blue-dark: #0b43ba;
       --blue-soft: #e9f0ff;
+      --blue-line: #9bb8f4;
       --green: #0b7a53;
       --green-soft: #e7f5ee;
+      --green-line: #b9dfce;
       --amber: #9a5700;
       --amber-soft: #fff2d9;
+      --amber-line: #efd5a5;
       --red: #a5333f;
       --red-soft: #fdebed;
+      --red-line: #efc2c7;
+      --grid-line: rgba(21, 94, 239, .09);
+      --grid-glow: rgba(21, 94, 239, .08);
+      --run-surface: rgba(233, 240, 255, .88);
+      --shadow-low: rgba(18, 24, 23, .05);
+      --shadow-high: rgba(18, 24, 23, .12);
       --code: #111715;
       --code-raised: #171e1c;
       --code-line: #2c3532;
@@ -289,6 +317,43 @@ const DASHBOARD_HTML: string = `<!doctype html>
       color: var(--ink);
     }
 
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --paper: #0d1211;
+      --paper-bright: #121817;
+      --surface: rgba(23, 30, 28, .84);
+      --surface-solid: #171e1c;
+      --surface-muted: #202825;
+      --surface-glass: rgba(23, 30, 28, .9);
+      --surface-soft: rgba(23, 30, 28, .72);
+      --ink: #eef3f0;
+      --ink-soft: #c4ccc8;
+      --ink-muted: #939f99;
+      --line: #313b37;
+      --line-strong: #47544e;
+      --card-line: rgba(71, 84, 78, .78);
+      --blue: #76a8ff;
+      --blue-dark: #9abcff;
+      --blue-soft: #172b50;
+      --blue-line: #365b9c;
+      --green: #70d5a9;
+      --green-soft: #173c30;
+      --green-line: #285f4b;
+      --amber: #e8bd72;
+      --amber-soft: #332919;
+      --amber-line: #6a5029;
+      --red: #ef9aa4;
+      --red-soft: #321c20;
+      --red-line: #6a3339;
+      --grid-line: rgba(118, 168, 255, .07);
+      --grid-glow: rgba(118, 168, 255, .09);
+      --run-surface: rgba(23, 43, 80, .72);
+      --shadow-low: rgba(0, 0, 0, .2);
+      --shadow-high: rgba(0, 0, 0, .28);
+      --code: #090d0c;
+      --code-raised: #121816;
+    }
+
     * { box-sizing: border-box; }
 
     body {
@@ -296,9 +361,9 @@ const DASHBOARD_HTML: string = `<!doctype html>
       min-width: 320px;
       min-height: 100vh;
       background:
-        linear-gradient(rgba(21, 94, 239, .09) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(21, 94, 239, .09) 1px, transparent 1px),
-        radial-gradient(circle at 12% 0%, rgba(21, 94, 239, .08), transparent 34rem),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, var(--grid-glow), transparent 34rem),
         var(--paper);
       background-size: 40px 40px, 40px 40px, auto, auto;
       -webkit-font-smoothing: antialiased;
@@ -328,8 +393,16 @@ const DASHBOARD_HTML: string = `<!doctype html>
     }
 
     .brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
+    .brand-mark path { fill: var(--blue); }
     .brand-context { color: var(--ink-muted); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
     .brand-separator { width: 1px; height: 17px; background: var(--line-strong); }
+    .theme-toggle { display: inline-grid; width: 34px; height: 34px; padding: 0; place-items: center; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-glass); color: var(--ink-soft); cursor: pointer; }
+    .theme-toggle:hover { border-color: var(--blue); color: var(--ink); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .theme-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+    .theme-icon-sun { display: none; }
+    :root[data-theme="dark"] .theme-icon-moon { display: none; }
+    :root[data-theme="dark"] .theme-icon-sun { display: block; }
 
     .eyebrow {
       display: inline-flex;
@@ -345,6 +418,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
 
     h1 { margin: 13px 0 8px; color: var(--ink); font-size: clamp(32px, 4vw, 50px); letter-spacing: -.045em; }
     .path { max-width: 760px; overflow-wrap: anywhere; color: var(--ink-muted); font: 12px/1.6 var(--font-mono); }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
 
     .live {
       display: inline-flex;
@@ -353,18 +427,18 @@ const DASHBOARD_HTML: string = `<!doctype html>
       padding: 9px 12px;
       border: 1px solid var(--line-strong);
       border-radius: 999px;
-      background: rgba(255, 255, 255, .82);
+      background: var(--surface-glass);
       color: var(--ink-soft);
       font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
-      box-shadow: 0 1px 2px rgba(18, 24, 23, .05);
+      box-shadow: 0 1px 2px var(--shadow-low);
     }
 
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(11, 122, 83, .1); }
     .live.offline .live-dot { background: var(--red); box-shadow: 0 0 0 4px rgba(165, 51, 63, .1); }
 
-    .card { min-width: 0; padding: 22px; border: 1px solid rgba(189, 199, 193, .78); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(18, 24, 23, .05), 0 10px 30px rgba(18, 24, 23, .04); backdrop-filter: blur(14px); }
+    .card { min-width: 0; padding: 22px; border: 1px solid var(--card-line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow-low), 0 10px 30px var(--shadow-low); backdrop-filter: blur(14px); }
 
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
     .label { margin: 0; color: var(--blue-dark); font: 600 11px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -372,9 +446,9 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .muted { color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
 
     .pill { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-muted); background: var(--surface-muted); font: 600 10px/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; }
-    .pill.ok, .pill.ready, .pill.active { border-color: #b9dfce; background: var(--green-soft); color: var(--green); }
-    .pill.warning, .pill.blocked, .pill.needs_verification { border-color: #efd5a5; background: var(--amber-soft); color: var(--amber); }
-    .pill.malformed, .pill.unavailable { border-color: #efc2c7; background: var(--red-soft); color: var(--red); }
+    .pill.ok, .pill.ready, .pill.active { border-color: var(--green-line); background: var(--green-soft); color: var(--green); }
+    .pill.warning, .pill.blocked, .pill.needs_verification { border-color: var(--amber-line); background: var(--amber-soft); color: var(--amber); }
+    .pill.malformed, .pill.unavailable { border-color: var(--red-line); background: var(--red-soft); color: var(--red); }
 
     .facts { display: grid; gap: 12px; }
     .fact { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
@@ -382,8 +456,8 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .fact span:first-child { color: var(--ink-muted); font-size: 12px; }
     .fact span:last-child { max-width: 70%; overflow-wrap: anywhere; color: var(--ink-soft); font: 12px/1.45 var(--font-mono); text-align: right; }
 
-    .health-summary { margin-top: 20px; padding: 13px 15px; border: 1px solid #efd5a5; border-radius: 10px; background: var(--amber-soft); }
-    .health-summary.clear { border-color: #b9dfce; background: var(--green-soft); }
+    .health-summary { margin-top: 20px; padding: 13px 15px; border: 1px solid var(--amber-line); border-radius: 10px; background: var(--amber-soft); }
+    .health-summary.clear { border-color: var(--green-line); background: var(--green-soft); }
     .health-summary .summary-label { color: var(--amber); font: 600 10px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
     .health-summary.clear .summary-label { color: var(--green); }
     .health-summary li { padding: 8px 0 0; border: 0; color: var(--ink-soft); font-size: 12px; }
@@ -392,7 +466,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); }
     body.hydrated .progress span { transition: width .25s ease; }
 
-    .code-panel { color: var(--code-text); border-color: var(--code-line); background: var(--code); box-shadow: 0 24px 80px rgba(18, 24, 23, .12); backdrop-filter: none; }
+    .code-panel { color: var(--code-text); border-color: var(--code-line); background: var(--code); box-shadow: 0 24px 80px var(--shadow-high); backdrop-filter: none; }
     .code-panel .label { color: var(--code-blue); }
     .code-panel .value { color: #fff; }
     .code-panel .muted { color: var(--code-muted); }
@@ -444,10 +518,10 @@ const DASHBOARD_HTML: string = `<!doctype html>
       gap: 24px;
       margin-bottom: 16px;
       padding: 19px 22px;
-      border: 1px solid #9bb8f4;
+      border: 1px solid var(--blue-line);
       border-radius: 14px;
-      background: rgba(233, 240, 255, .88);
-      box-shadow: 0 1px 2px rgba(18, 24, 23, .04);
+      background: var(--run-surface);
+      box-shadow: 0 1px 2px var(--shadow-low);
     }
 
     .run-context[hidden] { display: none; }
@@ -459,7 +533,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .run-meta div { display: grid; gap: 4px; }
     .run-meta div span { color: var(--ink-muted); font: 600 8px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
     .run-meta div strong { overflow-wrap: anywhere; color: var(--ink-soft); font: 600 10px/1.4 var(--font-mono); }
-    .pill.running, .pill.completed { border-color: #b9dfce; background: var(--green-soft); color: var(--green); }
+    .pill.running, .pill.completed { border-color: var(--green-line); background: var(--green-soft); color: var(--green); }
 
     .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(285px, .75fr); gap: 16px; align-items: start; }
     .main-column, .status-rail { display: grid; gap: 16px; }
@@ -474,11 +548,11 @@ const DASHBOARD_HTML: string = `<!doctype html>
     .work-progress span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--blue); }
     body.hydrated .work-progress span { transition: width .25s ease; }
     .work-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .work-steps li { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255, 255, 255, .68); }
+    .work-steps li { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); }
     .work-steps .timeline-item { grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 8px; }
     .work-steps .timeline-meta { grid-column: 2; margin-top: 2px; }
-    .work-steps .timeline-item.done { border-color: #b9dfce; background: var(--green-soft); }
-    .work-steps .timeline-item.current { border-color: #9bb8f4; background: var(--blue-soft); box-shadow: inset 3px 0 0 var(--blue); }
+    .work-steps .timeline-item.done { border-color: var(--green-line); background: var(--green-soft); }
+    .work-steps .timeline-item.current { border-color: var(--blue-line); background: var(--blue-soft); box-shadow: inset 3px 0 0 var(--blue); }
     .current-work.idle .work-title { font-size: 22px; }
     .current-work.idle .work-progress { display: none; }
     .current-work.idle .work-steps { grid-template-columns: 1fr; margin-top: 12px; }
@@ -544,7 +618,7 @@ const DASHBOARD_HTML: string = `<!doctype html>
   <main class="shell">
     <div class="brand">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
-        <path fill="#155eef" d="M4 4h25.2L16.3 44H4zM39.7 4H44v40H26.8z"></path>
+        <path d="M4 4h25.2L16.3 44H4zM39.7 4H44v40H26.8z"></path>
       </svg>
       <span>AI Blueprint</span>
       <span class="brand-separator" aria-hidden="true"></span>
@@ -556,7 +630,18 @@ const DASHBOARD_HTML: string = `<!doctype html>
         <h1 id="project-name">Loading project...</h1>
         <div class="path" id="project-path"></div>
       </div>
-      <div class="live" id="live-state" aria-live="polite"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
+      <div class="header-actions">
+        <div class="live" id="live-state" aria-live="polite"><span class="live-dot"></span><span id="live-label">Connecting</span></div>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Use dark theme" title="Use dark theme">
+          <svg class="theme-icon-moon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M13.2 10.3A5.8 5.8 0 0 1 5.7 2.8 5.3 5.3 0 1 0 13.2 10.3Z"></path>
+          </svg>
+          <svg class="theme-icon-sun" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.5"></circle>
+            <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1"></path>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <section class="code-panel next-action" aria-labelledby="next-action-label">
@@ -683,6 +768,26 @@ const DASHBOARD_HTML: string = `<!doctype html>
 
   <script>
     const byId = (id) => document.getElementById(id);
+    const themeToggle = byId("theme-toggle");
+    const themeCookieName = "blueprint_dashboard_theme";
+
+    function syncThemeToggle() {
+      const dark = document.documentElement.dataset.theme === "dark";
+      const label = dark ? "Use light theme" : "Use dark theme";
+      themeToggle.setAttribute("aria-label", label);
+      themeToggle.title = label;
+    }
+
+    function toggleTheme() {
+      const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = theme;
+      document.cookie = themeCookieName + "=" + theme + "; Max-Age=31536000; Path=/; SameSite=Lax";
+      syncThemeToggle();
+    }
+
+    themeToggle.addEventListener("click", toggleTheme);
+    syncThemeToggle();
+
     const findingIdCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
     const findingSeverityOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
     const findingStatusOrder = { unverified: 0, open: 1, fixed: 2 };
