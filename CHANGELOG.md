@@ -3,6 +3,18 @@
 Notable changes to AI Blueprint are documented here. Release dates reflect the
 published `create-ai-blueprint` package.
 
+## [1.10.0] - 2026-09-24
+
+### Added
+
+- Added light and dark themes to the local dashboard, with a compact sun and
+  moon toggle beside the Connected status. The dashboard follows the operating
+  system theme until the user makes an explicit choice, then remembers that
+  choice across Blueprint projects and available local ports for one year. The
+  preference stays in the browser and never changes project files or Blueprint
+  state, requested by [@karai17](https://github.com/karai17) in
+  [#22](https://github.com/aiblueprinthq/ai-blueprint/issues/22).
+
 ## [1.9.0] - 2026-09-13
 
 ### Added
