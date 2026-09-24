@@ -31,6 +31,37 @@ test("dashboard serves live read-only project status on loopback", async (t) => 
   assert.match(page, /Blueprint Dashboard/);
   assert.match(page, /--paper: #f5f6f3/);
   assert.match(page, /--blue: #155eef/);
+  assert.match(page, /:root\[data-theme="dark"\]/);
+  assert.match(page, /--paper: #0d1211/);
+  assert.match(page, /id="theme-toggle"[^>]+aria-label="Use dark theme"/);
+  assert.match(page, /class="theme-icon-moon"/);
+  assert.match(page, /class="theme-icon-sun"/);
+  assert.match(page, /<div class="header-actions">[\s\S]+id="live-state"[\s\S]+id="theme-toggle"[\s\S]+<\/div>\s+<\/header>/);
+  assert.match(page, /blueprint_dashboard_theme/);
+  assert.equal(resolveInitialTheme(page, "", true), "dark");
+  assert.equal(resolveInitialTheme(page, "", false), "light");
+  assert.equal(resolveInitialTheme(page, "blueprint_dashboard_theme=light", true), "light");
+  assert.equal(resolveInitialTheme(page, "blueprint_dashboard_theme=dark", false), "dark");
+  assert.deepEqual(loadInitialTheme(page, "", true), {
+    theme: "dark",
+    renewedCookie: undefined
+  });
+  assert.deepEqual(loadInitialTheme(page, "blueprint_dashboard_theme=dark", false), {
+    theme: "dark",
+    renewedCookie: "blueprint_dashboard_theme=dark; Max-Age=31536000; Path=/; SameSite=Lax"
+  });
+  assert.deepEqual(toggleDashboardTheme(page, "light"), {
+    theme: "dark",
+    cookie: "blueprint_dashboard_theme=dark; Max-Age=31536000; Path=/; SameSite=Lax",
+    label: "Use light theme",
+    title: "Use light theme"
+  });
+  assert.deepEqual(toggleDashboardTheme(page, "dark"), {
+    theme: "light",
+    cookie: "blueprint_dashboard_theme=light; Max-Age=31536000; Path=/; SameSite=Lax",
+    label: "Use dark theme",
+    title: "Use dark theme"
+  });
   assert.match(page, /class="brand-mark"[^>]+aria-hidden="true"/);
   assert.match(page, /<section class="code-panel next-action"/);
   assert.match(page, /id="activity-panel"[^>]+hidden/);
@@ -397,15 +428,33 @@ interface DashboardStatus {
 }
 
 function renderActivityPanel(page: string, status: DashboardStatus) {
-  const script = page.match(/<script>([\s\S]+?)<\/script>/)?.[1];
+  const script = [...page.matchAll(/<script>([\s\S]+?)<\/script>/g)].at(-1)?.[1];
   assert.ok(script);
-  const elements = new Map<string, { hidden: boolean; textContent: string; className: string }>();
+  const elements = new Map<string, {
+    hidden: boolean;
+    textContent: string;
+    className: string;
+    title: string;
+    setAttribute: (name: string, value: string) => void;
+    addEventListener: () => void;
+  }>();
   runInNewContext(`${script}\nrenderActivity(status.activity, status.configuration, status.nextAction);`, {
     status,
     document: {
+      cookie: "",
+      documentElement: { dataset: { theme: "light" } },
       hidden: true,
       getElementById(id: string) {
-        if (!elements.has(id)) elements.set(id, { hidden: false, textContent: "", className: "" });
+        if (!elements.has(id)) {
+          elements.set(id, {
+            hidden: false,
+            textContent: "",
+            className: "",
+            title: "",
+            setAttribute() {},
+            addEventListener() {}
+          });
+        }
         return elements.get(id);
       },
       querySelectorAll: () => [],
@@ -415,6 +464,92 @@ function renderActivityPanel(page: string, status: DashboardStatus) {
     setInterval() {}
   });
   return elements;
+}
+
+function resolveInitialTheme(page: string, cookie: string, systemDark: boolean): string | undefined {
+  return loadInitialTheme(page, cookie, systemDark).theme;
+}
+
+function loadInitialTheme(page: string, cookie: string, systemDark: boolean) {
+  const script = page.match(/<script>([\s\S]+?)<\/script>/)?.[1];
+  assert.ok(script);
+  const documentElement = { dataset: {} as Record<string, string> };
+  let currentCookie = cookie;
+  let renewedCookie: string | undefined;
+  runInNewContext(script, {
+    document: {
+      get cookie() {
+        return currentCookie;
+      },
+      set cookie(value: string) {
+        renewedCookie = value;
+        currentCookie = value;
+      },
+      documentElement
+    },
+    window: { matchMedia: () => ({ matches: systemDark }) }
+  });
+  return { theme: documentElement.dataset.theme, renewedCookie };
+}
+
+function toggleDashboardTheme(page: string, initialTheme: "dark" | "light") {
+  const script = [...page.matchAll(/<script>([\s\S]+?)<\/script>/g)].at(-1)?.[1];
+  assert.ok(script);
+  const documentElement = { dataset: { theme: initialTheme } };
+  const attributes = new Map<string, string>();
+  let cookie = "";
+  let clickListener: (() => void) | undefined;
+  const elements = new Map<string, {
+    hidden: boolean;
+    textContent: string;
+    className: string;
+    title: string;
+    setAttribute: (name: string, value: string) => void;
+    addEventListener: (type: string, listener: () => void) => void;
+  }>();
+  const documentObject = {
+    get cookie() {
+      return cookie;
+    },
+    set cookie(value: string) {
+      cookie = value;
+    },
+    documentElement,
+    hidden: true,
+    getElementById(id: string) {
+      if (!elements.has(id)) {
+        elements.set(id, {
+          hidden: false,
+          textContent: "",
+          className: "",
+          title: "",
+          setAttribute(name, value) {
+            if (id === "theme-toggle") attributes.set(name, value);
+          },
+          addEventListener(type, listener) {
+            if (id === "theme-toggle" && type === "click") clickListener = listener;
+          }
+        });
+      }
+      return elements.get(id);
+    },
+    querySelectorAll: () => [],
+    addEventListener() {}
+  };
+
+  runInNewContext(script, {
+    document: documentObject,
+    EventSource: class { addEventListener() {} },
+    setInterval() {}
+  });
+  assert.ok(clickListener);
+  clickListener();
+  return {
+    theme: documentElement.dataset.theme,
+    cookie,
+    label: attributes.get("aria-label"),
+    title: elements.get("theme-toggle")?.title
+  };
 }
 
 async function readStatus(url: string): Promise<DashboardStatus> {
