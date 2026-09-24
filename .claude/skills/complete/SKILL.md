@@ -152,7 +152,11 @@ Before logging or committing, run a short safety pass and report blockers only:
   adapters exist
 - no P0 or P1 finding in `blueprint/context/findings.md` is `open` or `fixed`.
   `fixed` still blocks on purpose: the repair exists but no review has looked at
-  it - run `/audit` to close it. The only waivers are `accepted` (the user's
+  it - run `/audit` to close it. While the current spec is active, append the
+  repair as a new checklist step and run `/implement`; do not start a separate
+  `/fix`. After the repair passes its focused check and the finding is marked
+  `fixed`, run `/audit current` to re-review the updated code, close the finding,
+  and then retry `/complete`. The only waivers are `accepted` (the user's
   explicit decision in the current chat, reason recorded; never set it for
   them) or `invalid` (an `/audit` re-examination verdict with recorded
   evidence, or the user's explicit call). A missing ledger file means no
